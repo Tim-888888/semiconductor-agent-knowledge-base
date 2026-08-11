@@ -1,30 +1,48 @@
-import { FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import {
   Activity,
-  ArrowUp,
-  Bot,
   ClipboardCheck,
-  Database,
-  FileSearch,
   Image as ImageIcon,
   LoaderCircle,
   MessageSquareText,
-  Plus,
   SearchCheck,
-  Upload
+  Upload,
+  X
 } from "lucide-react";
 import {
   bootstrapToken,
-  createDemoDocument,
   createThread,
-  getAsset,
+  getEvaluation,
+  getEvaluationCaseTrace,
+  getJob,
+  getThread,
+  getTrace,
+  listEvaluationDatasets,
   listEvaluations,
   listJobs,
+  listThreads,
   listTraces,
+  resolveAsset,
+  retryEvaluation,
+  retryJob,
   runEvaluation,
-  sendMessage
+  sendMessage,
+  uploadDocument
 } from "./api";
-import type { EvaluationRun, IngestionJob, RetrievalTrace, Thread } from "./types";
+import { EvaluationPanel } from "./components/EvaluationPanel";
+import { IngestionPanel } from "./components/IngestionPanel";
+import { TracePanel } from "./components/TracePanel";
+import { Workbench } from "./components/Workbench";
+import type {
+  AgentResponse,
+  AssetAccess,
+  EvaluationDataset,
+  EvaluationRun,
+  IngestionJob,
+  RetrievalTrace,
+  Thread,
+  UploadMetadata
+} from "./types";
 
 type View = "workbench" | "trace" | "ingestion" | "evaluation";
 
@@ -32,38 +50,54 @@ const starterQuestion = "ETCH-03 Chamber B 清腔后首片异常，当前 SOP �
 
 function App() {
   const [view, setView] = useState<View>("workbench");
+  const [threads, setThreads] = useState<Thread[]>([]);
   const [thread, setThread] = useState<Thread | null>(null);
+  const [agentResult, setAgentResult] = useState<AgentResponse | null>(null);
   const [traces, setTraces] = useState<RetrievalTrace[]>([]);
+  const [selectedTrace, setSelectedTrace] = useState<RetrievalTrace>();
   const [jobs, setJobs] = useState<IngestionJob[]>([]);
+  const [selectedJob, setSelectedJob] = useState<IngestionJob>();
+  const [datasets, setDatasets] = useState<EvaluationDataset[]>([]);
   const [evaluations, setEvaluations] = useState<EvaluationRun[]>([]);
+  const [selectedEvaluation, setSelectedEvaluation] = useState<EvaluationRun>();
   const [query, setQuery] = useState(starterQuestion);
-  const [assetUrl, setAssetUrl] = useState<string>("");
+  const [asset, setAsset] = useState<AssetAccess | null>(null);
+  const [assetModalOpen, setAssetModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
-  const activeTrace = traces[0];
-  const activeImages = useMemo(
-    () => thread?.messages.flatMap((message) => message.citations.flatMap((citation) => citation.image_ids)) ?? [],
-    [thread]
-  );
-
-  async function refreshOperations() {
-    const [nextJobs, nextTraces, nextEvaluations] = await Promise.all([listJobs(), listTraces(), listEvaluations()]);
-    setJobs(nextJobs);
-    setTraces(nextTraces);
-    setEvaluations(nextEvaluations);
-  }
+  const traceOptions = useMemo(() => {
+    if (!selectedTrace || traces.some((item) => item.trace_id === selectedTrace.trace_id)) return traces;
+    return [selectedTrace, ...traces];
+  }, [selectedTrace, traces]);
+  const hasPendingJobs = jobs.some((job) => !["published", "failed"].includes(job.status));
+  const hasPendingEvaluations = evaluations.some((run) => ["queued", "running"].includes(run.status));
 
   useEffect(() => {
     async function initialize() {
       try {
         await bootstrapToken();
-        const nextThread = await createThread("ETCH-03 首片异常调查");
-        setThread(nextThread);
-        await refreshOperations();
+        const [existingThreads, nextJobs, nextTraces, nextEvaluations, nextDatasets] = await Promise.all([
+          listThreads(),
+          listJobs(),
+          listTraces(),
+          listEvaluations(),
+          listEvaluationDatasets()
+        ]);
+        const activeThread = existingThreads[0] ?? await createThread("ETCH-03 异常调查");
+        setThreads(existingThreads.length ? existingThreads : [activeThread]);
+        setThread(activeThread);
+        setJobs(nextJobs);
+        setSelectedJob(nextJobs[0]);
+        setTraces(nextTraces);
+        setSelectedTrace(nextTraces[0]);
+        setEvaluations(nextEvaluations);
+        setSelectedEvaluation(nextEvaluations[0]);
+        setDatasets(nextDatasets);
       } catch (caught) {
-        setError(caught instanceof Error ? caught.message : "无法连接后端服务。");
+        setError(messageFrom(caught, "无法连接后端服务。"));
       } finally {
         setLoading(false);
       }
@@ -71,168 +105,234 @@ function App() {
     void initialize();
   }, []);
 
+  useEffect(() => {
+    if (!hasPendingJobs && !hasPendingEvaluations) return;
+    const timer = window.setInterval(() => {
+      if (hasPendingJobs) void refreshJobs();
+      if (hasPendingEvaluations) void refreshEvaluations();
+    }, 2500);
+    return () => window.clearInterval(timer);
+  }, [hasPendingEvaluations, hasPendingJobs]);
+
+  useEffect(() => () => {
+    if (asset?.local_object_url) URL.revokeObjectURL(asset.url);
+  }, [asset]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    setNotice("");
+  }, [view]);
+
+  async function refreshThreads(activeId?: string) {
+    const nextThreads = await listThreads();
+    setThreads(nextThreads);
+    const targetId = activeId ?? thread?.thread_id;
+    if (targetId) {
+      const active = await getThread(targetId);
+      setThread(active);
+    }
+  }
+
+  async function refreshJobs(preferredId?: string) {
+    const nextJobs = await listJobs();
+    setJobs(nextJobs);
+    const targetId = preferredId ?? selectedJob?.job_id;
+    const target = nextJobs.find((job) => job.job_id === targetId) ?? nextJobs[0];
+    setSelectedJob(target);
+  }
+
+  async function refreshTraces(preferredId?: string) {
+    const nextTraces = await listTraces();
+    setTraces(nextTraces);
+    const targetId = preferredId ?? selectedTrace?.trace_id;
+    const target = nextTraces.find((trace) => trace.trace_id === targetId) ?? nextTraces[0];
+    if (target) setSelectedTrace(target);
+  }
+
+  async function refreshEvaluations(preferredId?: string) {
+    const [nextRuns, nextDatasets] = await Promise.all([listEvaluations(), listEvaluationDatasets()]);
+    setEvaluations(nextRuns);
+    setDatasets(nextDatasets);
+    const targetId = preferredId ?? selectedEvaluation?.evaluation_run_id;
+    const target = nextRuns.find((run) => run.evaluation_run_id === targetId) ?? nextRuns[0];
+    setSelectedEvaluation(target);
+  }
+
   async function submitQuestion(event: FormEvent) {
     event.preventDefault();
     if (!thread || !query.trim()) return;
-    setActionLoading(true);
-    setError("");
-    try {
+    await runAction(async () => {
       const response = await sendMessage(thread.thread_id, query.trim());
       setThread(response.thread);
+      setThreads((current) => [response.thread, ...current.filter((item) => item.thread_id !== response.thread.thread_id)]);
+      setAgentResult(response);
       setQuery("");
-      setView("workbench");
-      await refreshOperations();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "问题发送失败。");
-    } finally {
-      setActionLoading(false);
-    }
+      if (response.trace_id) await refreshTraces(response.trace_id);
+      setNotice(response.clarification_required ? "线程已暂停，等待补充信息" : "调查结果已写入线程");
+    }, "问题发送失败。");
+  }
+
+  async function selectThread(threadId: string) {
+    await runAction(async () => {
+      setThread(await getThread(threadId));
+      setAgentResult(null);
+      setAsset(null);
+    }, "线程恢复失败。");
+  }
+
+  async function addThread() {
+    await runAction(async () => {
+      const created = await createThread(`新调查 ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`);
+      setThreads((current) => [created, ...current]);
+      setThread(created);
+      setAgentResult(null);
+      setQuery("");
+    }, "线程创建失败。");
+  }
+
+  async function openTrace(traceId?: string | null) {
+    await runAction(async () => {
+      if (traceId) {
+        const existing = traces.find((item) => item.trace_id === traceId);
+        setSelectedTrace(existing ?? await getTrace(traceId));
+      }
+      setView("trace");
+    }, "Trace 读取失败。");
+  }
+
+  async function selectTrace(traceId: string) {
+    const existing = traceOptions.find((item) => item.trace_id === traceId);
+    if (existing) setSelectedTrace(existing);
+    else await openTrace(traceId);
   }
 
   async function openImage(imageId: string) {
-    try {
-      const result = await getAsset(imageId);
-      setAssetUrl(result.url);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "图片访问被拒绝。");
-    }
+    await runAction(async () => {
+      const nextAsset = await resolveAsset(imageId);
+      setAsset(nextAsset);
+      setAssetModalOpen(true);
+    }, "图片访问被拒绝。");
   }
 
-  async function addTrainingDocument() {
+  async function upload(file: File, metadata: UploadMetadata) {
+    await runAction(async () => {
+      const job = await uploadDocument(file, metadata);
+      await refreshJobs(job.job_id);
+      setNotice(`入库任务 ${job.job_id.slice(-8)} 已创建`);
+    }, "文档上传失败。");
+  }
+
+  async function retryIngestion(jobId: string) {
+    await runAction(async () => {
+      const job = await retryJob(jobId);
+      await refreshJobs(job.job_id);
+      setNotice("失败任务已重新排队");
+    }, "任务重试失败。");
+  }
+
+  async function selectIngestionJob(jobId: string) {
+    await runAction(async () => setSelectedJob(await getJob(jobId)), "任务详情读取失败。");
+  }
+
+  async function createEvaluation(input: { dataset_version: string; retrieval_profile: EvaluationRun["retrieval_profile"]; baseline_run_id?: string }) {
+    await runAction(async () => {
+      const run = await runEvaluation(input);
+      await refreshEvaluations(run.evaluation_run_id);
+      setNotice(`评估 ${run.evaluation_run_id.slice(-8)} 已排队`);
+    }, "评估创建失败。");
+  }
+
+  async function selectEvaluation(runId: string) {
+    await runAction(async () => setSelectedEvaluation(await getEvaluation(runId)), "评估详情读取失败。");
+  }
+
+  async function retryEvaluationRun(runId: string) {
+    await runAction(async () => {
+      const run = await retryEvaluation(runId);
+      await refreshEvaluations(run.evaluation_run_id);
+      setNotice("评估已重新排队");
+    }, "评估重试失败。");
+  }
+
+  async function openEvaluationTrace(runId: string, caseId: string) {
+    await runAction(async () => {
+      const trace = await getEvaluationCaseTrace(runId, caseId);
+      setSelectedTrace(trace);
+      setView("trace");
+    }, "评估 Trace 读取失败。");
+  }
+
+  async function runAction(action: () => Promise<void>, fallback: string) {
     setActionLoading(true);
+    setError("");
+    setNotice("");
     try {
-      await createDemoDocument();
-      await refreshOperations();
+      await action();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "入库任务创建失败。");
+      setError(messageFrom(caught, fallback));
     } finally {
       setActionLoading(false);
     }
   }
 
-  async function startEvaluation() {
-    setActionLoading(true);
-    try {
-      await runEvaluation();
-      await refreshOperations();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "评估运行失败。");
-    } finally {
-      setActionLoading(false);
-    }
-  }
+  if (loading) return <div className="loading-screen"><LoaderCircle className="spin" size={28} />正在连接知识服务</div>;
 
-  if (loading) {
-    return <div className="loading-screen"><LoaderCircle className="spin" size={28} /> 正在连接知识服务</div>;
-  }
+  return <div className="app-shell">
+    <aside className="sidebar">
+      <div className="brand"><span className="brand-mark">S</span><span>SEMIKB</span></div>
+      <nav aria-label="主导航">
+        <NavButton active={view === "workbench"} icon={<MessageSquareText />} label="工程师工作台" onClick={() => setView("workbench")} />
+        <NavButton active={view === "trace"} icon={<SearchCheck />} label="可解释检索" onClick={() => setView("trace")} />
+        <NavButton active={view === "ingestion"} icon={<Upload />} label="入库任务中心" onClick={() => setView("ingestion")} />
+        <NavButton active={view === "evaluation"} icon={<ClipboardCheck />} label="离线评估" onClick={() => setView("evaluation")} />
+      </nav>
+      <div className="sidebar-status"><span className="status-dot" /><span>FAB-01 · scoped access</span></div>
+    </aside>
 
-  return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand"><span className="brand-mark">S</span><span>SEMIKB</span></div>
-        <nav aria-label="Primary navigation">
-          <NavButton active={view === "workbench"} icon={<MessageSquareText />} label="工程师工作台" onClick={() => setView("workbench")} />
-          <NavButton active={view === "trace"} icon={<SearchCheck />} label="可解释检索" onClick={() => setView("trace")} />
-          <NavButton active={view === "ingestion"} icon={<Upload />} label="入库任务中心" onClick={() => setView("ingestion")} />
-          <NavButton active={view === "evaluation"} icon={<ClipboardCheck />} label="离线评估" onClick={() => setView("evaluation")} />
-        </nav>
-        <div className="sidebar-status"><span className="status-dot" /> Demo data · controlled mode</div>
-      </aside>
+    <main className="main-area">
+      <header className="topbar">
+        <div><p className="eyebrow">FAB-01 / P-ALPHA / ETCH</p><h1>{viewTitle(view)}</h1></div>
+        <div className="topbar-right"><Activity size={16} /><span>Evidence-first</span></div>
+      </header>
+      {error && <div className="error-banner" role="alert">{error}</div>}
+      {notice && <div className="notice-banner" role="status">{notice}</div>}
 
-      <main className="main-area">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">FAB-01 / P-ALPHA / ETCH</p>
-            <h1>{viewTitle(view)}</h1>
-          </div>
-          <div className="topbar-right"><Activity size={16} /><span>Evidence-first</span></div>
-        </header>
-        {error && <div className="error-banner">{error}</div>}
-        {view === "workbench" && (
-          <Workbench
-            thread={thread}
-            query={query}
-            loading={actionLoading}
-            assetUrl={assetUrl}
-            imageIds={activeImages}
-            onQueryChange={setQuery}
-            onSubmit={submitQuestion}
-            onOpenImage={openImage}
-            onOpenTrace={() => setView("trace")}
-          />
-        )}
-        {view === "trace" && <TracePanel trace={activeTrace} onOpenImage={openImage} />}
-        {view === "ingestion" && <IngestionPanel jobs={jobs} loading={actionLoading} onAdd={addTrainingDocument} />}
-        {view === "evaluation" && <EvaluationPanel runs={evaluations} loading={actionLoading} onRun={startEvaluation} />}
-      </main>
-    </div>
-  );
+      {view === "workbench" && <Workbench
+        threads={threads}
+        thread={thread}
+        result={agentResult}
+        query={query}
+        loading={actionLoading}
+        asset={asset}
+        onQueryChange={setQuery}
+        onSubmit={submitQuestion}
+        onSelectThread={(threadId) => void selectThread(threadId)}
+        onNewThread={() => void addThread()}
+        onOpenImage={(imageId) => void openImage(imageId)}
+        onOpenTrace={(traceId) => void openTrace(traceId)}
+      />}
+      {view === "trace" && <TracePanel traces={traceOptions} trace={selectedTrace} onSelect={(traceId) => void selectTrace(traceId)} onOpenImage={(imageId) => void openImage(imageId)} />}
+      {view === "ingestion" && <IngestionPanel jobs={jobs} selectedJob={selectedJob} loading={actionLoading} onSelect={(jobId) => void selectIngestionJob(jobId)} onUpload={upload} onRetry={retryIngestion} onRefresh={() => refreshJobs()} />}
+      {view === "evaluation" && <EvaluationPanel datasets={datasets} runs={evaluations} selectedRun={selectedEvaluation} loading={actionLoading} onSelect={(runId) => void selectEvaluation(runId)} onRun={createEvaluation} onRetry={retryEvaluationRun} onRefresh={() => refreshEvaluations()} onOpenTrace={openEvaluationTrace} />}
+    </main>
+
+    {asset && assetModalOpen && <div className="asset-modal" role="dialog" aria-modal="true" aria-label="受控图片预览" data-testid="asset-modal">
+      <div className="asset-modal-toolbar"><div><ImageIcon size={17} /><strong>{asset.image_id}</strong><span>{asset.object_key}</span></div><button className="icon-button" type="button" title="关闭图片" onClick={() => setAssetModalOpen(false)}><X size={18} /></button></div>
+      <img src={asset.url} alt={`受控图片 ${asset.image_id}`} />
+    </div>}
+  </div>;
 }
 
 function NavButton({ active, icon, label, onClick }: { active: boolean; icon: ReactNode; label: string; onClick: () => void }) {
-  return <button type="button" className={`nav-button ${active ? "active" : ""}`} onClick={onClick}>{icon}<span>{label}</span></button>;
+  return <button type="button" className={`nav-button ${active ? "active" : ""}`} onClick={onClick} title={label}>{icon}<span>{label}</span></button>;
 }
 
-function Workbench({ thread, query, loading, assetUrl, imageIds, onQueryChange, onSubmit, onOpenImage, onOpenTrace }: {
-  thread: Thread | null;
-  query: string;
-  loading: boolean;
-  assetUrl: string;
-  imageIds: string[];
-  onQueryChange: (value: string) => void;
-  onSubmit: (event: FormEvent) => void;
-  onOpenImage: (imageId: string) => void;
-  onOpenTrace: () => void;
-}) {
-  return <section className="workbench-grid">
-    <div className="conversation-panel">
-      <div className="panel-heading"><div><span className="section-label">ACTIVE THREAD</span><h2>{thread?.title ?? "Loading thread"}</h2></div><span className="thread-id">{thread?.thread_id.slice(-8)}</span></div>
-      <div className="message-list">
-        {thread?.messages.length ? thread.messages.map((message) => <article className={`message ${message.role}`} key={message.message_id}>
-          <div className="message-avatar">{message.role === "assistant" ? <Bot size={17} /> : "E"}</div>
-          <div className="message-body"><div className="message-role">{message.role === "assistant" ? "SEMIKB" : "ENGINEER"}</div><p>{message.content}</p>
-            {message.citations.length > 0 && <div className="citation-row">{message.citations.map((citation) => <button key={citation.chunk_id} className="citation" type="button" onClick={onOpenTrace}>{citation.document_id} {citation.revision} · {citation.page_or_section}</button>)}</div>}
-          </div>
-        </article>) : <div className="empty-conversation">使用下方问题开始受控调查。</div>}
-      </div>
-      <form className="query-box" onSubmit={onSubmit}>
-        <textarea value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="描述异常、SOP 或 Recipe 问题" rows={3} />
-        <button type="submit" className="icon-command" title="发送问题" disabled={loading || !query.trim()}><ArrowUp size={19} /></button>
-      </form>
-    </div>
-    <aside className="evidence-panel">
-      <div className="panel-heading"><div><span className="section-label">EVIDENCE DRAWER</span><h2>真实图文证据</h2></div><ImageIcon size={19} /></div>
-      {assetUrl ? <img className="wafer-image" src={assetUrl} alt="Synthetic wafer edge-ring inspection" /> : <div className="asset-placeholder"><ImageIcon size={32} /><span>检索命中图片后在此展示</span></div>}
-      <div className="asset-list">{[...new Set(imageIds)].map((imageId) => <button className="asset-item" type="button" key={imageId} onClick={() => onOpenImage(imageId)}><ImageIcon size={16} /><span>{imageId}</span></button>)}</div>
-      <p className="evidence-note">图片展示前会重新执行权限、revision 和有效期检查。Demo 页面显示的是合成晶圆图。</p>
-    </aside>
-  </section>;
+function viewTitle(view: View) {
+  return ({ workbench: "工程师工作台", trace: "可解释检索", ingestion: "入库任务中心", evaluation: "离线评估" } as Record<View, string>)[view];
 }
 
-function TracePanel({ trace, onOpenImage }: { trace?: RetrievalTrace; onOpenImage: (imageId: string) => void }) {
-  if (!trace) return <section className="empty-state"><FileSearch size={34} /><h2>尚无检索 Trace</h2><p>在工程师工作台完成一次查询后，这里会展示完整检索路径。</p></section>;
-  return <section className="trace-layout">
-    <div className="trace-summary"><div><span className="section-label">RETRIEVAL TRACE</span><h2>{trace.original_query}</h2></div><div className="route-list">{trace.routes.map((route) => <span key={route}>{route}</span>)}</div></div>
-    <div className="trace-kpis"><Metric label="Candidates" value={trace.candidates.length} /><Metric label="Final evidence" value={trace.final_evidence_ids.length} /><Metric label="Cutoff" value={trace.cutoff_reason} /><Metric label="Latency" value={`${trace.timings_ms.retrieval ?? 0} ms`} /></div>
-    <div className="data-table-wrap"><table><thead><tr><th>Evidence</th><th>Routes</th><th>Dense</th><th>Sparse</th><th>RRF</th><th>Rerank</th><th>Status</th></tr></thead><tbody>{trace.candidates.map((candidate) => <tr key={candidate.chunk_id}><td><strong>{candidate.document_id} {candidate.revision}</strong><span>{candidate.page_or_section}</span></td><td>{candidate.routes.join(" + ")}</td><td>{candidate.dense_score.toFixed(3)}</td><td>{candidate.sparse_score.toFixed(3)}</td><td>{candidate.rrf_score.toFixed(3)}</td><td>{candidate.rerank_score.toFixed(3)}</td><td><span className={`status-pill ${candidate.selected ? "selected" : "excluded"}`}>{candidate.selected ? "Selected" : candidate.exclusion_reason ?? "Excluded"}</span></td></tr>)}</tbody></table></div>
-    {trace.image_asset_ids.length > 0 && <div className="trace-images">{trace.image_asset_ids.map((imageId) => <button type="button" onClick={() => onOpenImage(imageId)} key={imageId}><ImageIcon size={16} />打开 {imageId}</button>)}</div>}
-  </section>;
+function messageFrom(value: unknown, fallback: string): string {
+  return value instanceof Error ? value.message : fallback;
 }
-
-function IngestionPanel({ jobs, loading, onAdd }: { jobs: IngestionJob[]; loading: boolean; onAdd: () => void }) {
-  return <section className="operations-layout"><div className="operations-heading"><div><span className="section-label">INGESTION OPERATIONS</span><h2>入库任务中心</h2><p>每一份文档都在发布前经过解析、质量检查、暂存索引与幂等控制。</p></div><button className="command-button" type="button" onClick={onAdd} disabled={loading}><Plus size={17} />添加训练文档</button></div>
-    <div className="data-table-wrap"><table><thead><tr><th>Document</th><th>Stage</th><th>Progress</th><th>Chunks</th><th>Images</th><th>Latest event</th></tr></thead><tbody>{jobs.map((job) => <tr key={job.job_id}><td><strong>{job.document_id} {job.revision}</strong><span>{job.filename}</span></td><td><span className="status-pill selected">{job.current_stage}</span></td><td><div className="progress"><span style={{ width: `${job.progress}%` }} /></div>{job.progress}%</td><td>{job.chunks_count}</td><td>{job.images_count}</td><td>{job.events.at(-1)?.message ?? "Queued"}</td></tr>)}</tbody></table></div>
-  </section>;
-}
-
-function EvaluationPanel({ runs, loading, onRun }: { runs: EvaluationRun[]; loading: boolean; onRun: () => void }) {
-  const latest = runs[0];
-  return <section className="operations-layout"><div className="operations-heading"><div><span className="section-label">OFFLINE EVALUATION</span><h2>黄金集与基线比较</h2><p>运行固定数据集，检查检索优化是否真实提升命中率。</p></div><button className="command-button" type="button" onClick={onRun} disabled={loading}><ClipboardCheck size={17} />运行 demo-v2</button></div>
-    {latest ? <><div className="metric-grid"><Metric label="Recall@5" value={latest.aggregate_metrics.recall_at_5 ?? 0} /><Metric label="MRR" value={latest.aggregate_metrics.mrr ?? 0} /><Metric label="Cases" value={latest.case_results.length} /><Metric label="Status" value={latest.status} /></div><div className="data-table-wrap"><table><thead><tr><th>Case</th><th>Recall@5</th><th>MRR</th><th>Trace</th></tr></thead><tbody>{latest.case_results.map((item) => <tr key={item.case_id}><td>{item.case_id}</td><td>{item.recall_at_5}</td><td>{item.reciprocal_rank}</td><td>{item.trace_id}</td></tr>)}</tbody></table></div></> : <div className="empty-state"><Database size={34} /><h2>尚未运行评估</h2><p>使用 demo-v2 固定黄金集创建第一条可复现基线。</p></div>}
-  </section>;
-}
-
-function Metric({ label, value }: { label: string; value: string | number }) { return <div className="metric"><span>{label}</span><strong>{value}</strong></div>; }
-function viewTitle(view: View) { return ({ workbench: "工程师工作台", trace: "可解释检索", ingestion: "入库任务中心", evaluation: "离线评估" } as Record<View, string>)[view]; }
 
 export default App;

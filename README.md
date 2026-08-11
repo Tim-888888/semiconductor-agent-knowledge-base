@@ -15,7 +15,7 @@ manufacturing data.
 | Ingestion | Markdown/fixture ingestion, SHA-256 idempotency, quality gate, semantic chunks | Celery Worker, MinerU adapter, BGE-M3 and MinIO/Mongo/Milvus production repositories are implemented and T4 live acceptance has passed |
 | Retrieval | Version/ACL-aware Dense + Sparse + RRF + deterministic rerank and cutoff | Live BGE-M3/Milvus + conditional Luna HyDE + qwen3-rerank pipeline passed T5 synthetic acceptance |
 | Conversation | LangGraph `interrupt/resume`, two clarification rounds, evidence ledger and explicit memory | MongoDB Checkpointer/Store plus Luna primary/Qwen fallback answer generation passed restart acceptance |
-| Operations | Trace, golden-set evaluation, task-centre UI | Redis/Celery worker, real service topology and production observability |
+| Operations | Trace, golden-set evaluation, task-centre UI | Real API/Worker-backed Trace, ingestion, evaluation and responsive browser workflows passed T8 acceptance; production observability remains T9 scope |
 
 ## Local development
 
@@ -37,5 +37,9 @@ The live T5 baseline comparison is
 `python scripts/verify_t5_retrieval.py`.
 The live T6 interrupt/resume acceptance is
 `python scripts/verify_t6_agent.py`.
+The live T7 evaluation acceptance is
+`python scripts/verify_t7_evaluation.py --timeout 900 --replace-acceptance-runs`.
+The T8 browser click and screenshot record is
+`docs/T8浏览器验收.md`.
 
 See `docs/` for storage, API, security, testing, and deployment decisions.
