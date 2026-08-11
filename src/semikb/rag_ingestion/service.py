@@ -185,8 +185,13 @@ class IngestionService:
                 else datetime.now(UTC)
             ),
             expires_at=datetime.fromisoformat(payload["expires_at"]) if payload.get("expires_at") else None,
+            supersedes_revision=payload.get("supersedes_revision"),
             source_hash=source_hash,
             source_ref=source_ref,
+            source_kind=payload.get("source_kind", "user_upload"),
+            source_uri=payload.get("source_uri", f"upload://{source_filename}"),
+            source_license=payload.get("source_license", "internal"),
+            access_scope_key=payload.get("access_scope_key", "demo_engineering"),
             **shared,
         )
         chunks: list[Chunk] = []
@@ -213,11 +218,12 @@ class IngestionService:
             image_id = image_payload["image_id"]
             asset_ref = ObjectRef(
                 bucket="semikb-derived",
-                object_key=(
-                    f"documents/{document.document_id}/{document.revision}/assets/{image_id}/original.png"
+                object_key=image_payload.get(
+                    "object_key",
+                    f"documents/{document.document_id}/{document.revision}/assets/{image_id}/original.png",
                 ),
-                content_type="image/png",
-                sha256=hashlib.sha256(image_id.encode("utf-8")).hexdigest(),
+                content_type=image_payload.get("content_type", "image/png"),
+                sha256=image_payload.get("sha256", hashlib.sha256(image_id.encode("utf-8")).hexdigest()),
             )
             image = ImageAsset(
                 image_id=image_id,
@@ -231,6 +237,8 @@ class IngestionService:
                 detection_summary=image_payload.get("detection_summary", ""),
                 source_page=image_payload.get("source_page", ""),
                 related_case_id=image_payload.get("related_case_id"),
+                demo_source_path=image_payload.get("source_path"),
+                access_scope_key=document.access_scope_key,
                 approval_status=document.approval_status,
                 lifecycle=document.lifecycle,
                 effective_at=document.effective_at,

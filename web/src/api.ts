@@ -34,7 +34,7 @@ export const sendMessage = (threadId: string, content: string) => request<{ thre
 export const listJobs = () => request<IngestionJob[]>("/ingestion-jobs");
 export const listTraces = () => request<RetrievalTrace[]>("/retrieval-traces");
 export const listEvaluations = () => request<EvaluationRun[]>("/evaluation-runs");
-export const runEvaluation = () => request<EvaluationRun>("/evaluation-runs", { method: "POST", body: JSON.stringify({ dataset_version: "demo-v1" }) });
+export const runEvaluation = () => request<EvaluationRun>("/evaluation-runs", { method: "POST", body: JSON.stringify({ dataset_version: "demo-v2" }) });
 export const getAsset = (imageId: string) => request<{ url: string }>(`/assets/${imageId}/access`);
 
 export async function createDemoDocument(): Promise<IngestionJob> {

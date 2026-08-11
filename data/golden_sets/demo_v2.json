@@ -1,0 +1,136 @@
+{
+  "dataset_version": "demo-v2",
+  "source_kind": "synthetic",
+  "source_license": "CC0-1.0",
+  "schema_version": "2.0",
+  "cases": [
+    {
+      "case_id": "eval-current-sop",
+      "question": "ETCH-03 Chamber B 清腔后首片异常，当前 SOP 怎么要求？",
+      "expected_chunk_ids": ["SOP-ETCH-03-R2-001"],
+      "expected_outcome": "evidence",
+      "actor_scope": {
+        "user_id": "demo_engineer",
+        "roles": ["engineer"],
+        "access_scope_keys": ["demo_engineering"],
+        "fabs": ["FAB-01"],
+        "products": ["P-ALPHA"],
+        "tool_ids": ["ETCH-03"]
+      },
+      "tags": ["sop", "version", "tool", "chamber"],
+      "failure_labels": ["current_sop_not_recalled"]
+    },
+    {
+      "case_id": "eval-current-recipe",
+      "question": "ETCH-ALPHA 当前 Recipe V2.3 的 chamber pressure 合成窗口是多少？",
+      "expected_chunk_ids": ["RECIPE-ETCH-ALPHA-V2.3-001"],
+      "expected_outcome": "evidence",
+      "actor_scope": {
+        "user_id": "demo_engineer",
+        "roles": ["engineer"],
+        "access_scope_keys": ["demo_engineering"],
+        "fabs": ["FAB-01"],
+        "products": ["P-ALPHA"],
+        "tool_ids": ["ETCH-03"]
+      },
+      "tags": ["recipe", "version", "parameter_window"],
+      "failure_labels": ["current_recipe_not_recalled"]
+    },
+    {
+      "case_id": "eval-expired-recipe-filter",
+      "question": "只给我已经过期的 ETCH-ALPHA V2.2 Recipe 参数。",
+      "expected_chunk_ids": [],
+      "expected_outcome": "no_evidence",
+      "actor_scope": {
+        "user_id": "demo_engineer",
+        "roles": ["engineer"],
+        "access_scope_keys": ["demo_engineering"],
+        "fabs": ["FAB-01"],
+        "products": ["P-ALPHA"],
+        "tool_ids": ["ETCH-03"]
+      },
+      "tags": ["recipe", "expired", "negative"],
+      "failure_labels": ["expired_evidence_returned"]
+    },
+    {
+      "case_id": "eval-image-retrieval",
+      "question": "有没有 ETCH-03 Chamber B 的边缘环状缺陷晶圆图？",
+      "expected_chunk_ids": ["CASE-FA-2026-004-R1-IMAGE-001"],
+      "expected_outcome": "evidence",
+      "actor_scope": {
+        "user_id": "demo_engineer",
+        "roles": ["engineer"],
+        "access_scope_keys": ["demo_engineering"],
+        "fabs": ["FAB-01"],
+        "products": ["P-ALPHA"],
+        "tool_ids": ["ETCH-03"]
+      },
+      "tags": ["image_text", "case", "defect"],
+      "failure_labels": ["image_evidence_not_recalled"]
+    },
+    {
+      "case_id": "eval-spc-upward-shift",
+      "question": "ETCH-03 Chamber B 的 chamber pressure SPC 在什么时间出现 upward shift？",
+      "expected_chunk_ids": ["SPC-ETCH-PRESSURE-R1-002"],
+      "expected_outcome": "evidence",
+      "actor_scope": {
+        "user_id": "demo_engineer",
+        "roles": ["engineer"],
+        "access_scope_keys": ["demo_engineering"],
+        "fabs": ["FAB-01"],
+        "products": ["P-ALPHA"],
+        "tool_ids": ["ETCH-03"]
+      },
+      "tags": ["spc", "timeseries", "upward_shift"],
+      "failure_labels": ["spc_evidence_not_recalled"]
+    },
+    {
+      "case_id": "eval-fdc-rule",
+      "question": "pressure alarm 和首片异常应该先查什么？",
+      "expected_chunk_ids": ["FDC-ETCH-PRESSURE-R3-001"],
+      "expected_outcome": "evidence",
+      "actor_scope": {
+        "user_id": "demo_engineer",
+        "roles": ["engineer"],
+        "access_scope_keys": ["demo_engineering"],
+        "fabs": ["FAB-01"],
+        "products": ["P-ALPHA"],
+        "tool_ids": ["ETCH-03"]
+      },
+      "tags": ["fdc", "alarm"],
+      "failure_labels": ["fdc_rule_not_recalled"]
+    },
+    {
+      "case_id": "eval-product-scope-denial",
+      "question": "给我 ETCH-03 Chamber B 的边缘环状缺陷 Case。",
+      "expected_chunk_ids": [],
+      "expected_outcome": "no_evidence",
+      "actor_scope": {
+        "user_id": "product_beta_engineer",
+        "roles": ["engineer"],
+        "access_scope_keys": ["demo_engineering"],
+        "fabs": ["FAB-01"],
+        "products": ["P-BETA"],
+        "tool_ids": ["ETCH-03"]
+      },
+      "tags": ["acl", "product", "negative"],
+      "failure_labels": ["unauthorized_evidence_returned"]
+    },
+    {
+      "case_id": "eval-no-answer",
+      "question": "CMP-99 的抛光垫寿命标准是多少？",
+      "expected_chunk_ids": [],
+      "expected_outcome": "no_evidence",
+      "actor_scope": {
+        "user_id": "demo_engineer",
+        "roles": ["engineer"],
+        "access_scope_keys": ["demo_engineering"],
+        "fabs": ["FAB-01"],
+        "products": ["P-ALPHA"],
+        "tool_ids": ["CMP-99"]
+      },
+      "tags": ["no_answer", "negative"],
+      "failure_labels": ["unsupported_answer_evidence_returned"]
+    }
+  ]
+}

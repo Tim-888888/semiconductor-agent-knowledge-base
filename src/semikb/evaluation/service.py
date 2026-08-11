@@ -19,7 +19,7 @@ class EvaluationService:
         self.dataset_root = dataset_root
         self.retrieval = retrieval
 
-    def run(self, dataset_version: str = "demo-v1", baseline_run_id: str | None = None) -> EvaluationRun:
+    def run(self, dataset_version: str = "demo-v2", baseline_run_id: str | None = None) -> EvaluationRun:
         run = EvaluationRun(dataset_version=dataset_version, baseline_run_id=baseline_run_id, status=EvaluationStatus.RUNNING)
         self.store.save_evaluation_run(run)
         try:
@@ -32,8 +32,14 @@ class EvaluationService:
                 actual = trace.final_evidence_ids
                 expected = set(case.expected_chunk_ids)
                 hit_positions = [index + 1 for index, chunk_id in enumerate(actual) if chunk_id in expected]
-                recall = 1.0 if hit_positions else 0.0
-                reciprocal_rank = 1.0 / hit_positions[0] if hit_positions else 0.0
+                if case.expected_outcome == "no_evidence":
+                    passed = not actual
+                    recall = 1.0 if passed else 0.0
+                    reciprocal_rank = 0.0
+                else:
+                    passed = bool(hit_positions)
+                    recall = 1.0 if passed else 0.0
+                    reciprocal_rank = 1.0 / hit_positions[0] if hit_positions else 0.0
                 recalls.append(recall)
                 reciprocal_ranks.append(reciprocal_rank)
                 results.append(
@@ -41,11 +47,12 @@ class EvaluationService:
                         "case_id": case.case_id,
                         "question": case.question,
                         "expected_chunk_ids": case.expected_chunk_ids,
+                        "expected_outcome": case.expected_outcome,
                         "actual_chunk_ids": actual,
                         "trace_id": trace.trace_id,
                         "recall_at_5": recall,
                         "reciprocal_rank": reciprocal_rank,
-                        "failure_tags": [] if hit_positions else case.tags,
+                        "failure_tags": [] if passed else (case.failure_labels or case.tags),
                     }
                 )
             run.status = EvaluationStatus.COMPLETED
@@ -66,6 +73,6 @@ class EvaluationService:
     def _load_cases(self, dataset_version: str) -> list[EvaluationCase]:
         path = self.dataset_root / f"{dataset_version.replace('-', '_')}.json"
         if not path.exists():
-            path = self.dataset_root / "demo_v1.json"
+            path = self.dataset_root / "demo_v2.json"
         payload = json.loads(path.read_text(encoding="utf-8"))
         return [EvaluationCase.model_validate(item) for item in payload["cases"]]

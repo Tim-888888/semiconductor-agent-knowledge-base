@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Response, UploadFile, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from semikb.api.auth import create_demo_token, get_actor_scope
 from semikb.bootstrap import ApplicationContainer, get_container
@@ -239,6 +241,15 @@ def preview_asset(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image asset not found.") from exc
     except PermissionError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Image access denied.") from exc
+    asset = container.store.get_image(image_id)
+    if asset and asset.demo_source_path:
+        root = Path(__file__).resolve().parents[3]
+        allowed_root = (root / "data" / "assets").resolve()
+        asset_path = (root / asset.demo_source_path).resolve()
+        if not asset_path.is_relative_to(allowed_root) or not asset_path.is_file():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image asset file not found.")
+        return FileResponse(asset_path, media_type=asset.object_ref.content_type)
+
     svg = """<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 480'>
 <rect width='480' height='480' fill='#14212b'/><circle cx='240' cy='240' r='174' fill='#dce6eb'/>
 <circle cx='240' cy='240' r='142' fill='none' stroke='#c44945' stroke-width='21'/>

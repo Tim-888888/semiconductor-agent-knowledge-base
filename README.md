@@ -6,7 +6,7 @@ Case, inspection image, and simulated manufacturing-data investigation workflows
 ## Current scope
 
 Phase 1 provides a runnable demo path for document ingestion, version-aware hybrid
-retrieval, synthetic image-reference previews, continuous threads, retrieval traces, offline
+retrieval, synthetic wafer-image assets, continuous threads, retrieval traces, offline
 evaluation, and an operations-focused web UI. It never controls equipment or writes
 manufacturing data.
 

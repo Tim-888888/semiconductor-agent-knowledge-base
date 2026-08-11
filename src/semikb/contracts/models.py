@@ -85,6 +85,9 @@ class DocumentRevision(BaseModel):
     supersedes_revision: str | None = None
     source_hash: str
     source_ref: ObjectRef
+    source_kind: str = "synthetic"
+    source_uri: str = ""
+    source_license: str = "internal"
     access_scope_key: str = "demo_engineering"
     fab: str = "FAB-01"
     product: str = "P-ALPHA"
@@ -143,6 +146,7 @@ class ImageAsset(BaseModel):
     detection_summary: str = ""
     source_page: str = ""
     related_case_id: str | None = None
+    demo_source_path: str | None = None
     access_scope_key: str = "demo_engineering"
     approval_status: ApprovalStatus = ApprovalStatus.APPROVED
     lifecycle: DocumentLifecycle = DocumentLifecycle.STAGED
@@ -246,8 +250,10 @@ class EvaluationCase(BaseModel):
     case_id: str
     question: str
     expected_chunk_ids: list[str]
+    expected_outcome: str = Field(default="evidence", pattern="^(evidence|no_evidence)$")
     actor_scope: ActorScope = Field(default_factory=ActorScope)
     tags: list[str] = Field(default_factory=list)
+    failure_labels: list[str] = Field(default_factory=list)
 
 
 class EvaluationRun(BaseModel):
@@ -287,6 +293,11 @@ class IngestDocumentRequest(BaseModel):
     content: str = Field(min_length=1)
     approval_status: ApprovalStatus = ApprovalStatus.APPROVED
     lifecycle: DocumentLifecycle = DocumentLifecycle.PUBLISHED
+    supersedes_revision: str | None = None
+    source_kind: str = "user_upload"
+    source_uri: str = ""
+    source_license: str = "internal"
+    access_scope_key: str = "demo_engineering"
     fab: str = "FAB-01"
     product: str = "P-ALPHA"
     process_layer: str | None = None
@@ -304,6 +315,11 @@ class IngestUploadMetadata(BaseModel):
     document_type: str = Field(min_length=1, max_length=64)
     approval_status: ApprovalStatus = ApprovalStatus.APPROVED
     lifecycle: DocumentLifecycle = DocumentLifecycle.PUBLISHED
+    supersedes_revision: str | None = None
+    source_kind: str = "user_upload"
+    source_uri: str = ""
+    source_license: str = "internal"
+    access_scope_key: str = "demo_engineering"
     fab: str = "FAB-01"
     product: str = "P-ALPHA"
     process_layer: str | None = None
@@ -315,5 +331,5 @@ class IngestUploadMetadata(BaseModel):
 
 
 class CreateEvaluationRunRequest(BaseModel):
-    dataset_version: str = "demo-v1"
+    dataset_version: str = "demo-v2"
     baseline_run_id: str | None = None

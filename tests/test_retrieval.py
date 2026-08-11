@@ -15,7 +15,7 @@ def test_hybrid_retrieval_keeps_only_current_authorized_evidence(seeded_services
     assert all(chunk.lifecycle.value == "published" for chunk in evidence)
 
 
-def test_text_can_recall_authorized_synthetic_image_reference(seeded_services) -> None:
+def test_text_can_recall_authorized_synthetic_wafer_image_asset(seeded_services) -> None:
     _, _, retrieval, _, _ = seeded_services
     _, trace = retrieval.search("有没有 ETCH-03 Chamber B 的边缘环状缺陷晶圆图？", ActorScope())
 

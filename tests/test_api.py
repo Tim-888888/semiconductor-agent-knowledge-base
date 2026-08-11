@@ -69,3 +69,29 @@ def test_api_accepts_markdown_upload_as_an_ingestion_job() -> None:
     )
     assert response.status_code == 201
     assert response.json()["status"] == "published"
+
+
+def test_api_serves_authorized_synthetic_wafer_png() -> None:
+    get_container.cache_clear()
+    client = TestClient(app)
+    token_response = client.post(
+        "/api/v1/auth/demo-token",
+        json={
+            "user_id": "test_engineer",
+            "roles": ["engineer"],
+            "access_scope_keys": ["demo_engineering"],
+            "fabs": ["FAB-01"],
+            "products": ["P-ALPHA"],
+            "tool_ids": ["ETCH-03"],
+        },
+    )
+    headers = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
+
+    response = client.get(
+        "/api/v1/assets/IMG-FA-ETCH-03-2026-004/preview",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("image/png")
+    assert response.content.startswith(b"\x89PNG\r\n\x1a\n")
