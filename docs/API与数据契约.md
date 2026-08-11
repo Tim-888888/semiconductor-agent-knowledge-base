@@ -30,6 +30,7 @@ LangGraph `InMemorySaver`；MongoDB 部署适配器需要写入 `checkpoints`、
 | `POST` | `/ingestion-jobs` | 创建 Markdown/模拟文档入库任务 |
 | `POST` | `/ingestion-jobs/upload` | 上传 multipart 原件；`metadata` 为 JSON 字符串 |
 | `GET` | `/ingestion-jobs` | 读取任务及阶段事件 |
+| `GET` | `/ingestion-jobs/{id}` | 读取单个任务、计数、失败阶段和完整事件 |
 | `POST` | `/ingestion-jobs/{id}/retry` | 对可重放失败任务发起幂等重试 |
 | `GET` | `/assets/{id}/access` | 重鉴权后返回短时图片访问描述 |
 | `GET` | `/retrieval-traces` | 仅查看当前用户 Trace；管理员可全局查看 |
@@ -45,5 +46,10 @@ LangGraph `InMemorySaver`；MongoDB 部署适配器需要写入 `checkpoints`、
   包含 `actor_user_id`，避免跨用户泄露检索轨迹。
 
 上传接口暂支持最大 200 MiB。`.md`/`.txt` 直接归一化；其他受 MinerU 支持的二进制格式交给
-MinerU Precision API。真实外部环境中应由 Celery Worker 执行耗时解析，当前 Demo 为了保持单机
-可验证性在后台线程中完成同步解析。
+MinerU Precision API。`DEMO_MODE=true` 时在请求内同步处理，便于无外部服务演示；
+`DEMO_MODE=false` 时 API 只保存原件和可重放元数据，然后向 Celery 投递 Job，由 Worker 执行
+解析、分块、Embedding、暂存和发布。重复请求命中相同幂等键时复用原 Job，不重复发布。
+
+如果 Redis/Celery 投递失败，API 返回 `503`，同时把 Job 置为 `failed` 并记录
+`QUEUE_SUBMISSION_FAILED`，文档保持未发布，管理员可在队列恢复后调用重试接口。API 响应和
+事件只保存安全错误摘要，不返回密钥、连接串或第三方原始异常。

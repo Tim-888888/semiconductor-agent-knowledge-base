@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     minio_secret_key: str = ""
     minio_secure: bool = False
     redis_url: str = ""
+    milvus_index_version: str = "v2"
+    milvus_require_active_alias: bool = True
 
     mineru_api_base_url: str = ""
     mineru_api_key: str = ""
@@ -43,7 +45,9 @@ class Settings(BaseSettings):
 
     bge_m3_model_path: str = ""
     bge_reranker_model_path: str = ""
+    bge_use_fp16: bool = False
     embedding_dim: int = Field(default=1024, ge=1)
+    embedding_batch_size: int = Field(default=16, ge=1, le=256)
 
     @property
     def allowed_domains(self) -> tuple[str, ...]:

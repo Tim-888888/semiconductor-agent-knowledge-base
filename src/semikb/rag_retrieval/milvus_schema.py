@@ -11,6 +11,7 @@ MILVUS_STRING_FIELDS = (
     "revision",
     "chunk_type",
     "approval_status",
+    "lifecycle",
     "fab",
     "product",
     "process_layer",
@@ -74,6 +75,7 @@ def chunk_to_milvus_row(
     enum_fields = {
         "chunk_type": chunk.chunk_type.value,
         "approval_status": chunk.approval_status.value,
+        "lifecycle": chunk.lifecycle.value,
     }
     row: dict[str, object] = {
         "chunk_id": chunk.chunk_id,

@@ -5,7 +5,7 @@ from celery import Celery
 from semikb.config import get_settings
 
 settings = get_settings()
-celery_app = Celery("semikb")
+celery_app = Celery("semikb", include=["semikb.workers.tasks"])
 celery_app.conf.update(
     broker_url=settings.redis_url or "memory://",
     result_backend=settings.redis_url or "cache+memory://",

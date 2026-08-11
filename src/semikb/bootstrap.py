@@ -11,6 +11,7 @@ from semikb.evaluation.service import EvaluationService
 from semikb.rag_ingestion.service import IngestionService
 from semikb.rag_retrieval.service import RetrievalService
 from semikb.storage.memory import DemoStore
+from semikb.storage.production_ingestion import ProductionIngestionStore
 
 
 class ApplicationContainer:
@@ -19,7 +20,10 @@ class ApplicationContainer:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.store = DemoStore()
-        self.ingestion = IngestionService(self.store, settings)
+        self.ingestion_store = (
+            self.store if settings.demo_mode else ProductionIngestionStore(settings)
+        )
+        self.ingestion = IngestionService(self.ingestion_store, settings)
         self.retrieval = RetrievalService(self.store)
         root = Path(__file__).resolve().parents[2]
         self.evaluation = EvaluationService(self.store, self.retrieval, root / "data" / "golden_sets")
@@ -27,6 +31,8 @@ class ApplicationContainer:
         self._seeded = False
 
     def seed_demo_data(self) -> None:
+        if not self.settings.demo_mode:
+            return
         if self._seeded:
             return
         root = Path(__file__).resolve().parents[2]

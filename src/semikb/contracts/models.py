@@ -85,6 +85,7 @@ class DocumentRevision(BaseModel):
     supersedes_revision: str | None = None
     source_hash: str
     source_ref: ObjectRef
+    parsed_ref: ObjectRef | None = None
     source_kind: str = "synthetic"
     source_uri: str = ""
     source_license: str = "internal"
@@ -98,6 +99,7 @@ class DocumentRevision(BaseModel):
     recipe_version: str | None = None
     parser_version: str = "demo-parser-v1"
     chunker_version: str = "semantic-v1"
+    embedding_version: str = "bge-m3-demo-v1"
     index_version: str = "v1"
     created_at: datetime = Field(default_factory=utc_now)
 
@@ -156,8 +158,11 @@ class ImageAsset(BaseModel):
 
 class IngestionEvent(BaseModel):
     event_id: str = Field(default_factory=lambda: new_id("ing_evt"))
+    job_id: str | None = None
     stage: IngestionStatus
     message: str
+    attempt: int = Field(default=1, ge=1)
+    progress: int = Field(default=0, ge=0, le=100)
     created_at: datetime = Field(default_factory=utc_now)
 
 
@@ -168,6 +173,8 @@ class IngestionJob(BaseModel):
     filename: str
     file_type: str
     source_hash: str
+    source_ref: ObjectRef | None = None
+    parsed_ref: ObjectRef | None = None
     status: IngestionStatus = IngestionStatus.QUEUED
     current_stage: IngestionStatus = IngestionStatus.QUEUED
     progress: int = Field(default=0, ge=0, le=100)

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime
+from pathlib import Path
 from threading import RLock
 
 from semikb.contracts.models import (
@@ -16,9 +18,11 @@ from semikb.contracts.models import (
     IngestionEvent,
     IngestionJob,
     IngestionStatus,
+    ObjectRef,
     RetrievalTrace,
     ThreadRecord,
 )
+from semikb.rag_retrieval.encoders import HybridEmbedding
 
 
 class DemoStore:
@@ -35,12 +39,25 @@ class DemoStore:
         self.threads: dict[str, ThreadRecord] = {}
         self.evaluation_runs: dict[str, EvaluationRun] = {}
         self.index_releases: dict[str, dict[str, str]] = {}
+        self.objects: dict[tuple[str, str], bytes] = {}
+        self.replay_payloads: dict[str, dict[str, object]] = {}
 
     def add_document(self, document: DocumentRevision, chunks: list[Chunk], images: list[ImageAsset]) -> None:
         with self._lock:
             self.documents[(document.document_id, document.revision)] = document
             self.chunks.update({chunk.chunk_id: chunk for chunk in chunks})
             self.images.update({image.image_id: image for image in images})
+
+    def stage_document(
+        self,
+        document: DocumentRevision,
+        chunks: list[Chunk],
+        images: list[ImageAsset],
+        embeddings: list[HybridEmbedding],
+    ) -> None:
+        if len(chunks) != len(embeddings):
+            raise ValueError("Every staged chunk requires one embedding.")
+        self.add_document(document, chunks, images)
 
     def get_document(self, document_id: str, revision: str) -> DocumentRevision | None:
         return self.documents.get((document_id, revision))
@@ -84,7 +101,45 @@ class DemoStore:
                 return self.jobs[existing_id]
             self.jobs[job.job_id] = job
             self.job_keys[job.idempotency_key] = job.job_id
+            job.events.append(
+                IngestionEvent(
+                    job_id=job.job_id,
+                    stage=IngestionStatus.QUEUED,
+                    message="Ingestion job accepted.",
+                    attempt=job.attempt,
+                    progress=0,
+                )
+            )
             return job
+
+    def save_replay_payload(self, job_id: str, payload: dict[str, object]) -> None:
+        self.replay_payloads[job_id] = payload
+
+    def get_replay_payload(self, job_id: str) -> dict[str, object] | None:
+        return self.replay_payloads.get(job_id)
+
+    def prepare_retry(self, job_id: str) -> IngestionJob:
+        job = self.jobs[job_id]
+        if job.status is not IngestionStatus.FAILED:
+            return job
+        job.attempt += 1
+        job.status = IngestionStatus.QUEUED
+        job.current_stage = IngestionStatus.QUEUED
+        job.progress = 0
+        job.error_code = None
+        job.safe_error_summary = None
+        job.failed_stage = None
+        job.finished_at = None
+        job.events.append(
+            IngestionEvent(
+                job_id=job.job_id,
+                stage=IngestionStatus.QUEUED,
+                message="Ingestion retry accepted.",
+                attempt=job.attempt,
+                progress=0,
+            )
+        )
+        return job
 
     def get_job(self, job_id: str) -> IngestionJob | None:
         return self.jobs.get(job_id)
@@ -107,7 +162,17 @@ class DemoStore:
             job.status = stage
             job.current_stage = stage
             job.progress = progress
-            job.events.append(IngestionEvent(stage=stage, message=message))
+            job.events.append(
+                IngestionEvent(
+                    job_id=job.job_id,
+                    stage=stage,
+                    message=message,
+                    attempt=job.attempt,
+                    progress=progress,
+                )
+            )
+            if stage is IngestionStatus.VALIDATING and job.started_at is None:
+                job.started_at = datetime.now(UTC)
             if stage is IngestionStatus.FAILED:
                 job.error_code = error_code or "INGESTION_FAILED"
                 job.safe_error_summary = message
@@ -117,19 +182,143 @@ class DemoStore:
                 job.finished_at = datetime.now(UTC)
             return job
 
-    def publish_document(self, document_id: str, revision: str, index_version: str) -> None:
+    def set_job_artifacts(
+        self,
+        job_id: str,
+        *,
+        source_ref: ObjectRef | None = None,
+        parsed_ref: ObjectRef | None = None,
+    ) -> IngestionJob:
+        job = self.jobs[job_id]
+        if source_ref is not None:
+            job.source_ref = source_ref
+        if parsed_ref is not None:
+            job.parsed_ref = parsed_ref
+        return job
+
+    def set_job_counts(
+        self,
+        job_id: str,
+        *,
+        chunks_count: int,
+        images_count: int,
+        tables_count: int,
+    ) -> IngestionJob:
+        job = self.jobs[job_id]
+        job.chunks_count = chunks_count
+        job.images_count = images_count
+        job.tables_count = tables_count
+        return job
+
+    def _store_object(self, object_ref: ObjectRef, content: bytes) -> ObjectRef:
+        self.objects[(object_ref.bucket, object_ref.object_key)] = content
+        return object_ref
+
+    def store_source(
+        self,
+        *,
+        document_id: str,
+        revision: str,
+        filename: str,
+        content: bytes,
+        content_type: str,
+        source_hash: str,
+    ) -> ObjectRef:
+        object_ref = ObjectRef(
+            bucket="semikb-raw",
+            object_key=f"documents/{document_id}/{revision}/source/{source_hash}/{filename}",
+            content_type=content_type,
+            sha256=source_hash,
+        )
+        return self._store_object(object_ref, content)
+
+    def load_object(self, object_ref: ObjectRef) -> bytes:
+        return self.objects[(object_ref.bucket, object_ref.object_key)]
+
+    def store_parsed_markdown(
+        self,
+        *,
+        document_id: str,
+        revision: str,
+        parser_version: str,
+        source_hash: str,
+        content: bytes,
+    ) -> ObjectRef:
+        object_ref = ObjectRef(
+            bucket="semikb-derived",
+            object_key=(
+                f"documents/{document_id}/{revision}/parse/{parser_version}/"
+                f"{source_hash}/document.md"
+            ),
+            content_type="text/markdown",
+            sha256=hashlib.sha256(content).hexdigest(),
+        )
+        return self._store_object(object_ref, content)
+
+    def store_image_asset(
+        self,
+        *,
+        document_id: str,
+        revision: str,
+        image_id: str,
+        filename: str,
+        content: bytes,
+        content_type: str,
+        source_hash: str,
+    ) -> ObjectRef:
+        suffix = Path(filename).suffix.lower() or ".bin"
+        object_ref = ObjectRef(
+            bucket="semikb-derived",
+            object_key=f"documents/{document_id}/{revision}/assets/{image_id}/original{suffix}",
+            content_type=content_type,
+            sha256=hashlib.sha256(content).hexdigest(),
+        )
+        return self._store_object(object_ref, content)
+
+    def publish_document(
+        self,
+        document: DocumentRevision,
+        chunks: list[Chunk],
+        images: list[ImageAsset],
+        embeddings: list[HybridEmbedding],
+    ) -> None:
         with self._lock:
-            document = self.documents[(document_id, revision)]
-            document.lifecycle = DocumentLifecycle.PUBLISHED
-            document.index_version = index_version
+            stored_document = self.documents[(document.document_id, document.revision)]
+            stored_document.lifecycle = DocumentLifecycle.PUBLISHED
+            stored_document.index_version = document.index_version
             for chunk in self.chunks.values():
-                if chunk.document_id == document_id and chunk.revision == revision:
+                if chunk.document_id == document.document_id and chunk.revision == document.revision:
                     chunk.lifecycle = DocumentLifecycle.PUBLISHED
-                    chunk.index_version = index_version
+                    chunk.index_version = document.index_version
             for image in self.images.values():
-                if image.document_id == document_id and image.revision == revision:
+                if image.document_id == document.document_id and image.revision == document.revision:
                     image.lifecycle = DocumentLifecycle.PUBLISHED
-            self.index_releases[index_version] = {"status": "active", "alias": "semikb_chunks_active"}
+            self.index_releases[document.index_version] = {
+                "status": "active",
+                "alias": "semikb_chunks_active",
+            }
+
+    def finalize_inactive_document(
+        self,
+        document_id: str,
+        revision: str,
+        lifecycle: DocumentLifecycle,
+    ) -> None:
+        self.documents[(document_id, revision)].lifecycle = lifecycle
+        for chunk in self.chunks.values():
+            if chunk.document_id == document_id and chunk.revision == revision:
+                chunk.lifecycle = lifecycle
+        for image in self.images.values():
+            if image.document_id == document_id and image.revision == revision:
+                image.lifecycle = lifecycle
+
+    def compensate_document(self, document_id: str, revision: str) -> None:
+        if (document_id, revision) in self.documents:
+            self.finalize_inactive_document(
+                document_id,
+                revision,
+                DocumentLifecycle.QUARANTINED,
+            )
 
     def save_trace(self, trace: RetrievalTrace) -> RetrievalTrace:
         self.traces[trace.trace_id] = trace

@@ -1,9 +1,11 @@
-"""Synthetic ingestion flow with explicit staging and publication semantics."""
+"""Replayable ingestion flow with explicit staging and publication semantics."""
 
 from __future__ import annotations
 
 import hashlib
 import json
+import mimetypes
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -21,17 +23,55 @@ from semikb.contracts.models import (
     ObjectRef,
 )
 from semikb.rag_ingestion.chunker import chunk_markdown
-from semikb.rag_ingestion.mineru import MinerUPrecisionClient
-from semikb.storage.memory import DemoStore
+from semikb.rag_ingestion.mineru import MinerUPrecisionClient, ParsedDocument
+from semikb.rag_retrieval.encoders import (
+    BgeM3Encoder,
+    DeterministicHybridEncoder,
+    HybridEmbedding,
+    HybridEncoder,
+)
+from semikb.storage.ingestion import IngestionStore
+
+_DIRECT_TEXT_SUFFIXES = {".md", ".markdown", ".txt"}
 
 
 class IngestionService:
-    """Runs a document through validation, chunking, staging, and publication."""
+    """Submits replayable jobs and executes their controlled state transitions."""
 
-    def __init__(self, store: DemoStore, settings: Settings | None = None) -> None:
+    def __init__(
+        self,
+        store: IngestionStore,
+        settings: Settings | None = None,
+        encoder: HybridEncoder | None = None,
+    ) -> None:
         self.store = store
         self.settings = settings or Settings()
-        self._payloads: dict[str, dict[str, Any]] = {}
+        self.encoder = encoder or (
+            DeterministicHybridEncoder(self.settings.embedding_dim)
+            if self.settings.demo_mode
+            else BgeM3Encoder(self.settings)
+        )
+
+    def submit_payload(
+        self,
+        payload: dict[str, Any],
+        created_by: str = "demo_admin",
+    ) -> IngestionJob:
+        content = payload.get("content")
+        if not isinstance(content, str):
+            raise ValueError("Markdown ingestion requires string content.")
+        metadata = {key: value for key, value in payload.items() if key != "content"}
+        filename = metadata.pop(
+            "source_filename",
+            f"{payload.get('document_id', 'document')}-{payload.get('revision', 'revision')}.md",
+        )
+        return self.submit_file(
+            filename,
+            content.encode("utf-8"),
+            metadata,
+            created_by,
+            content_type="text/markdown",
+        )
 
     def ingest_payload(
         self,
@@ -41,22 +81,71 @@ class IngestionService:
         source_hash: str | None = None,
         filename: str | None = None,
     ) -> IngestionJob:
-        source_hash = source_hash or hashlib.sha256(payload["content"].encode("utf-8")).hexdigest()
-        key = f"{payload['document_id']}:{payload['revision']}:{source_hash}"
-        job = IngestionJob(
-            document_id=payload["document_id"],
-            revision=payload["revision"],
-            filename=filename or f"{payload['document_id']}-{payload['revision']}.md",
-            file_type="markdown",
+        if source_hash is not None:
+            calculated = hashlib.sha256(payload["content"].encode("utf-8")).hexdigest()
+            if source_hash != calculated:
+                raise ValueError("Provided source hash does not match Markdown content.")
+        if filename:
+            payload = {**payload, "source_filename": filename}
+        job = self.submit_payload(payload, created_by)
+        return self.process(job.job_id) if job.status is IngestionStatus.QUEUED else job
+
+    def submit_file(
+        self,
+        filename: str,
+        content: bytes,
+        metadata: dict[str, Any],
+        created_by: str = "demo_admin",
+        *,
+        content_type: str | None = None,
+    ) -> IngestionJob:
+        self._validate_submission(metadata, content)
+        source_hash = hashlib.sha256(content).hexdigest()
+        suffix = Path(filename).suffix.lower()
+        media_type = content_type or mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        parser_version = (
+            "direct-text-v1"
+            if suffix in _DIRECT_TEXT_SUFFIXES
+            else f"mineru-{self.settings.mineru_model_version}-v1"
+        )
+        source_ref = self.store.store_source(
+            document_id=metadata["document_id"],
+            revision=metadata["revision"],
+            filename=filename,
+            content=content,
+            content_type=media_type,
             source_hash=source_hash,
-            idempotency_key=key,
+        )
+        candidate = IngestionJob(
+            document_id=metadata["document_id"],
+            revision=metadata["revision"],
+            filename=Path(filename).name,
+            file_type=suffix.lstrip(".") or "binary",
+            source_hash=source_hash,
+            source_ref=source_ref,
+            idempotency_key=(
+                f"{metadata['document_id']}:{metadata['revision']}:{source_hash}"
+            ),
+            parser_version=parser_version,
+            chunker_version="semantic-v1",
+            embedding_version=("bge-m3-demo-v1" if self.settings.demo_mode else "bge-m3-v1"),
+            index_version=self.settings.milvus_index_version,
             created_by=created_by,
         )
-        job = self.store.create_or_get_job(job)
-        self._payloads[job.job_id] = payload
-        if job.status is IngestionStatus.PUBLISHED:
-            return job
-        return self._run(job.job_id)
+        job = self.store.create_or_get_job(candidate)
+        replay_payload = {
+            "metadata": metadata,
+            "filename": Path(filename).name,
+            "content_type": media_type,
+            "source_ref": source_ref.model_dump(mode="json"),
+        }
+        existing_payload = self.store.get_replay_payload(job.job_id)
+        if existing_payload is not None and existing_payload != replay_payload:
+            raise ValueError(
+                "The idempotency key already exists with different ingestion metadata."
+            )
+        self.store.save_replay_payload(job.job_id, replay_payload)
+        return self.store.set_job_artifacts(job.job_id, source_ref=source_ref)
 
     def ingest_file(
         self,
@@ -65,111 +154,320 @@ class IngestionService:
         metadata: dict[str, Any],
         created_by: str = "demo_admin",
     ) -> IngestionJob:
-        """Normalize an uploaded source file before the shared ingestion flow."""
+        job = self.submit_file(filename, content, metadata, created_by)
+        return self.process(job.job_id) if job.status is IngestionStatus.QUEUED else job
 
-        source_hash = hashlib.sha256(content).hexdigest()
-        suffix = Path(filename).suffix.lower()
-        if suffix in {".md", ".markdown", ".txt"}:
-            normalized_markdown = content.decode("utf-8")
-        else:
-            normalized_markdown = MinerUPrecisionClient(self.settings).parse_file(
-                filename, content, f"{metadata['document_id']}-{metadata['revision']}-{source_hash[:12]}"
+    def process(self, job_id: str) -> IngestionJob:
+        job = self.store.get_job(job_id)
+        if job is None:
+            raise KeyError(job_id)
+        if job.status is IngestionStatus.PUBLISHED:
+            return job
+        if job.status is not IngestionStatus.QUEUED:
+            return job
+        replay_payload = self.store.get_replay_payload(job_id)
+        if replay_payload is None:
+            return self.store.update_job(
+                job_id,
+                IngestionStatus.FAILED,
+                "Document remains unpublished because replay metadata is unavailable.",
+                job.progress,
+                error_code="REPLAY_PAYLOAD_MISSING",
             )
-        payload = {
-            **metadata,
-            "content": normalized_markdown,
-            "source_filename": filename,
-        }
-        return self.ingest_payload(payload, created_by, source_hash=source_hash, filename=filename)
+        return self._run(job, replay_payload)
+
+    def prepare_retry(self, job_id: str) -> IngestionJob:
+        if self.store.get_replay_payload(job_id) is None:
+            raise ValueError("No replayable payload is available for this job.")
+        return self.store.prepare_retry(job_id)
+
+    def mark_queue_submission_failed(self, job_id: str) -> IngestionJob:
+        job = self.store.get_job(job_id)
+        if job is None:
+            raise KeyError(job_id)
+        return self.store.update_job(
+            job_id,
+            IngestionStatus.FAILED,
+            "Task queue unavailable; the document remains unpublished.",
+            job.progress,
+            error_code="QUEUE_SUBMISSION_FAILED",
+        )
 
     def retry(self, job_id: str) -> IngestionJob:
         job = self.store.get_job(job_id)
         if job is None:
             raise KeyError(job_id)
-        payload = self._payloads.get(job_id)
-        if payload is None:
-            raise ValueError("No replayable payload is available for this job.")
         if job.status is not IngestionStatus.FAILED:
             return job
-        job.attempt += 1
-        job.error_code = None
-        job.safe_error_summary = None
-        job.failed_stage = None
-        return self._run(job_id)
+        queued = self.prepare_retry(job_id)
+        return self.process(queued.job_id)
+
+    def get_job(self, job_id: str) -> IngestionJob | None:
+        return self.store.get_job(job_id)
+
+    def list_jobs(self) -> list[IngestionJob]:
+        return self.store.list_jobs()
 
     def seed_demo_corpus(self, fixture_path: Path) -> list[IngestionJob]:
         corpus = json.loads(fixture_path.read_text(encoding="utf-8"))
         return [self.ingest_payload(payload) for payload in corpus["documents"]]
 
-    def _run(self, job_id: str) -> IngestionJob:
-        job = self.store.get_job(job_id)
-        if job is None:
-            raise KeyError(job_id)
-        payload = self._payloads[job_id]
+    def _run(self, job: IngestionJob, replay_payload: dict[str, Any]) -> IngestionJob:
+        metadata = replay_payload["metadata"]
+        document_id = job.document_id
+        revision = job.revision
         try:
-            self.store.update_job(job_id, IngestionStatus.VALIDATING, "Validated metadata and source hash.", 10)
-            self._validate(payload)
-            self.store.update_job(job_id, IngestionStatus.PARSING, "Parsed normalized Markdown content.", 30)
-            document, chunks, images = self._build_records(payload, job.source_hash)
-            self.store.update_job(job_id, IngestionStatus.QUALITY_CHECK, "Passed required metadata and image checks.", 55)
-            self._quality_check(document, chunks, images)
-            self.store.update_job(job_id, IngestionStatus.EMBEDDING, "Prepared dense and sparse embedding payloads.", 75)
-            self.store.add_document(document, chunks, images)
-            job.chunks_count = len(chunks)
-            job.images_count = len(images)
-            self.store.update_job(job_id, IngestionStatus.STAGED, "Staged document and verified index release.", 90)
-            if document.lifecycle is DocumentLifecycle.PUBLISHED:
-                self.store.publish_document(document.document_id, document.revision, document.index_version)
-                message = "Published to active knowledge index."
+            self.store.update_job(
+                job.job_id,
+                IngestionStatus.VALIDATING,
+                "Validated metadata, source hash, and replay reference.",
+                10,
+            )
+            self._validate_submission(metadata, b"replay")
+            source_ref = ObjectRef.model_validate(replay_payload["source_ref"])
+            source_content = self.store.load_object(source_ref)
+            if hashlib.sha256(source_content).hexdigest() != job.source_hash:
+                raise ValueError("Replay source hash verification failed.")
+
+            self.store.update_job(
+                job.job_id,
+                IngestionStatus.PARSING,
+                "Parsing source into normalized Markdown and image assets.",
+                30,
+            )
+            parsed = self._parse_source(job, source_content)
+            markdown_bytes = parsed.markdown.encode("utf-8")
+            parsed_ref = self.store.store_parsed_markdown(
+                document_id=document_id,
+                revision=revision,
+                parser_version=job.parser_version,
+                source_hash=job.source_hash,
+                content=markdown_bytes,
+            )
+            self.store.set_job_artifacts(job.job_id, parsed_ref=parsed_ref)
+            image_payloads = self._materialize_images(
+                metadata,
+                parsed,
+                source_hash=job.source_hash,
+            )
+            build_payload = {
+                **metadata,
+                "content": parsed.markdown,
+                "source_filename": job.filename,
+                "source_ref": source_ref.model_dump(mode="json"),
+                "parsed_ref": parsed_ref.model_dump(mode="json"),
+                "images": image_payloads,
+                "parser_version": job.parser_version,
+                "chunker_version": job.chunker_version,
+                "embedding_version": job.embedding_version,
+                "index_version": job.index_version,
+            }
+            document, chunks, images = self._build_records(build_payload, job.source_hash)
+            target_lifecycle = DocumentLifecycle(metadata.get("lifecycle", "staged"))
+
+            self.store.update_job(
+                job.job_id,
+                IngestionStatus.QUALITY_CHECK,
+                "Checking governance metadata, chunk integrity, and image captions.",
+                55,
+            )
+            self._quality_check(document, chunks, images, target_lifecycle)
+
+            self.store.update_job(
+                job.job_id,
+                IngestionStatus.EMBEDDING,
+                "Generating dense and sparse BGE-M3 representations.",
+                75,
+            )
+            embeddings = self._encode_chunks(chunks)
+            self.store.stage_document(document, chunks, images, embeddings)
+            self.store.set_job_counts(
+                job.job_id,
+                chunks_count=len(chunks),
+                images_count=len(images),
+                tables_count=sum(chunk.chunk_type is ChunkType.TABLE for chunk in chunks),
+            )
+            self.store.update_job(
+                job.job_id,
+                IngestionStatus.STAGED,
+                "Staged MongoDB records, private assets, and versioned Milvus rows.",
+                90,
+            )
+            if target_lifecycle is DocumentLifecycle.PUBLISHED:
+                self.store.publish_document(document, chunks, images, embeddings)
+                message = "Published the validated revision to the active knowledge index."
             else:
-                message = "Processed inactive revision; it remains outside active retrieval."
-            return self.store.update_job(job_id, IngestionStatus.PUBLISHED, message, 100)
-        except (KeyError, TypeError, ValueError) as exc:
+                self.store.finalize_inactive_document(
+                    document.document_id,
+                    document.revision,
+                    target_lifecycle,
+                )
+                message = (
+                    f"Processed revision as {target_lifecycle.value}; it remains outside active retrieval."
+                )
             return self.store.update_job(
-                job_id,
+                job.job_id,
+                IngestionStatus.PUBLISHED,
+                message,
+                100,
+            )
+        except Exception as exc:
+            try:
+                self.store.compensate_document(document_id, revision)
+            except Exception:
+                pass
+            latest = self.store.get_job(job.job_id) or job
+            return self.store.update_job(
+                job.job_id,
                 IngestionStatus.FAILED,
-                "Document remains unpublished. Fix metadata or parser input before retrying.",
-                job.progress,
+                (
+                    "Document remains unpublished. Review the failed stage, source file, "
+                    "and governed metadata before retrying."
+                ),
+                latest.progress,
                 error_code=type(exc).__name__.upper(),
             )
 
-    @staticmethod
-    def _validate(payload: dict[str, Any]) -> None:
-        required = {"document_id", "revision", "title", "content", "document_type"}
-        missing = sorted(required.difference(payload))
-        if missing:
-            raise ValueError(f"Missing fields: {', '.join(missing)}")
-        if not payload["content"].strip():
-            raise ValueError("Content is empty.")
+    def _parse_source(self, job: IngestionJob, content: bytes) -> ParsedDocument:
+        suffix = Path(job.filename).suffix.lower()
+        if suffix in _DIRECT_TEXT_SUFFIXES:
+            return ParsedDocument(markdown=content.decode("utf-8"))
+        return MinerUPrecisionClient(self.settings).parse_file(
+            job.filename,
+            content,
+            f"{job.document_id}-{job.revision}-{job.source_hash[:12]}",
+        )
+
+    def _materialize_images(
+        self,
+        metadata: dict[str, Any],
+        parsed: ParsedDocument,
+        *,
+        source_hash: str,
+    ) -> list[dict[str, Any]]:
+        image_payloads = [dict(item) for item in metadata.get("images", [])]
+        for index, parsed_image in enumerate(parsed.images, start=1):
+            image_hash = hashlib.sha256(parsed_image.content).hexdigest()
+            image_id = (
+                f"{metadata['document_id']}-{metadata['revision']}-MINERU-"
+                f"{image_hash[:12]}"
+            )
+            object_ref = self.store.store_image_asset(
+                document_id=metadata["document_id"],
+                revision=metadata["revision"],
+                image_id=image_id,
+                filename=parsed_image.filename,
+                content=parsed_image.content,
+                content_type=parsed_image.content_type,
+                source_hash=source_hash,
+            )
+            image_payloads.append(
+                {
+                    "image_id": image_id,
+                    "image_type": "document_figure",
+                    "caption": parsed_image.caption,
+                    "caption_source": "mineru",
+                    "caption_confidence": 0.8 if parsed_image.caption else 0.0,
+                    "source_page": parsed_image.source_page or f"MinerU image {index}",
+                    "object_ref": object_ref.model_dump(mode="json"),
+                }
+            )
+
+        root = Path(__file__).resolve().parents[3]
+        allowed_assets = (root / "data" / "assets").resolve()
+        materialized: list[dict[str, Any]] = []
+        for image_payload in image_payloads:
+            if image_payload.get("object_ref"):
+                object_ref = ObjectRef.model_validate(image_payload["object_ref"])
+                self.store.load_object(object_ref)
+            elif image_payload.get("source_path"):
+                source_path = (root / image_payload["source_path"]).resolve()
+                if not source_path.is_relative_to(allowed_assets) or not source_path.is_file():
+                    raise ValueError("Synthetic image source must be inside data/assets.")
+                content = source_path.read_bytes()
+                expected_hash = image_payload.get("sha256")
+                actual_hash = hashlib.sha256(content).hexdigest()
+                if expected_hash and expected_hash != actual_hash:
+                    raise ValueError("Synthetic image SHA-256 does not match metadata.")
+                object_ref = self.store.store_image_asset(
+                    document_id=metadata["document_id"],
+                    revision=metadata["revision"],
+                    image_id=image_payload["image_id"],
+                    filename=source_path.name,
+                    content=content,
+                    content_type=(
+                        image_payload.get("content_type")
+                        or mimetypes.guess_type(source_path.name)[0]
+                        or "application/octet-stream"
+                    ),
+                    source_hash=source_hash,
+                )
+            else:
+                raise ValueError("Image metadata requires a stored object reference or source asset.")
+            materialized.append(
+                {**image_payload, "object_ref": object_ref.model_dump(mode="json")}
+            )
+        return materialized
+
+    def _encode_chunks(self, chunks: Sequence[Chunk]) -> list[HybridEmbedding]:
+        embeddings: list[HybridEmbedding] = []
+        batch_size = self.settings.embedding_batch_size
+        texts = [chunk.chunk_text for chunk in chunks]
+        for offset in range(0, len(texts), batch_size):
+            embeddings.extend(self.encoder.encode(texts[offset : offset + batch_size]))
+        if len(embeddings) != len(chunks):
+            raise ValueError("Embedding encoder returned an unexpected row count.")
+        return embeddings
 
     @staticmethod
-    def _quality_check(document: DocumentRevision, chunks: list[Chunk], images: list[ImageAsset]) -> None:
-        if document.approval_status is not ApprovalStatus.APPROVED:
-            raise ValueError("Only approved synthetic documents can be published.")
+    def _validate_submission(metadata: dict[str, Any], content: bytes) -> None:
+        required = {"document_id", "revision", "title", "document_type"}
+        missing = sorted(required.difference(metadata))
+        if missing:
+            raise ValueError(f"Missing fields: {', '.join(missing)}")
+        if not content:
+            raise ValueError("Source content is empty.")
+
+    @staticmethod
+    def _quality_check(
+        document: DocumentRevision,
+        chunks: list[Chunk],
+        images: list[ImageAsset],
+        target_lifecycle: DocumentLifecycle,
+    ) -> None:
+        if (
+            target_lifecycle is DocumentLifecycle.PUBLISHED
+            and document.approval_status is not ApprovalStatus.APPROVED
+        ):
+            raise ValueError("Only an approved revision can be published.")
         if not chunks:
             raise ValueError("No semantic chunks were generated.")
+        if any(not chunk.chunk_text.strip() for chunk in chunks):
+            raise ValueError("Empty chunks cannot pass the quality gate.")
         for image in images:
             if not image.caption.strip():
                 raise ValueError("Image caption is required for text-to-image retrieval.")
+            if image.caption_source != "human" and image.caption_confidence < 0.5:
+                raise ValueError("Low-confidence generated image captions require review.")
 
     @staticmethod
     def _build_records(
-        payload: dict[str, Any], source_hash: str
+        payload: dict[str, Any],
+        source_hash: str,
     ) -> tuple[DocumentRevision, list[Chunk], list[ImageAsset]]:
-        lifecycle = DocumentLifecycle(payload.get("lifecycle", "staged"))
-        source_filename = payload.get("source_filename") or f"{payload['document_id']}-{payload['revision']}.md"
-        source_ref = ObjectRef(
-            bucket="semikb-raw",
-            object_key=(
-                f"documents/{payload['document_id']}/{payload['revision']}/source/"
-                f"{source_hash}/{source_filename}"
-            ),
-            content_type="text/markdown",
-            sha256=source_hash,
-        )
+        source_ref = ObjectRef.model_validate(payload["source_ref"])
+        parsed_ref = ObjectRef.model_validate(payload["parsed_ref"])
         shared = {
             key: value
-            for key in ("fab", "product", "process_layer", "tool_id", "chamber", "recipe_id", "recipe_version")
+            for key in (
+                "fab",
+                "product",
+                "process_layer",
+                "tool_id",
+                "chamber",
+                "recipe_id",
+                "recipe_version",
+            )
             if (value := payload.get(key)) is not None
         }
         document = DocumentRevision(
@@ -178,61 +476,66 @@ class IngestionService:
             title=payload["title"],
             document_type=payload["document_type"],
             approval_status=ApprovalStatus(payload.get("approval_status", "approved")),
-            lifecycle=lifecycle,
+            lifecycle=DocumentLifecycle.STAGED,
             effective_at=(
                 datetime.fromisoformat(payload["effective_at"])
                 if payload.get("effective_at")
                 else datetime.now(UTC)
             ),
-            expires_at=datetime.fromisoformat(payload["expires_at"]) if payload.get("expires_at") else None,
+            expires_at=(
+                datetime.fromisoformat(payload["expires_at"])
+                if payload.get("expires_at")
+                else None
+            ),
             supersedes_revision=payload.get("supersedes_revision"),
             source_hash=source_hash,
             source_ref=source_ref,
+            parsed_ref=parsed_ref,
             source_kind=payload.get("source_kind", "user_upload"),
-            source_uri=payload.get("source_uri", f"upload://{source_filename}"),
+            source_uri=payload.get("source_uri", f"upload://{payload['source_filename']}"),
             source_license=payload.get("source_license", "internal"),
             access_scope_key=payload.get("access_scope_key", "demo_engineering"),
+            parser_version=payload["parser_version"],
+            chunker_version=payload["chunker_version"],
+            embedding_version=payload["embedding_version"],
+            index_version=payload["index_version"],
             **shared,
         )
         chunks: list[Chunk] = []
         for number, (path, text) in enumerate(chunk_markdown(payload["content"]), start=1):
-            chunk_id = f"{document.document_id}-{document.revision}-{number:03d}"
             chunks.append(
                 Chunk(
-                    chunk_id=chunk_id,
+                    chunk_id=f"{document.document_id}-{document.revision}-{number:03d}",
                     document_id=document.document_id,
                     revision=document.revision,
                     chunk_text=text,
                     title_path=path,
                     page_or_section=" > ".join(path) or "正文",
                     approval_status=document.approval_status,
-                    lifecycle=document.lifecycle,
+                    lifecycle=DocumentLifecycle.STAGED,
                     effective_at=document.effective_at,
                     expires_at=document.expires_at,
                     access_scope_key=document.access_scope_key,
+                    parser_version=document.parser_version,
+                    chunker_version=document.chunker_version,
+                    embedding_version=payload["embedding_version"],
+                    index_version=document.index_version,
                     **shared,
                 )
             )
         images: list[ImageAsset] = []
         for index, image_payload in enumerate(payload.get("images", []), start=1):
-            image_id = image_payload["image_id"]
-            asset_ref = ObjectRef(
-                bucket="semikb-derived",
-                object_key=image_payload.get(
-                    "object_key",
-                    f"documents/{document.document_id}/{document.revision}/assets/{image_id}/original.png",
-                ),
-                content_type=image_payload.get("content_type", "image/png"),
-                sha256=image_payload.get("sha256", hashlib.sha256(image_id.encode("utf-8")).hexdigest()),
-            )
+            object_ref = ObjectRef.model_validate(image_payload["object_ref"])
             image = ImageAsset(
-                image_id=image_id,
+                image_id=image_payload["image_id"],
                 document_id=document.document_id,
                 revision=document.revision,
                 parent_chunk_id=chunks[0].chunk_id if chunks else None,
-                object_ref=asset_ref,
+                object_ref=object_ref,
                 image_type=image_payload["image_type"],
                 caption=image_payload["caption"],
+                caption_source=image_payload.get("caption_source", "human"),
+                caption_confidence=image_payload.get("caption_confidence", 1.0),
                 ocr_text=image_payload.get("ocr_text", ""),
                 detection_summary=image_payload.get("detection_summary", ""),
                 source_page=image_payload.get("source_page", ""),
@@ -240,7 +543,7 @@ class IngestionService:
                 demo_source_path=image_payload.get("source_path"),
                 access_scope_key=document.access_scope_key,
                 approval_status=document.approval_status,
-                lifecycle=document.lifecycle,
+                lifecycle=DocumentLifecycle.STAGED,
                 effective_at=document.effective_at,
                 expires_at=document.expires_at,
             )
@@ -253,17 +556,26 @@ class IngestionService:
                     parent_chunk_id=image.parent_chunk_id,
                     chunk_type=ChunkType.IMAGE_TEXT,
                     chunk_text=" ".join(
-                        part for part in (image.caption, image.ocr_text, image.detection_summary) if part
+                        part
+                        for part in (image.caption, image.ocr_text, image.detection_summary)
+                        if part
                     ),
                     title_path=[document.title, "图文证据"],
                     page_or_section=image.source_page or "图像附件",
                     approval_status=document.approval_status,
-                    lifecycle=document.lifecycle,
+                    lifecycle=DocumentLifecycle.STAGED,
                     effective_at=document.effective_at,
                     expires_at=document.expires_at,
                     access_scope_key=document.access_scope_key,
                     image_ids=[image.image_id],
-                    metadata={"image_type": image.image_type, "related_case_id": image.related_case_id},
+                    metadata={
+                        "image_type": image.image_type,
+                        "related_case_id": image.related_case_id,
+                    },
+                    parser_version=document.parser_version,
+                    chunker_version=document.chunker_version,
+                    embedding_version=payload["embedding_version"],
+                    index_version=document.index_version,
                     **shared,
                 )
             )

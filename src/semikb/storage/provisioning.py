@@ -11,7 +11,7 @@ import json
 from pymilvus import DataType, MilvusClient
 
 from semikb.config import Settings, get_settings
-from semikb.rag_retrieval.milvus_schema import collection_name
+from semikb.rag_retrieval.milvus_schema import MILVUS_STRING_FIELDS, collection_name
 from semikb.storage.clients import StorageClientFactory, missing_storage_settings
 from semikb.storage.mongo_schema import MONGO_INDEX_SPECS, compare_index_information
 
@@ -19,14 +19,17 @@ from semikb.storage.mongo_schema import MONGO_INDEX_SPECS, compare_index_informa
 def provision(
     settings: Settings,
     *,
-    index_version: str = "v1",
+    index_version: str | None = None,
 ) -> dict[str, object]:
     """Ensure required buckets, catalog indexes, and Milvus index version exist."""
 
     _require_storage_configuration(settings)
     mongo_created = _provision_mongodb(settings)
     buckets_created = _provision_minio(settings)
-    milvus_result = _provision_milvus(settings, index_version)
+    milvus_result = _provision_milvus(
+        settings,
+        index_version or settings.milvus_index_version,
+    )
     return {
         "mongodb_collections": mongo_created,
         "minio_buckets_created": buckets_created,
@@ -91,7 +94,7 @@ def _provision_milvus(settings: Settings, index_version: str) -> dict[str, str]:
             schema.add_field("chunk_id", DataType.VARCHAR, is_primary=True, max_length=160)
             schema.add_field("dense_vector", DataType.FLOAT_VECTOR, dim=settings.embedding_dim)
             schema.add_field("sparse_vector", DataType.SPARSE_FLOAT_VECTOR)
-            for field in ("document_id", "revision", "chunk_type", "approval_status", "fab", "product", "process_layer", "tool_id", "chamber", "recipe_id", "recipe_version", "access_scope_key", "index_version"):
+            for field in MILVUS_STRING_FIELDS:
                 schema.add_field(field, DataType.VARCHAR, max_length=160)
             schema.add_field("effective_at", DataType.INT64)
             schema.add_field("expires_at", DataType.INT64)

@@ -236,13 +236,19 @@ def _verify_redis(factory: StorageClientFactory) -> list[ResourceCheck]:
 def verify_resources(
     settings: Settings,
     *,
-    index_version: str = "v1",
-    require_active_alias: bool = False,
+    index_version: str | None = None,
+    require_active_alias: bool | None = None,
     factory: StorageClientFactory | None = None,
 ) -> list[ResourceCheck]:
     """Verify resources without creating, dropping, updating, or inserting anything."""
 
     client_factory = factory or StorageClientFactory(settings)
+    target_index_version = index_version or settings.milvus_index_version
+    active_alias_required = (
+        settings.milvus_require_active_alias
+        if require_active_alias is None
+        else require_active_alias
+    )
     checks: list[ResourceCheck] = []
     verifiers = (
         lambda: _verify_mongodb(client_factory, settings.mongodb_database),
@@ -250,8 +256,8 @@ def verify_resources(
         lambda: _verify_milvus(
             client_factory,
             settings.embedding_dim,
-            index_version,
-            require_active_alias,
+            target_index_version,
+            active_alias_required,
         ),
         lambda: _verify_redis(client_factory),
     )

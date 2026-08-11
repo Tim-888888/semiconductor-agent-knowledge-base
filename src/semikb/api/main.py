@@ -19,6 +19,7 @@ from semikb.contracts.models import (
     CreateEvaluationRunRequest,
     CreateThreadRequest,
     IngestDocumentRequest,
+    IngestionStatus,
     IngestUploadMetadata,
     SearchRequest,
     SendMessageRequest,
@@ -51,7 +52,10 @@ def health(container: Annotated[ApplicationContainer, Depends(get_app_container)
         "status": "ok",
         "demo_mode": container.settings.demo_mode,
         "services": health_payload(container.settings),
-        "milvus_schema": schema_contract(container.settings.embedding_dim, "v1"),
+        "milvus_schema": schema_contract(
+            container.settings.embedding_dim,
+            container.settings.milvus_index_version,
+        ),
     }
 
 
@@ -142,7 +146,12 @@ def create_ingestion_job(
 ) -> dict[str, object]:
     if "admin" not in actor_scope.roles and "knowledge_admin" not in actor_scope.roles:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Knowledge administrator role required.")
-    job = container.ingestion.ingest_payload(request.model_dump(mode="json"), created_by=actor_scope.user_id)
+    payload = request.model_dump(mode="json")
+    if container.settings.demo_mode:
+        job = container.ingestion.ingest_payload(payload, created_by=actor_scope.user_id)
+    else:
+        job = container.ingestion.submit_payload(payload, created_by=actor_scope.user_id)
+        _enqueue_ingestion(container, job.job_id)
     return job.model_dump(mode="json")
 
 
@@ -170,13 +179,20 @@ async def upload_ingestion_document(
     if len(source_bytes) > 200 * 1024 * 1024:
         raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="File exceeds the 200 MiB limit.")
     filename = file.filename or "upload.bin"
+    ingestion_method = (
+        container.ingestion.ingest_file
+        if container.settings.demo_mode
+        else container.ingestion.submit_file
+    )
     job = await run_in_threadpool(
-        container.ingestion.ingest_file,
+        ingestion_method,
         filename,
         source_bytes,
         upload_metadata.model_dump(mode="json"),
         actor_scope.user_id,
     )
+    if not container.settings.demo_mode:
+        _enqueue_ingestion(container, job.job_id)
     return job.model_dump(mode="json")
 
 
@@ -185,7 +201,7 @@ def list_ingestion_jobs(
     container: Annotated[ApplicationContainer, Depends(get_app_container)],
     _: Annotated[ActorScope, Depends(get_actor_scope)],
 ) -> list[dict[str, object]]:
-    return [job.model_dump(mode="json") for job in container.store.list_jobs()]
+    return [job.model_dump(mode="json") for job in container.ingestion.list_jobs()]
 
 
 @app.get("/api/v1/ingestion-jobs/{job_id}")
@@ -194,7 +210,7 @@ def get_ingestion_job(
     container: Annotated[ApplicationContainer, Depends(get_app_container)],
     _: Annotated[ActorScope, Depends(get_actor_scope)],
 ) -> dict[str, object]:
-    job = container.store.get_job(job_id)
+    job = container.ingestion.get_job(job_id)
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ingestion job not found.")
     return job.model_dump(mode="json")
@@ -209,10 +225,35 @@ def retry_ingestion_job(
     if "admin" not in actor_scope.roles and "knowledge_admin" not in actor_scope.roles:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Knowledge administrator role required.")
     try:
-        job = container.ingestion.retry(job_id)
+        if container.settings.demo_mode:
+            job = container.ingestion.retry(job_id)
+        else:
+            job = container.ingestion.prepare_retry(job_id)
+            _enqueue_ingestion(container, job.job_id)
     except KeyError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ingestion job not found.") from exc
     return job.model_dump(mode="json")
+
+
+def _enqueue_ingestion(container: ApplicationContainer, job_id: str) -> None:
+    from semikb.workers.tasks import process_ingestion_job
+
+    job = container.ingestion.get_job(job_id)
+    if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ingestion job not found.",
+        )
+    if job.status is not IngestionStatus.QUEUED:
+        return
+    try:
+        process_ingestion_job.delay(job_id)
+    except Exception as exc:
+        container.ingestion.mark_queue_submission_failed(job_id)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Ingestion task queue is unavailable. Retry the failed job later.",
+        ) from exc
 
 
 @app.get("/api/v1/assets/{image_id}/access")
