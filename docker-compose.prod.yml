@@ -1,0 +1,47 @@
+services:
+  api:
+    build:
+      context: .
+    env_file: .env
+    environment:
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+    env_file: .env
+    environment:
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    command: celery -A semikb.workers.celery_app:celery_app worker --loglevel=INFO --concurrency=2
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./web
+    ports:
+      - "80:80"
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  redis:
+    image: redis:7.4-alpine
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  redis_data:
