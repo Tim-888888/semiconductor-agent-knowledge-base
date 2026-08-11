@@ -1,0 +1,23 @@
+{
+  "dataset_version": "demo-v1",
+  "cases": [
+    {
+      "case_id": "eval-current-sop",
+      "question": "ETCH-03 Chamber B 清腔后首片异常，当前 SOP 怎么要求？",
+      "expected_chunk_ids": ["SOP-ETCH-03-R2-001"],
+      "tags": ["sop", "version", "tool", "chamber"]
+    },
+    {
+      "case_id": "eval-image-retrieval",
+      "question": "有没有 ETCH-03 Chamber B 的边缘环状缺陷晶圆图？",
+      "expected_chunk_ids": ["CASE-FA-2026-004-R1-IMAGE-001"],
+      "tags": ["image_text", "case", "defect"]
+    },
+    {
+      "case_id": "eval-fdc-rule",
+      "question": "pressure alarm 和首片异常应该先查什么？",
+      "expected_chunk_ids": ["FDC-ETCH-PRESSURE-R3-001"],
+      "tags": ["fdc", "alarm"]
+    }
+  ]
+}

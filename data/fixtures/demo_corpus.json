@@ -1,0 +1,83 @@
+{
+  "source": "synthetic_demo",
+  "documents": [
+    {
+      "document_id": "SOP-ETCH-03",
+      "revision": "R1",
+      "title": "ETCH-03 清腔后首片异常处理 SOP（历史版）",
+      "document_type": "sop",
+      "approval_status": "approved",
+      "lifecycle": "expired",
+      "effective_at": "2025-01-01T00:00:00+00:00",
+      "expires_at": "2025-12-31T00:00:00+00:00",
+      "fab": "FAB-01",
+      "product": "P-ALPHA",
+      "process_layer": "ETCH",
+      "tool_id": "ETCH-03",
+      "chamber": "B",
+      "recipe_id": "ETCH-ALPHA",
+      "recipe_version": "V2.2",
+      "content": "# 清腔后首片处理\n\n历史版要求工程师仅记录首片 CD 数据，不包含边缘环状缺陷复判流程。"
+    },
+    {
+      "document_id": "SOP-ETCH-03",
+      "revision": "R2",
+      "title": "ETCH-03 清腔后首片异常处理 SOP（现行版）",
+      "document_type": "sop",
+      "approval_status": "approved",
+      "lifecycle": "published",
+      "effective_at": "2026-01-01T00:00:00+00:00",
+      "fab": "FAB-01",
+      "product": "P-ALPHA",
+      "process_layer": "ETCH",
+      "tool_id": "ETCH-03",
+      "chamber": "B",
+      "recipe_id": "ETCH-ALPHA",
+      "recipe_version": "V2.3",
+      "content": "# ETCH-03 Chamber B 清腔后首片异常\n\n## 前置条件\n确认 Recipe 为 ETCH-ALPHA V2.3，确认 Chamber B 已完成清腔和 leak check。\n\n## 首片异常处理\n首片出现 CD drift、边缘环状缺陷或 FDC pressure alarm 时，暂停后续 lot 放行，复核 chamber pressure、RF match 和 wafer edge map。\n\n## 升级条件\n若边缘环状缺陷连续两片出现，通知工艺与设备工程师，并关联最近 24 小时 Recipe 变更与 FDC 报警。"
+    },
+    {
+      "document_id": "CASE-FA-2026-004",
+      "revision": "R1",
+      "title": "ETCH-03 Chamber B 边缘环状缺陷历史 Case",
+      "document_type": "case",
+      "approval_status": "approved",
+      "lifecycle": "published",
+      "effective_at": "2026-02-10T00:00:00+00:00",
+      "fab": "FAB-01",
+      "product": "P-ALPHA",
+      "process_layer": "ETCH",
+      "tool_id": "ETCH-03",
+      "chamber": "B",
+      "recipe_id": "ETCH-ALPHA",
+      "recipe_version": "V2.3",
+      "content": "# 历史异常 Case\n\n## 现象\nETCH-03 Chamber B 清腔后连续首片出现边缘环状缺陷，wafer map 在边缘区域形成连续 ring pattern。\n\n## 排查\nFDC 显示 chamber pressure 短时波动，RF match 偏离控制限；Recipe 未发生未经批准变更。\n\n## 措施和验证\n完成 leak check、RF match 校准和两片 monitor wafer 验证后，边缘环状缺陷消失。",
+      "images": [
+        {
+          "image_id": "IMG-FA-ETCH-03-2026-004",
+          "image_type": "wafer_map",
+          "caption": "ETCH-03 Chamber B 清腔后首片边缘环状缺陷晶圆图",
+          "ocr_text": "Wafer map edge ring defect ETCH-03 Chamber B",
+          "detection_summary": "edge ring defect; high density at outer radius",
+          "source_page": "Case 附件图 2",
+          "related_case_id": "CASE-FA-2026-004"
+        }
+      ]
+    },
+    {
+      "document_id": "FDC-ETCH-PRESSURE",
+      "revision": "R3",
+      "title": "ETCH Chamber Pressure FDC 报警处置规则",
+      "document_type": "fdc_rule",
+      "approval_status": "approved",
+      "lifecycle": "published",
+      "effective_at": "2026-01-15T00:00:00+00:00",
+      "fab": "FAB-01",
+      "product": "P-ALPHA",
+      "process_layer": "ETCH",
+      "tool_id": "ETCH-03",
+      "chamber": "B",
+      "content": "# Chamber Pressure 报警\n\n当 pressure 波动超过控制限且伴随首片异常时，查询最近 24 小时清腔记录、RF match 趋势和 Recipe 变更。未经确认不得调整 Recipe 参数。"
+    }
+  ]
+}
