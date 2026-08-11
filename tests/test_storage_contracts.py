@@ -55,6 +55,28 @@ def test_missing_configuration_names_are_explicit_and_safe() -> None:
     assert all("not configured" in item.detail for item in health)
 
 
+def test_llm_provider_health_uses_primary_and_fallback_configuration() -> None:
+    health = service_configuration_health(
+        blank_settings(
+            llm_primary_provider="closeai",
+            llm_fallback_provider="qwen",
+            closeai_base_url="https://closeai.invalid/v1",
+            closeai_api_key="closeai-secret",
+            closeai_model="gpt-5.6-luna",
+            qwen_api_base_url="https://qwen.invalid/v1",
+            qwen_api_key="qwen-secret",
+            qwen_model="qwen-flash",
+        )
+    )
+
+    primary = next(item for item in health if item.name == "llm_primary")
+    fallback = next(item for item in health if item.name == "llm_fallback")
+    assert primary.configured is True
+    assert fallback.configured is True
+    assert "secret" not in primary.detail
+    assert "secret" not in fallback.detail
+
+
 def test_client_factory_rejects_incomplete_configuration_without_values() -> None:
     factory = StorageClientFactory(blank_settings())
 

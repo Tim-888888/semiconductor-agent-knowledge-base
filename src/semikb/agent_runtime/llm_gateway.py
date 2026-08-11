@@ -1,0 +1,194 @@
+"""OpenAI-compatible LLM gateway with explicit primary/fallback routing."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any
+
+import httpx
+
+from semikb.config import Settings
+
+
+class LLMConfigurationError(ValueError):
+    """Raised when a selected provider is missing required configuration."""
+
+
+class LLMProviderError(RuntimeError):
+    """Provider failure without credentials or endpoint details in the message."""
+
+    def __init__(self, provider: str, message: str, *, status_code: int | None = None) -> None:
+        super().__init__(f"LLM provider '{provider}' failed: {message}")
+        self.provider = provider
+        self.status_code = status_code
+
+
+@dataclass(frozen=True, slots=True)
+class LLMProviderConfig:
+    provider: str
+    base_url: str
+    model: str
+    api_key: str = field(repr=False)
+    max_tokens_field: str = "max_tokens"
+    reasoning_effort: str | None = None
+    verbosity: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class LLMCompletion:
+    content: str
+    provider: str
+    requested_model: str
+    reported_model: str
+    fallback_used: bool
+    attempted_providers: tuple[str, ...]
+    usage: dict[str, Any]
+
+
+def resolve_provider_config(settings: Settings, provider: str) -> LLMProviderConfig:
+    """Resolve provider settings while retaining the former generic Qwen variables."""
+
+    normalized = provider.strip().lower()
+    if normalized == "closeai":
+        config = LLMProviderConfig(
+            provider="closeai",
+            base_url=settings.closeai_base_url,
+            api_key=settings.closeai_api_key,
+            model=settings.closeai_model,
+            max_tokens_field="max_completion_tokens",
+            reasoning_effort=settings.closeai_reasoning_effort,
+            verbosity=settings.closeai_verbosity,
+        )
+    elif normalized == "qwen":
+        config = LLMProviderConfig(
+            provider="qwen",
+            base_url=settings.qwen_api_base_url or settings.llm_api_base_url,
+            api_key=settings.qwen_api_key or settings.llm_api_key,
+            model=settings.qwen_model or settings.llm_model,
+        )
+    else:
+        raise LLMConfigurationError(f"Unsupported LLM provider: {provider}")
+
+    missing = [
+        name
+        for name, value in (
+            ("base URL", config.base_url),
+            ("API key", config.api_key),
+            ("model", config.model),
+        )
+        if not value
+    ]
+    if missing:
+        raise LLMConfigurationError(
+            f"LLM provider '{config.provider}' is missing: {', '.join(missing)}"
+        )
+    return config
+
+
+class OpenAICompatibleLLMGateway:
+    """Call the configured primary provider and fail over without leaking secrets."""
+
+    def __init__(
+        self,
+        settings: Settings,
+        *,
+        transport: httpx.AsyncBaseTransport | None = None,
+    ) -> None:
+        self.settings = settings
+        self.transport = transport
+
+    async def complete(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        response_json: bool = False,
+        max_output_tokens: int = 1024,
+        allow_fallback: bool = True,
+    ) -> LLMCompletion:
+        if not messages:
+            raise ValueError("messages must not be empty")
+        if max_output_tokens < 1:
+            raise ValueError("max_output_tokens must be positive")
+
+        provider_names = [self.settings.llm_primary_provider]
+        fallback = self.settings.llm_fallback_provider.strip().lower()
+        if allow_fallback and fallback and fallback != provider_names[0].strip().lower():
+            provider_names.append(fallback)
+
+        attempted: list[str] = []
+        last_error: Exception | None = None
+        for index, provider_name in enumerate(provider_names):
+            attempted.append(provider_name.strip().lower())
+            try:
+                config = resolve_provider_config(self.settings, provider_name)
+                return await self._complete_with_provider(
+                    config,
+                    messages,
+                    response_json=response_json,
+                    max_output_tokens=max_output_tokens,
+                    fallback_used=index > 0,
+                    attempted_providers=tuple(attempted),
+                )
+            except (LLMConfigurationError, LLMProviderError, httpx.HTTPError) as exc:
+                last_error = exc
+
+        attempted_text = ", ".join(attempted)
+        raise LLMProviderError(attempted_text, "all configured providers were unavailable") from last_error
+
+    async def _complete_with_provider(
+        self,
+        config: LLMProviderConfig,
+        messages: list[dict[str, Any]],
+        *,
+        response_json: bool,
+        max_output_tokens: int,
+        fallback_used: bool,
+        attempted_providers: tuple[str, ...],
+    ) -> LLMCompletion:
+        payload: dict[str, Any] = {
+            "model": config.model,
+            "messages": messages,
+            config.max_tokens_field: max_output_tokens,
+        }
+        if response_json:
+            payload["response_format"] = {"type": "json_object"}
+        if config.reasoning_effort:
+            payload["reasoning_effort"] = config.reasoning_effort
+        if config.verbosity:
+            payload["verbosity"] = config.verbosity
+
+        endpoint = f"{config.base_url.rstrip('/')}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {config.api_key}",
+            "Content-Type": "application/json",
+        }
+        async with httpx.AsyncClient(
+            timeout=self.settings.llm_timeout_seconds,
+            transport=self.transport,
+        ) as client:
+            response = await client.post(endpoint, headers=headers, json=payload)
+
+        if response.is_error:
+            raise LLMProviderError(
+                config.provider,
+                f"HTTP {response.status_code}",
+                status_code=response.status_code,
+            )
+        try:
+            body = response.json()
+            content = body["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
+            raise LLMProviderError(config.provider, "invalid Chat Completions response") from exc
+        if not isinstance(content, str) or not content.strip():
+            raise LLMProviderError(config.provider, "empty completion content")
+
+        usage = body.get("usage")
+        return LLMCompletion(
+            content=content,
+            provider=config.provider,
+            requested_model=config.model,
+            reported_model=str(body.get("model") or config.model),
+            fallback_used=fallback_used,
+            attempted_providers=attempted_providers,
+            usage=usage if isinstance(usage, dict) else {},
+        )

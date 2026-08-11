@@ -14,7 +14,7 @@ manufacturing data.
 | --- | --- | --- |
 | Ingestion | Markdown/fixture ingestion, SHA-256 idempotency, quality gate, semantic chunks | Celery Worker, MinerU adapter, BGE-M3 and MinIO/Mongo/Milvus production repositories are implemented and T4 live acceptance has passed |
 | Retrieval | Version/ACL-aware Dense + Sparse + RRF + deterministic rerank and cutoff | Local BGE-M3/BGE reranker and Milvus hybrid indexes |
-| Conversation | LangGraph branch control, two clarification rounds, continuous `thread_id` | MongoDB LangGraph checkpointer and OpenAI-compatible response client |
+| Conversation | LangGraph branch control, two clarification rounds, continuous `thread_id` | Luna primary/Qwen fallback gateway is live-validated; MongoDB checkpointer and answer-generation wiring remain pending |
 | Operations | Trace, golden-set evaluation, task-centre UI | Redis/Celery worker, real service topology and production observability |
 
 ## Local development
@@ -31,5 +31,7 @@ For external storage, run `python -m semikb.storage.preflight` before provisioni
 `python -m semikb.storage.verifier` to validate the full resource contract.
 The repeatable real-storage T4 acceptance entry point is
 `python scripts/verify_t4_ingestion.py`.
+The credential-safe primary LLM smoke test is
+`python scripts/verify_llm_gateway.py`.
 
 See `docs/` for storage, API, security, testing, and deployment decisions.
