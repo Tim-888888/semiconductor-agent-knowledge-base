@@ -27,6 +27,7 @@ manufacturing data.
 6. Install and start the web application from `web/` with `npm install` and `npm run dev`.
 
 For the complete synthetic demonstration, run `scripts/run_demo.ps1` from PowerShell.
-For external storage, run `python -m semikb.storage.preflight` before any provisioning.
+For external storage, run `python -m semikb.storage.preflight` before provisioning and
+`python -m semikb.storage.verifier` to validate the full resource contract.
 
 See `docs/` for storage, API, security, testing, and deployment decisions.

@@ -94,4 +94,7 @@ def compare_index_information(
             differences.append(f"index keys differ: {spec.name}")
         if actual_unique != spec.unique:
             differences.append(f"index uniqueness differs: {spec.name}")
+    expected_names = {spec.name for spec in expected}
+    unexpected_names = sorted(set(actual).difference(expected_names, {"_id_"}))
+    differences.extend(f"unexpected index: {name}" for name in unexpected_names)
     return differences

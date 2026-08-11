@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+from copy import deepcopy
 from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -9,6 +14,12 @@ from semikb.contracts.models import Chunk
 from semikb.rag_retrieval.milvus_schema import chunk_to_milvus_row
 from semikb.storage.clients import StorageClientFactory, StorageConfigurationError
 from semikb.storage.external import service_configuration_health
+from semikb.storage.mongo_index_migration import (
+    MigrationSafetyError,
+    build_migration_plan,
+    capture_snapshot,
+    migrate_mongo_indexes,
+)
 from semikb.storage.mongo_schema import MONGO_INDEX_SPECS, compare_index_information
 from semikb.storage.preflight import run_preflight
 from semikb.storage.verifier import _public_bucket_policy
@@ -83,6 +94,22 @@ def test_mongo_index_comparison_reports_missing_and_uniqueness_differences() -> 
     ]
 
 
+def test_mongo_index_comparison_reports_unexpected_indexes() -> None:
+    expected = MONGO_INDEX_SPECS["document_catalog"]
+    actual = {
+        "_id_": {"key": [("_id", 1)]},
+        "document_id_revision": {
+            "key": [("document_id", 1), ("revision", 1)],
+            "unique": True,
+        },
+        "manual_index": {"key": [("manual", 1)]},
+    }
+
+    assert compare_index_information(expected, actual) == [
+        "unexpected index: manual_index"
+    ]
+
+
 def test_milvus_row_normalizes_optional_fields_and_no_expiry() -> None:
     chunk = Chunk(
         chunk_id="DOC-R1-001",
@@ -129,3 +156,212 @@ def test_public_bucket_policy_detection() -> None:
 
     assert _public_bucket_policy(private_policy) is False
     assert _public_bucket_policy(public_policy) is True
+
+
+def migration_snapshot(
+    *,
+    document_count: int = 0,
+    extra_document_index: dict[str, object] | None = None,
+) -> dict[str, object]:
+    collections: dict[str, object] = {}
+    for collection_name, specs in MONGO_INDEX_SPECS.items():
+        indexes = [
+            {"name": "_id_", "keys": [["_id", 1]], "unique": False},
+            *[
+                {
+                    "name": spec.name,
+                    "keys": [list(item) for item in spec.keys],
+                    "unique": spec.unique,
+                }
+                for spec in specs
+            ],
+        ]
+        if collection_name == "document_catalog" and extra_document_index:
+            indexes.append(extra_document_index)
+        collections[collection_name] = {
+            "document_count": document_count if collection_name == "document_catalog" else 0,
+            "indexes": indexes,
+        }
+    return {
+        "schema_version": 1,
+        "database": "semikb",
+        "collections": collections,
+    }
+
+
+def test_mongo_index_migration_is_idempotent_for_current_contract() -> None:
+    assert build_migration_plan(migration_snapshot()) == []
+
+
+def test_mongo_index_migration_replaces_approved_legacy_definition() -> None:
+    snapshot = migration_snapshot()
+    snapshot["collections"]["document_catalog"]["indexes"] = [
+        {"name": "_id_", "keys": [["_id", 1]], "unique": False},
+        {
+            "name": "document_id_revision",
+            "keys": [["document_id", 1], ["revision", 1]],
+            "unique": False,
+        },
+    ]
+
+    plan = build_migration_plan(snapshot)
+
+    assert [(item.operation, item.index_name) for item in plan] == [
+        ("drop", "document_id_revision"),
+        ("create", "document_id_revision"),
+    ]
+
+
+def test_mongo_index_migration_refuses_non_empty_collection() -> None:
+    with pytest.raises(MigrationSafetyError, match="contains 1 documents"):
+        build_migration_plan(migration_snapshot(document_count=1))
+
+
+def test_mongo_index_migration_refuses_unknown_index() -> None:
+    unknown = {
+        "name": "manual_index",
+        "keys": [["manual", 1]],
+        "unique": False,
+    }
+
+    with pytest.raises(MigrationSafetyError, match="unapproved indexes: manual_index"):
+        build_migration_plan(migration_snapshot(extra_document_index=unknown))
+
+
+class FakeMongoCollection:
+    def __init__(
+        self,
+        state: dict[str, object],
+        *,
+        fail_once_on_create: str | None = None,
+    ) -> None:
+        self.document_count = int(state["document_count"])
+        self.indexes = {
+            item["name"]: {
+                "key": [tuple(pair) for pair in item["keys"]],
+                "unique": item["unique"],
+            }
+            for item in state["indexes"]
+        }
+        self.fail_once_on_create = fail_once_on_create
+
+    def count_documents(self, query: dict[str, object]) -> int:
+        assert query == {}
+        return self.document_count
+
+    def index_information(self) -> dict[str, dict[str, object]]:
+        return deepcopy(self.indexes)
+
+    def drop_index(self, name: str) -> None:
+        del self.indexes[name]
+
+    def create_index(
+        self,
+        keys: list[tuple[str, int]],
+        *,
+        name: str,
+        unique: bool,
+    ) -> str:
+        if self.fail_once_on_create == name:
+            self.fail_once_on_create = None
+            raise RuntimeError("injected index creation failure")
+        self.indexes[name] = {"key": list(keys), "unique": unique}
+        return name
+
+
+class FakeMongoDatabase:
+    name = "semikb"
+
+    def __init__(
+        self,
+        snapshot: dict[str, Any],
+        *,
+        fail_collection: str | None = None,
+        fail_index: str | None = None,
+    ) -> None:
+        self.collections = {
+            name: FakeMongoCollection(
+                state,
+                fail_once_on_create=fail_index if name == fail_collection else None,
+            )
+            for name, state in snapshot["collections"].items()
+        }
+
+    def __getitem__(self, name: str) -> FakeMongoCollection:
+        return self.collections[name]
+
+    def list_collection_names(self) -> list[str]:
+        return list(self.collections)
+
+
+class FakeMongoClient:
+    def __init__(self, database: FakeMongoDatabase) -> None:
+        self.database = database
+
+    def __getitem__(self, name: str) -> FakeMongoDatabase:
+        assert name == "semikb"
+        return self.database
+
+
+class FakeMongoFactory:
+    def __init__(self, database: FakeMongoDatabase) -> None:
+        self.client = FakeMongoClient(database)
+
+    @contextmanager
+    def mongodb(self) -> Iterator[FakeMongoClient]:
+        yield self.client
+
+
+def legacy_document_index_snapshot() -> dict[str, Any]:
+    snapshot = migration_snapshot()
+    snapshot["collections"]["document_catalog"]["indexes"] = [
+        {"name": "_id_", "keys": [["_id", 1]], "unique": False},
+        {
+            "name": "document_id_revision",
+            "keys": [["document_id", 1], ["revision", 1]],
+            "unique": False,
+        },
+    ]
+    return snapshot
+
+
+def test_mongo_index_migration_applies_and_becomes_idempotent(tmp_path: Path) -> None:
+    database = FakeMongoDatabase(legacy_document_index_snapshot())
+
+    result = migrate_mongo_indexes(
+        blank_settings(mongodb_uri="mongodb://configured", mongodb_database="semikb"),
+        apply=True,
+        snapshot_path=tmp_path / "before.json",
+        factory=FakeMongoFactory(database),
+    )
+
+    assert result["status"] == "migrated"
+    assert build_migration_plan(capture_snapshot(database)) == []
+    assert (tmp_path / "before.json").is_file()
+
+
+def test_mongo_index_migration_restores_snapshot_after_failure(tmp_path: Path) -> None:
+    database = FakeMongoDatabase(
+        legacy_document_index_snapshot(),
+        fail_collection="document_catalog",
+        fail_index="document_id_revision",
+    )
+
+    with pytest.raises(RuntimeError, match="previous indexes restored"):
+        migrate_mongo_indexes(
+            blank_settings(mongodb_uri="mongodb://configured", mongodb_database="semikb"),
+            apply=True,
+            snapshot_path=tmp_path / "before.json",
+            factory=FakeMongoFactory(database),
+        )
+
+    restored = database["document_catalog"].index_information()["document_id_revision"]
+    assert restored["unique"] is False
+
+
+def test_mongo_index_migration_refuses_missing_live_collection() -> None:
+    database = FakeMongoDatabase(migration_snapshot())
+    del database.collections["audit_events"]
+
+    with pytest.raises(MigrationSafetyError, match="missing collections: audit_events"):
+        capture_snapshot(database)

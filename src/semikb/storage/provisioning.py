@@ -20,15 +20,11 @@ def provision(
     settings: Settings,
     *,
     index_version: str = "v1",
-    allow_mongo_index_changes: bool = False,
 ) -> dict[str, object]:
     """Ensure required buckets, catalog indexes, and Milvus index version exist."""
 
     _require_storage_configuration(settings)
-    mongo_created = _provision_mongodb(
-        settings,
-        allow_index_changes=allow_mongo_index_changes,
-    )
+    mongo_created = _provision_mongodb(settings)
     buckets_created = _provision_minio(settings)
     milvus_result = _provision_milvus(settings, index_version)
     return {
@@ -49,7 +45,7 @@ def _require_storage_configuration(settings: Settings) -> None:
         raise RuntimeError("Storage provisioning requires: " + ", ".join(missing))
 
 
-def _provision_mongodb(settings: Settings, *, allow_index_changes: bool) -> list[str]:
+def _provision_mongodb(settings: Settings) -> list[str]:
     factory = StorageClientFactory(settings)
     with factory.mongodb() as client:
         database = client[settings.mongodb_database]
@@ -62,9 +58,9 @@ def _provision_mongodb(settings: Settings, *, allow_index_changes: bool) -> list
                 f"{collection_name_value}: {difference}"
                 for difference in compare_index_information(specs, actual)
             )
-        if differences and not allow_index_changes:
+        if differences:
             raise RuntimeError(
-                "MongoDB index differences require an approved migration; run the read-only verifier first."
+                "MongoDB index differences require the dedicated T2-G4 migration command."
             )
 
         created: list[str] = []
