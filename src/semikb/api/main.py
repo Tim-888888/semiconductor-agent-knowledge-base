@@ -19,6 +19,7 @@ from semikb.contracts.models import (
     CreateEvaluationRunRequest,
     CreateMemoryRequest,
     CreateThreadRequest,
+    EvaluationStatus,
     IngestDocumentRequest,
     IngestionStatus,
     IngestUploadMetadata,
@@ -35,6 +36,14 @@ def get_app_container() -> ApplicationContainer:
 
 def get_app_settings(container: Annotated[ApplicationContainer, Depends(get_app_container)]) -> Settings:
     return container.settings
+
+
+def _require_knowledge_admin(actor_scope: ActorScope) -> None:
+    if "admin" not in actor_scope.roles and "knowledge_admin" not in actor_scope.roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Knowledge administrator role required.",
+        )
 
 
 app = FastAPI(title="Semiconductor Agent Knowledge Base", version="0.1.0")
@@ -364,33 +373,131 @@ def get_retrieval_trace(
     return trace.model_dump(mode="json")
 
 
-@app.post("/api/v1/evaluation-runs", status_code=status.HTTP_201_CREATED)
+@app.post("/api/v1/evaluation-runs", status_code=status.HTTP_202_ACCEPTED)
 def create_evaluation_run(
     request: CreateEvaluationRunRequest,
     container: Annotated[ApplicationContainer, Depends(get_app_container)],
     actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
 ) -> dict[str, object]:
-    if "admin" not in actor_scope.roles and "knowledge_admin" not in actor_scope.roles:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Knowledge administrator role required.")
-    run = container.evaluation.run(request.dataset_version, request.baseline_run_id)
+    _require_knowledge_admin(actor_scope)
+    try:
+        run = container.evaluation.create_run(
+            request.dataset_version,
+            request.baseline_run_id,
+            retrieval_profile=request.retrieval_profile,
+            requested_by=actor_scope.user_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    if container.settings.demo_mode:
+        run = container.evaluation.execute(run.evaluation_run_id)
+    else:
+        _enqueue_evaluation(container, run.evaluation_run_id)
     return run.model_dump(mode="json")
+
+
+@app.get("/api/v1/evaluation-datasets")
+def list_evaluation_datasets(
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> list[dict[str, object]]:
+    _require_knowledge_admin(actor_scope)
+    return [dataset.model_dump(mode="json") for dataset in container.evaluation.list_datasets()]
 
 
 @app.get("/api/v1/evaluation-runs")
 def list_evaluation_runs(
     container: Annotated[ApplicationContainer, Depends(get_app_container)],
-    _: Annotated[ActorScope, Depends(get_actor_scope)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
 ) -> list[dict[str, object]]:
-    return [run.model_dump(mode="json") for run in container.store.list_evaluation_runs()]
+    _require_knowledge_admin(actor_scope)
+    return [run.model_dump(mode="json") for run in container.evaluation.list_runs()]
 
 
 @app.get("/api/v1/evaluation-runs/{evaluation_run_id}")
 def get_evaluation_run(
     evaluation_run_id: str,
     container: Annotated[ApplicationContainer, Depends(get_app_container)],
-    _: Annotated[ActorScope, Depends(get_actor_scope)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
 ) -> dict[str, object]:
-    run = container.store.get_evaluation_run(evaluation_run_id)
+    _require_knowledge_admin(actor_scope)
+    run = container.evaluation.get_run(evaluation_run_id)
     if run is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evaluation run not found.")
     return run.model_dump(mode="json")
+
+
+@app.get("/api/v1/evaluation-runs/{evaluation_run_id}/cases/{case_id}/trace")
+def get_evaluation_case_trace(
+    evaluation_run_id: str,
+    case_id: str,
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> dict[str, object]:
+    _require_knowledge_admin(actor_scope)
+    run = container.evaluation.get_run(evaluation_run_id)
+    if run is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evaluation run not found.")
+    case_result = next(
+        (result for result in run.case_results if result.get("case_id") == case_id),
+        None,
+    )
+    if case_result is None or not case_result.get("trace_id"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Evaluation case trace not found.",
+        )
+    trace = container.retrieval.get_trace(str(case_result["trace_id"]), None)
+    if trace is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Evaluation case trace not found.",
+        )
+    return trace.model_dump(mode="json")
+
+
+@app.post("/api/v1/evaluation-runs/{evaluation_run_id}/retry", status_code=status.HTTP_202_ACCEPTED)
+def retry_evaluation_run(
+    evaluation_run_id: str,
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> dict[str, object]:
+    _require_knowledge_admin(actor_scope)
+    existing = container.evaluation.get_run(evaluation_run_id)
+    if existing is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evaluation run not found.")
+    if existing.status is not EvaluationStatus.FAILED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only a failed evaluation run can be retried.",
+        )
+    run = container.evaluation.prepare_retry(evaluation_run_id)
+    if container.settings.demo_mode:
+        run = container.evaluation.execute(evaluation_run_id)
+    else:
+        _enqueue_evaluation(container, evaluation_run_id)
+    return run.model_dump(mode="json")
+
+
+def _enqueue_evaluation(container: ApplicationContainer, evaluation_run_id: str) -> None:
+    from semikb.workers.tasks import run_evaluation
+
+    run = container.evaluation.get_run(evaluation_run_id)
+    if run is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Evaluation run not found.",
+        )
+    if run.status is not EvaluationStatus.QUEUED:
+        return
+    try:
+        run_evaluation.delay(evaluation_run_id)
+    except Exception as exc:
+        container.evaluation.mark_queue_submission_failed(evaluation_run_id)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Evaluation task queue is unavailable. Retry the failed run later.",
+        ) from exc

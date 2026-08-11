@@ -47,6 +47,7 @@ class RetrievalService:
         top_k: int = 5,
         thread_id: str | None = None,
         constraints: RetrievalConstraints | None = None,
+        options: object | None = None,
     ) -> tuple[list[Chunk], RetrievalTrace]:
         started = perf_counter()
         query_tokens = tokenize(query)

@@ -13,6 +13,16 @@ _TRANSIENT_INGESTION_ERRORS = {
     "TIMEOUTEXCEPTION",
 }
 
+_TRANSIENT_EVALUATION_ERRORS = {
+    "APITIMEOUTERROR",
+    "CONNECTIONERROR",
+    "MILVUSEXCEPTION",
+    "RERANKERERROR",
+    "SERVERSELECTIONTIMEOUTERROR",
+    "S3ERROR",
+    "TIMEOUTERROR",
+}
+
 
 @celery_app.task(
     name="semikb.ingestion.process",
@@ -41,7 +51,23 @@ def retry_ingestion_job(job_id: str) -> dict[str, object]:
     return job.model_dump(mode="json")
 
 
-@celery_app.task(name="semikb.evaluation.run", autoretry_for=(ConnectionError,), retry_backoff=True, max_retries=2)
-def run_evaluation(dataset_version: str = "demo-v2", baseline_run_id: str | None = None) -> dict[str, object]:
-    run = get_container().evaluation.run(dataset_version, baseline_run_id)
+@celery_app.task(
+    bind=True,
+    name="semikb.evaluation.run",
+    acks_late=True,
+    reject_on_worker_lost=True,
+    max_retries=2,
+    soft_time_limit=1500,
+    time_limit=1800,
+)
+def run_evaluation(self, evaluation_run_id: str) -> dict[str, object]:
+    service = get_container().evaluation
+    try:
+        run = service.execute(evaluation_run_id, execution_id=self.request.id)
+    except Exception as exc:
+        transient = type(exc).__name__.upper() in _TRANSIENT_EVALUATION_ERRORS
+        if transient and self.request.retries < self.max_retries:
+            service.prepare_retry(evaluation_run_id)
+            raise self.retry(exc=exc, countdown=2 ** (self.request.retries + 1))
+        raise
     return run.model_dump(mode="json")

@@ -327,16 +327,39 @@ class EvaluationCase(BaseModel):
     failure_labels: list[str] = Field(default_factory=list)
 
 
+class EvaluationDataset(BaseModel):
+    dataset_version: str
+    dataset_hash: str
+    source_kind: str = "synthetic"
+    description: str = ""
+    case_count: int = Field(ge=1)
+    cases: list[EvaluationCase]
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class EvaluationRun(BaseModel):
     evaluation_run_id: str = Field(default_factory=lambda: new_id("eval"))
     dataset_version: str
+    dataset_hash: str = ""
+    case_count: int = 0
     baseline_run_id: str | None = None
+    requested_by: str = "system"
     status: EvaluationStatus = EvaluationStatus.QUEUED
+    retrieval_profile: str = Field(
+        default="full",
+        pattern="^(dense|hybrid|reranked|full)$",
+    )
     retrieval_config: dict[str, Any] = Field(default_factory=dict)
+    component_versions: dict[str, str] = Field(default_factory=dict)
     aggregate_metrics: dict[str, float] = Field(default_factory=dict)
+    baseline_comparison: dict[str, Any] = Field(default_factory=dict)
     case_results: list[dict[str, Any]] = Field(default_factory=list)
     failure_tags: list[str] = Field(default_factory=list)
+    safe_error_summary: str | None = None
+    worker_task_id: str | None = None
+    attempt: int = Field(default=1, ge=1)
     created_at: datetime = Field(default_factory=utc_now)
+    started_at: datetime | None = None
     finished_at: datetime | None = None
 
 
@@ -425,4 +448,8 @@ class IngestUploadMetadata(BaseModel):
 
 class CreateEvaluationRunRequest(BaseModel):
     dataset_version: str = "demo-v2"
+    retrieval_profile: str = Field(
+        default="full",
+        pattern="^(dense|hybrid|reranked|full)$",
+    )
     baseline_run_id: str | None = None

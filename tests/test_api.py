@@ -166,3 +166,49 @@ def test_api_manages_explicit_user_memory() -> None:
     assert [item["memory_id"] for item in listed.json()] == [memory_id]
     deleted = client.delete(f"/api/v1/memories/{memory_id}", headers=headers)
     assert deleted.status_code == 204
+
+
+def test_evaluation_api_requires_admin_and_exposes_reproducible_run() -> None:
+    get_container.cache_clear()
+    client = TestClient(app)
+    engineer_token = client.post(
+        "/api/v1/auth/demo-token",
+        json={"user_id": "eval_engineer", "roles": ["engineer"]},
+    ).json()["access_token"]
+    engineer_headers = {"Authorization": f"Bearer {engineer_token}"}
+
+    assert client.get("/api/v1/evaluation-runs", headers=engineer_headers).status_code == 403
+    assert (
+        client.post(
+            "/api/v1/evaluation-runs",
+            json={"dataset_version": "demo-v1", "retrieval_profile": "dense"},
+            headers=engineer_headers,
+        ).status_code
+        == 403
+    )
+
+    admin_token = client.post(
+        "/api/v1/auth/demo-token",
+        json={"user_id": "eval_admin", "roles": ["knowledge_admin"]},
+    ).json()["access_token"]
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
+    created = client.post(
+        "/api/v1/evaluation-runs",
+        json={"dataset_version": "demo-v1", "retrieval_profile": "reranked"},
+        headers=admin_headers,
+    )
+
+    assert created.status_code == 202
+    assert created.json()["status"] == "completed"
+    run_id = created.json()["evaluation_run_id"]
+    assert client.get(f"/api/v1/evaluation-runs/{run_id}", headers=admin_headers).status_code == 200
+    case_id = created.json()["case_results"][0]["case_id"]
+    trace_response = client.get(
+        f"/api/v1/evaluation-runs/{run_id}/cases/{case_id}/trace",
+        headers=admin_headers,
+    )
+    assert trace_response.status_code == 200
+    assert trace_response.json()["trace_id"] == created.json()["case_results"][0]["trace_id"]
+    datasets = client.get("/api/v1/evaluation-datasets", headers=admin_headers)
+    assert datasets.status_code == 200
+    assert datasets.json()[0]["dataset_version"] == "demo-v1"

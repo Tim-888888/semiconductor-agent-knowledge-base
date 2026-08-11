@@ -14,7 +14,9 @@ from semikb.contracts.models import (
     Chunk,
     DocumentLifecycle,
     DocumentRevision,
+    EvaluationDataset,
     EvaluationRun,
+    EvaluationStatus,
     ImageAsset,
     IngestionEvent,
     IngestionJob,
@@ -38,6 +40,7 @@ class DemoStore:
         self.job_keys: dict[str, str] = {}
         self.traces: dict[str, RetrievalTrace] = {}
         self.threads: dict[str, ThreadRecord] = {}
+        self.evaluation_datasets: dict[str, EvaluationDataset] = {}
         self.evaluation_runs: dict[str, EvaluationRun] = {}
         self.index_releases: dict[str, dict[str, str]] = {}
         self.objects: dict[tuple[str, str], bytes] = {}
@@ -366,6 +369,59 @@ class DemoStore:
     def save_evaluation_run(self, run: EvaluationRun) -> EvaluationRun:
         self.evaluation_runs[run.evaluation_run_id] = run
         return run
+
+    def save_evaluation_dataset(self, dataset: EvaluationDataset) -> EvaluationDataset:
+        existing = self.evaluation_datasets.get(dataset.dataset_version)
+        if existing and existing.dataset_hash != dataset.dataset_hash:
+            raise ValueError(
+                f"Dataset version {dataset.dataset_version!r} already has a different hash."
+            )
+        self.evaluation_datasets.setdefault(dataset.dataset_version, dataset)
+        return self.evaluation_datasets[dataset.dataset_version]
+
+    def get_evaluation_dataset(self, dataset_version: str) -> EvaluationDataset | None:
+        return self.evaluation_datasets.get(dataset_version)
+
+    def list_evaluation_datasets(self) -> list[EvaluationDataset]:
+        return sorted(
+            self.evaluation_datasets.values(),
+            key=lambda dataset: dataset.created_at,
+            reverse=True,
+        )
+
+    def claim_evaluation_run(
+        self,
+        evaluation_run_id: str,
+        execution_id: str | None = None,
+    ) -> EvaluationRun | None:
+        run = self.evaluation_runs.get(evaluation_run_id)
+        if run is None:
+            return None
+        claimable = run.status is EvaluationStatus.QUEUED or (
+            bool(execution_id)
+            and run.status is EvaluationStatus.RUNNING
+            and run.worker_task_id == execution_id
+        )
+        if not claimable:
+            return None
+        run.status = EvaluationStatus.RUNNING
+        run.started_at = datetime.now(UTC)
+        run.worker_task_id = execution_id
+        return self.save_evaluation_run(run)
+
+    def prepare_evaluation_retry(self, evaluation_run_id: str) -> EvaluationRun:
+        run = self.evaluation_runs.get(evaluation_run_id)
+        if run is None:
+            raise KeyError(evaluation_run_id)
+        if run.status is not EvaluationStatus.FAILED:
+            return run
+        run.status = EvaluationStatus.QUEUED
+        run.started_at = None
+        run.finished_at = None
+        run.safe_error_summary = None
+        run.worker_task_id = None
+        run.attempt += 1
+        return self.save_evaluation_run(run)
 
     def get_evaluation_run(self, evaluation_run_id: str) -> EvaluationRun | None:
         return self.evaluation_runs.get(evaluation_run_id)

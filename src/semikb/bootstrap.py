@@ -16,6 +16,7 @@ from semikb.rag_retrieval.encoders import BgeM3Encoder
 from semikb.rag_retrieval.production_service import ProductionRetrievalService
 from semikb.rag_retrieval.service import RetrievalService
 from semikb.storage.conversations import MongoConversationRepository
+from semikb.storage.evaluations import MongoEvaluationRepository
 from semikb.storage.memory import DemoStore
 from semikb.storage.production_ingestion import ProductionIngestionStore
 
@@ -37,7 +38,15 @@ class ApplicationContainer:
             else ProductionRetrievalService(settings, encoder=shared_encoder)
         )
         root = Path(__file__).resolve().parents[2]
-        self.evaluation = EvaluationService(self.store, self.retrieval, root / "data" / "golden_sets")
+        self.evaluation_store = (
+            self.store if settings.demo_mode else MongoEvaluationRepository(settings)
+        )
+        self.evaluation = EvaluationService(
+            self.evaluation_store,
+            self.retrieval,
+            root / "data" / "golden_sets",
+            settings,
+        )
         if settings.demo_mode:
             self.conversation_store = self.store
             self.conversations = ConversationService(self.store, self.retrieval, settings)

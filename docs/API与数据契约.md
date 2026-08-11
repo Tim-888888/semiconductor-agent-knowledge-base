@@ -6,8 +6,8 @@
 ## 鉴权
 
 一期用 `Authorization: Bearer <JWT>`。`POST /api/v1/auth/demo-token` 仅供 Demo 生成预置
-工程师/知识管理员令牌；生产环境应由 OIDC 适配器替换。写入入库任务和启动评估均要求
-`knowledge_admin` 或 `admin` 角色。
+工程师/知识管理员令牌；生产环境应由 OIDC 适配器替换。评估数据集、运行列表、详情、启动和重试
+均要求 `knowledge_admin` 或 `admin` 角色。
 
 ## 对话与连续会话
 
@@ -52,7 +52,12 @@ Dense/Sparse/HyDE 分数、路由排名、RRF、Rerank、选择原因、组件�
 | `POST` | `/ingestion-jobs/{id}/retry` | 对可重放失败任务发起幂等重试 |
 | `GET` | `/assets/{id}/access` | 重鉴权后返回短时图片访问描述 |
 | `GET` | `/retrieval-traces` | 仅查看当前用户 Trace；管理员可全局查看 |
-| `POST` | `/evaluation-runs` | 在冻结黄金集上运行离线评估 |
+| `GET` | `/evaluation-datasets` | 读取已冻结的数据集版本、Hash 和 Case 快照 |
+| `POST` | `/evaluation-runs` | 创建 `queued` 运行并投递 Celery；支持四种固定检索档位和 baseline |
+| `GET` | `/evaluation-runs` | 读取 MongoDB 持久化的运行历史、指标和状态 |
+| `GET` | `/evaluation-runs/{id}` | 读取配置/组件版本、Case、Trace 和基线差异 |
+| `GET` | `/evaluation-runs/{id}/cases/{case_id}/trace` | 校验 Trace 属于该运行后供评估管理员下钻 |
+| `POST` | `/evaluation-runs/{id}/retry` | 重新投递失败的评估运行 |
 
 ## 关键模型
 
@@ -65,6 +70,9 @@ Dense/Sparse/HyDE 分数、路由排名、RRF、Rerank、选择原因、组件�
 - `EvidenceLedgerEntry`：统一记录内部 Chunk、模拟工具和外部资料的来源等级、版本、分数与引用 ID。
 - `AgentAnswer`：分离已知事实、待验证假设、不确定项、下一步和置信度；事实必须引用账本 ID。
 - `MemoryRecord`：显式批准的用户偏好、Case 摘要或稳定规则，带来源、Scope、置信度与有效期。
+- `EvaluationDataset`：不可变黄金集快照；同一 `dataset_version` 不允许出现不同 Hash。
+- `EvaluationRun`：冻结数据集 Hash、`dense/hybrid/reranked/full` 配置、组件版本、任务所有权、
+  Recall@5/MRR/nDCG@5/负例准确率/图片召回/延迟、Case 结果和 baseline 差异。
 
 上传接口暂支持最大 200 MiB。`.md`/`.txt` 直接归一化；其他受 MinerU 支持的二进制格式交给
 MinerU Precision API。`DEMO_MODE=true` 时在请求内同步处理，便于无外部服务演示；
@@ -74,3 +82,7 @@ MinerU Precision API。`DEMO_MODE=true` 时在请求内同步处理，便于无�
 如果 Redis/Celery 投递失败，API 返回 `503`，同时把 Job 置为 `failed` 并记录
 `QUEUE_SUBMISSION_FAILED`，文档保持未发布，管理员可在队列恢复后调用重试接口。API 响应和
 事件只保存安全错误摘要，不返回密钥、连接串或第三方原始异常。
+
+生产模式的评估接口始终异步返回 `202`。Celery task id 是运行认领所有权；同一任务重投可以
+恢复，其他任务不能并发认领同一运行。每个 Case 的 `trace_id` 对应 MongoDB `retrieval_traces`，
+`thread_id` 使用 `evaluation:<run_id>:<case_id>`，便于区分评估流量和用户流量。
