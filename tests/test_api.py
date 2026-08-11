@@ -137,3 +137,32 @@ def test_api_serves_authorized_synthetic_wafer_png() -> None:
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("image/png")
     assert response.content.startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def test_api_manages_explicit_user_memory() -> None:
+    get_container.cache_clear()
+    client = TestClient(app)
+    token_response = client.post(
+        "/api/v1/auth/demo-token",
+        json={
+            "user_id": "memory_api_user",
+            "roles": ["engineer"],
+            "access_scope_keys": ["demo_engineering"],
+            "fabs": ["FAB-01"],
+            "products": ["P-ALPHA"],
+            "tool_ids": ["ETCH-03"],
+        },
+    )
+    headers = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
+
+    created = client.post(
+        "/api/v1/memories",
+        json={"memory_type": "preference", "content": "先列证据，再给建议。"},
+        headers=headers,
+    )
+    assert created.status_code == 201
+    memory_id = created.json()["memory_id"]
+    listed = client.get("/api/v1/memories", headers=headers)
+    assert [item["memory_id"] for item in listed.json()] == [memory_id]
+    deleted = client.delete(f"/api/v1/memories/{memory_id}", headers=headers)
+    assert deleted.status_code == 204

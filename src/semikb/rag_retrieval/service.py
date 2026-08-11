@@ -148,6 +148,9 @@ class RetrievalService:
     def list_traces(self, actor_scope: ActorScope | None = None) -> list[RetrievalTrace]:
         return self.store.list_traces(actor_scope)
 
+    def save_trace(self, trace: RetrievalTrace) -> RetrievalTrace:
+        return self.store.save_trace(trace)
+
     @staticmethod
     def _score(chunk: Chunk, query_tokens: set[str]) -> tuple[Chunk, float, float]:
         chunk_tokens = tokenize(f"{' '.join(chunk.title_path)} {chunk.chunk_text}")

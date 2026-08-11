@@ -149,12 +149,38 @@ class ProductionRetrievalRepository:
         if not chunk_ids:
             return {}
         with self._factory.mongodb() as client:
+            database = client[self._settings.mongodb_database]
             records = list(
-                client[self._settings.mongodb_database].chunk_catalog.find(
+                database.chunk_catalog.find(
                     {"chunk_id": {"$in": list(chunk_ids)}},
                     {"_id": 0},
                 )
             )
+            document_keys = {
+                (str(record["document_id"]), str(record["revision"])) for record in records
+            }
+            document_records = list(
+                database.document_catalog.find(
+                    {
+                        "$or": [
+                            {"document_id": document_id, "revision": revision}
+                            for document_id, revision in document_keys
+                        ]
+                    },
+                    {"_id": 0, "document_id": 1, "revision": 1, "source_uri": 1, "title": 1},
+                )
+            ) if document_keys else []
+        documents = {
+            (str(item["document_id"]), str(item["revision"])): item
+            for item in document_records
+        }
+        for record in records:
+            document = documents.get((str(record["document_id"]), str(record["revision"])), {})
+            record["metadata"] = {
+                **record.get("metadata", {}),
+                "source_uri": document.get("source_uri", ""),
+                "document_title": document.get("title", ""),
+            }
         return {
             chunk.chunk_id: chunk
             for chunk in (Chunk.model_validate(record) for record in records)

@@ -17,6 +17,7 @@ from semikb.config import Settings
 from semikb.contracts.models import (
     ActorScope,
     CreateEvaluationRunRequest,
+    CreateMemoryRequest,
     CreateThreadRequest,
     IngestDocumentRequest,
     IngestionStatus,
@@ -92,7 +93,10 @@ def list_threads(
     container: Annotated[ApplicationContainer, Depends(get_app_container)],
     actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
 ) -> list[dict[str, object]]:
-    return [thread.model_dump(mode="json") for thread in container.store.list_threads(actor_scope.user_id)]
+    return [
+        thread.model_dump(mode="json")
+        for thread in container.conversations.list_threads(actor_scope)
+    ]
 
 
 @app.get("/api/v1/threads/{thread_id}")
@@ -101,8 +105,8 @@ def get_thread(
     container: Annotated[ApplicationContainer, Depends(get_app_container)],
     actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
 ) -> dict[str, object]:
-    thread = container.store.get_thread(thread_id)
-    if thread is None or thread.actor_scope.user_id != actor_scope.user_id:
+    thread = container.conversations.get_thread(thread_id, actor_scope)
+    if thread is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found.")
     return thread.model_dump(mode="json")
 
@@ -114,10 +118,47 @@ async def send_message(
     container: Annotated[ApplicationContainer, Depends(get_app_container)],
     actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
 ) -> dict[str, object]:
-    thread = container.store.get_thread(thread_id)
-    if thread is None or thread.actor_scope.user_id != actor_scope.user_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found.")
-    return await container.conversations.send_message(thread_id, request.content)
+    try:
+        return await container.conversations.send_message(thread_id, request.content, actor_scope)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found.") from exc
+
+
+@app.post("/api/v1/memories", status_code=status.HTTP_201_CREATED)
+def create_memory(
+    request: CreateMemoryRequest,
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> dict[str, object]:
+    try:
+        memory = container.conversations.memory.create(request, actor_scope)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    return memory.model_dump(mode="json")
+
+
+@app.get("/api/v1/memories")
+def list_memories(
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> list[dict[str, object]]:
+    return [
+        memory.model_dump(mode="json")
+        for memory in container.conversations.memory.list(actor_scope)
+    ]
+
+
+@app.delete("/api/v1/memories/{memory_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_memory(
+    memory_id: str,
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> Response:
+    try:
+        container.conversations.memory.delete(memory_id, actor_scope)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Memory not found.") from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.post("/api/v1/retrieval/search")

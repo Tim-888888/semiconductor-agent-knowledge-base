@@ -268,6 +268,9 @@ class ProductionRetrievalService:
     def list_traces(self, actor_scope: ActorScope | None = None) -> list[RetrievalTrace]:
         return self.repository.list_traces(actor_scope)
 
+    def save_trace(self, trace: RetrievalTrace) -> RetrievalTrace:
+        return self.repository.save_trace(trace)
+
     def _build_candidates(
         self,
         query: str,

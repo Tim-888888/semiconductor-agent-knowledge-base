@@ -22,6 +22,12 @@ from semikb.storage.mongo_index_migration import (
 )
 from semikb.storage.mongo_schema import MONGO_INDEX_SPECS, compare_index_information
 from semikb.storage.preflight import run_preflight
+from semikb.storage.t6_mongo_migration import (
+    APPROVED_PRE_T6,
+    TARGET_COLLECTIONS,
+    T6MigrationSafetyError,
+)
+from semikb.storage.t6_mongo_migration import plan as build_t6_migration_plan
 from semikb.storage.verifier import _public_bucket_policy
 
 
@@ -387,3 +393,40 @@ def test_mongo_index_migration_refuses_missing_live_collection() -> None:
 
     with pytest.raises(MigrationSafetyError, match="missing collections: audit_events"):
         capture_snapshot(database)
+
+
+def t6_migration_snapshot(*, desired: bool, non_empty: str | None = None) -> dict[str, Any]:
+    collections: dict[str, Any] = {}
+    for name in TARGET_COLLECTIONS:
+        specs = MONGO_INDEX_SPECS[name] if desired else APPROVED_PRE_T6[name]
+        collections[name] = {
+            "document_count": 1 if name == non_empty else 0,
+            "indexes": [
+                {
+                    "name": spec.name,
+                    "keys": [list(item) for item in spec.keys],
+                    "unique": spec.unique,
+                }
+                for spec in specs
+            ],
+        }
+    return {"schema_version": 1, "database": "semikb", "collections": collections}
+
+
+def test_t6_migration_replaces_only_approved_empty_collection_indexes() -> None:
+    actions = build_t6_migration_plan(t6_migration_snapshot(desired=False))
+
+    assert len(actions) == 8
+    assert {action.collection for action in actions} == set(TARGET_COLLECTIONS)
+    assert {action.operation for action in actions} == {"drop", "create"}
+
+
+def test_t6_migration_is_idempotent_for_current_contract() -> None:
+    assert build_t6_migration_plan(t6_migration_snapshot(desired=True)) == []
+
+
+def test_t6_migration_refuses_non_empty_checkpoint_collection() -> None:
+    with pytest.raises(T6MigrationSafetyError, match="checkpoints must be empty"):
+        build_t6_migration_plan(
+            t6_migration_snapshot(desired=False, non_empty="checkpoints")
+        )

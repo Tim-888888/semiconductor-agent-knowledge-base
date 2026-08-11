@@ -516,6 +516,10 @@ class IngestionService:
                     effective_at=document.effective_at,
                     expires_at=document.expires_at,
                     access_scope_key=document.access_scope_key,
+                    metadata={
+                        "source_uri": document.source_uri,
+                        "document_title": document.title,
+                    },
                     parser_version=document.parser_version,
                     chunker_version=document.chunker_version,
                     embedding_version=payload["embedding_version"],
@@ -571,6 +575,8 @@ class IngestionService:
                     metadata={
                         "image_type": image.image_type,
                         "related_case_id": image.related_case_id,
+                        "source_uri": document.source_uri,
+                        "document_title": document.title,
                     },
                     parser_version=document.parser_version,
                     chunker_version=document.chunker_version,

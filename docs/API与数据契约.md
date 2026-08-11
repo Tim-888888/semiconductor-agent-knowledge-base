@@ -19,8 +19,21 @@
 | `POST` | `/threads/{thread_id}/messages` | 先做约束检查，再追问或检索并写入 Checkpoint |
 
 `thread_id` 是连续对话、LangGraph Checkpoint 和审计 Trace 的共同关联键。Demo 使用
-LangGraph `InMemorySaver`；MongoDB 部署适配器需要写入 `checkpoints`、`checkpoint_writes`，
-并在同一 `thread_id` 上恢复最近状态。
+LangGraph `InMemorySaver`；真实模式使用官方 `MongoDBSaver` 写入 `checkpoints`、
+`checkpoint_writes`。消息接口返回 `clarification_required=true` 时，图已通过 `interrupt()`
+持久化暂停；下一条同线程消息使用 `Command(resume=...)` 恢复。最多追问两轮，仍缺少关键字段时
+返回 `insufficient_information`，不调用检索或制造工具。
+
+## 长期记忆
+
+| 方法 | 路径 | 作用 |
+| --- | --- | --- |
+| `POST` | `/memories` | 显式确认并写入当前用户记忆 |
+| `GET` | `/memories` | 仅列出当前用户已批准且未过期的记忆 |
+| `DELETE` | `/memories/{memory_id}` | 删除当前用户的一条记忆 |
+
+工程师只能保存 `preference`；`case_summary` 与 `stable_rule` 需要 `knowledge_admin` 或 `admin`。
+记忆不自动从对话生成，也不能作为回答事实来源；图只读取已批准偏好用于展示方式。
 
 `POST /retrieval/search` 可选接收 `constraints`：`fab`、`product`、`process_layer`、
 `tool_id`、`chamber`、`recipe_id`、`recipe_version`、`as_of`、`use_hyde`。这些字段经过
@@ -49,6 +62,9 @@ Dense/Sparse/HyDE 分数、路由排名、RRF、Rerank、选择原因、组件�
 - `IngestionJob` + `IngestionEvent`：任务状态及不可抵赖阶段时间线。
 - `RetrievalTrace`：查询、过滤器、Dense/Sparse/RRF/Rerank 分数、动态截断原因与最终证据；
   包含 `actor_user_id`，避免跨用户泄露检索轨迹。
+- `EvidenceLedgerEntry`：统一记录内部 Chunk、模拟工具和外部资料的来源等级、版本、分数与引用 ID。
+- `AgentAnswer`：分离已知事实、待验证假设、不确定项、下一步和置信度；事实必须引用账本 ID。
+- `MemoryRecord`：显式批准的用户偏好、Case 摘要或稳定规则，带来源、Scope、置信度与有效期。
 
 上传接口暂支持最大 200 MiB。`.md`/`.txt` 直接归一化；其他受 MinerU 支持的二进制格式交给
 MinerU Precision API。`DEMO_MODE=true` 时在请求内同步处理，便于无外部服务演示；

@@ -14,7 +14,7 @@ manufacturing data.
 | --- | --- | --- |
 | Ingestion | Markdown/fixture ingestion, SHA-256 idempotency, quality gate, semantic chunks | Celery Worker, MinerU adapter, BGE-M3 and MinIO/Mongo/Milvus production repositories are implemented and T4 live acceptance has passed |
 | Retrieval | Version/ACL-aware Dense + Sparse + RRF + deterministic rerank and cutoff | Live BGE-M3/Milvus + conditional Luna HyDE + qwen3-rerank pipeline passed T5 synthetic acceptance |
-| Conversation | LangGraph branch control, two clarification rounds, continuous `thread_id` | Luna primary/Qwen fallback gateway is live-validated; MongoDB checkpointer and answer-generation wiring remain pending |
+| Conversation | LangGraph `interrupt/resume`, two clarification rounds, evidence ledger and explicit memory | MongoDB Checkpointer/Store plus Luna primary/Qwen fallback answer generation passed restart acceptance |
 | Operations | Trace, golden-set evaluation, task-centre UI | Redis/Celery worker, real service topology and production observability |
 
 ## Local development
@@ -35,5 +35,7 @@ The credential-safe primary LLM smoke test is
 `python scripts/verify_llm_gateway.py`.
 The live T5 baseline comparison is
 `python scripts/verify_t5_retrieval.py`.
+The live T6 interrupt/resume acceptance is
+`python scripts/verify_t6_agent.py`.
 
 See `docs/` for storage, API, security, testing, and deployment decisions.

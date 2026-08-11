@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from pymongo import ASCENDING
+from pymongo import ASCENDING, DESCENDING
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,6 +20,17 @@ def _index(name: str, *fields: str, unique: bool = False) -> MongoIndexSpec:
         keys=tuple((field, ASCENDING) for field in fields),
         unique=unique,
     )
+
+
+def _checkpoint_index(name: str, *, writes: bool = False) -> MongoIndexSpec:
+    keys = [
+        ("thread_id", ASCENDING),
+        ("checkpoint_ns", ASCENDING),
+        ("checkpoint_id", DESCENDING),
+    ]
+    if writes:
+        keys.extend((("task_id", ASCENDING), ("idx", ASCENDING)))
+    return MongoIndexSpec(name=name, keys=tuple(keys), unique=True)
 
 
 MONGO_INDEX_SPECS: dict[str, tuple[MongoIndexSpec, ...]] = {
@@ -61,16 +72,16 @@ MONGO_INDEX_SPECS: dict[str, tuple[MongoIndexSpec, ...]] = {
         _index("actor_user_id_updated_at", "actor_scope.user_id", "updated_at"),
     ),
     "checkpoints": (
-        _index("thread_id_checkpoint_id", "thread_id", "checkpoint_id"),
+        _checkpoint_index("thread_checkpoint_namespace_id"),
     ),
     "checkpoint_writes": (
-        _index("thread_id_checkpoint_id", "thread_id", "checkpoint_id"),
+        _checkpoint_index("thread_checkpoint_namespace_task_write", writes=True),
     ),
     "long_term_memories": (
-        _index("memory_id", "memory_id", unique=True),
-        _index("user_id", "user_id"),
+        _index("namespace_str_key", "namespace_str", "key", unique=True),
     ),
     "audit_events": (
+        _index("event_id", "event_id", unique=True),
         _index("actor_user_id_created_at", "actor_user_id", "created_at"),
     ),
 }

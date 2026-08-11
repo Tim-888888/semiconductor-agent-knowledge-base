@@ -66,6 +66,8 @@ class Settings(BaseSettings):
     aliyun_web_mcp_api_key: str = ""
     aliyun_web_mcp_tool_name: str = "web_search"
     web_allowed_domains: str = ""
+    agent_max_clarification_rounds: int = Field(default=2, ge=1, le=3)
+    agent_answer_max_output_tokens: int = Field(default=1400, ge=256, le=4096)
 
     bge_m3_model_path: str = ""
     bge_reranker_model_path: str = ""

@@ -258,6 +258,65 @@ class ThreadRecord(BaseModel):
     updated_at: datetime = Field(default_factory=utc_now)
 
 
+class EvidenceLedgerEntry(BaseModel):
+    evidence_id: str
+    source_type: str
+    content: str
+    chunk_id: str | None = None
+    document_id: str | None = None
+    revision: str | None = None
+    approval_status: str | None = None
+    effective_at: datetime | None = None
+    source_uri: str = ""
+    page_or_section: str = ""
+    tool_id: str | None = None
+    chamber: str | None = None
+    recipe_version: str | None = None
+    retrieval_routes: list[str] = Field(default_factory=list)
+    retrieval_score: float | None = None
+    rerank_score: float | None = None
+    context_selection_reason: str | None = None
+    image_ids: list[str] = Field(default_factory=list)
+    external_url: str = ""
+
+
+class AnswerClaim(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
+    citation_ids: list[str] = Field(default_factory=list)
+
+
+class AgentAnswer(BaseModel):
+    facts: list[AnswerClaim] = Field(default_factory=list)
+    hypotheses: list[AnswerClaim] = Field(default_factory=list)
+    unknowns: list[str] = Field(default_factory=list)
+    next_actions: list[str] = Field(default_factory=list)
+    confidence: str = Field(default="low", pattern="^(low|medium|high)$")
+
+
+class MemoryRecord(BaseModel):
+    memory_id: str = Field(default_factory=lambda: new_id("memory"))
+    user_id: str
+    memory_type: str = Field(pattern="^(preference|case_summary|stable_rule)$")
+    content: str = Field(min_length=1, max_length=4000)
+    scope: dict[str, Any] = Field(default_factory=dict)
+    source_refs: list[str] = Field(default_factory=list)
+    confidence: float = Field(default=1.0, ge=0, le=1)
+    approval_status: ApprovalStatus = ApprovalStatus.APPROVED
+    expires_at: datetime | None = None
+    created_by: str
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class AuditEvent(BaseModel):
+    event_id: str = Field(default_factory=lambda: new_id("audit"))
+    event_type: str
+    actor_user_id: str
+    thread_id: str | None = None
+    trace_id: str | None = None
+    details: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class EvaluationCase(BaseModel):
     case_id: str
     question: str
@@ -288,6 +347,15 @@ class CreateThreadRequest(BaseModel):
 
 class SendMessageRequest(BaseModel):
     content: str = Field(min_length=1, max_length=8000)
+
+
+class CreateMemoryRequest(BaseModel):
+    memory_type: str = Field(pattern="^(preference|case_summary|stable_rule)$")
+    content: str = Field(min_length=1, max_length=4000)
+    scope: dict[str, Any] = Field(default_factory=dict)
+    source_refs: list[str] = Field(default_factory=list)
+    confidence: float = Field(default=1.0, ge=0, le=1)
+    expires_at: datetime | None = None
 
 
 class RetrievalConstraints(BaseModel):

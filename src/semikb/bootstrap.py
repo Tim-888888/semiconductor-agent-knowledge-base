@@ -5,6 +5,9 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
+from langgraph.checkpoint.mongodb import MongoDBSaver
+from langgraph.store.mongodb import MongoDBStore
+
 from semikb.agent_runtime.service import ConversationService
 from semikb.config import Settings, get_settings
 from semikb.evaluation.service import EvaluationService
@@ -12,6 +15,7 @@ from semikb.rag_ingestion.service import IngestionService
 from semikb.rag_retrieval.encoders import BgeM3Encoder
 from semikb.rag_retrieval.production_service import ProductionRetrievalService
 from semikb.rag_retrieval.service import RetrievalService
+from semikb.storage.conversations import MongoConversationRepository
 from semikb.storage.memory import DemoStore
 from semikb.storage.production_ingestion import ProductionIngestionStore
 
@@ -34,7 +38,27 @@ class ApplicationContainer:
         )
         root = Path(__file__).resolve().parents[2]
         self.evaluation = EvaluationService(self.store, self.retrieval, root / "data" / "golden_sets")
-        self.conversations = ConversationService(self.store, self.retrieval, settings)
+        if settings.demo_mode:
+            self.conversation_store = self.store
+            self.conversations = ConversationService(self.store, self.retrieval, settings)
+        else:
+            self.conversation_store = MongoConversationRepository(settings)
+            checkpointer = MongoDBSaver(
+                self.conversation_store.client,
+                db_name=settings.mongodb_database,
+                checkpoint_collection_name="checkpoints",
+                writes_collection_name="checkpoint_writes",
+            )
+            long_term_store = MongoDBStore(
+                collection=self.conversation_store.database["long_term_memories"]
+            )
+            self.conversations = ConversationService(
+                self.conversation_store,
+                self.retrieval,
+                settings,
+                checkpointer=checkpointer,
+                long_term_store=long_term_store,
+            )
         self._seeded = False
 
     def seed_demo_data(self) -> None:

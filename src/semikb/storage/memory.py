@@ -10,6 +10,7 @@ from threading import RLock
 from semikb.contracts.models import (
     ActorScope,
     ApprovalStatus,
+    AuditEvent,
     Chunk,
     DocumentLifecycle,
     DocumentRevision,
@@ -41,6 +42,7 @@ class DemoStore:
         self.index_releases: dict[str, dict[str, str]] = {}
         self.objects: dict[tuple[str, str], bytes] = {}
         self.replay_payloads: dict[str, dict[str, object]] = {}
+        self.audit_events: dict[str, AuditEvent] = {}
 
     def add_document(self, document: DocumentRevision, chunks: list[Chunk], images: list[ImageAsset]) -> None:
         with self._lock:
@@ -356,6 +358,10 @@ class DemoStore:
         thread.updated_at = datetime.now(UTC)
         self.threads[thread.thread_id] = thread
         return thread
+
+    def append_audit(self, event: AuditEvent) -> AuditEvent:
+        self.audit_events.setdefault(event.event_id, event)
+        return event
 
     def save_evaluation_run(self, run: EvaluationRun) -> EvaluationRun:
         self.evaluation_runs[run.evaluation_run_id] = run
