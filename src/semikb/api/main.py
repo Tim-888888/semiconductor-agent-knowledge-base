@@ -9,7 +9,7 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Response, UploadFile, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
 from semikb.api.auth import create_demo_token, get_actor_scope
 from semikb.bootstrap import ApplicationContainer, get_container
@@ -131,6 +131,7 @@ def search(
         actor_scope,
         top_k=request.top_k,
         thread_id=request.thread_id,
+        constraints=request.constraints,
     )
     return {
         "evidence": [chunk.model_dump(mode="json") for chunk in evidence],
@@ -277,11 +278,13 @@ def preview_asset(
     actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
 ) -> Response:
     try:
-        container.retrieval.asset_access(image_id, actor_scope)
+        access = container.retrieval.asset_access(image_id, actor_scope)
     except KeyError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image asset not found.") from exc
     except PermissionError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Image access denied.") from exc
+    if not container.settings.demo_mode:
+        return RedirectResponse(access["url"], status_code=status.HTTP_307_TEMPORARY_REDIRECT)
     asset = container.store.get_image(image_id)
     if asset and asset.demo_source_path:
         root = Path(__file__).resolve().parents[3]
@@ -305,7 +308,7 @@ def list_retrieval_traces(
     container: Annotated[ApplicationContainer, Depends(get_app_container)],
     actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
 ) -> list[dict[str, object]]:
-    return [trace.model_dump(mode="json") for trace in container.store.list_traces(actor_scope)]
+    return [trace.model_dump(mode="json") for trace in container.retrieval.list_traces(actor_scope)]
 
 
 @app.get("/api/v1/retrieval-traces/{trace_id}")
@@ -314,7 +317,7 @@ def get_retrieval_trace(
     container: Annotated[ApplicationContainer, Depends(get_app_container)],
     actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
 ) -> dict[str, object]:
-    trace = container.store.get_trace(trace_id, actor_scope)
+    trace = container.retrieval.get_trace(trace_id, actor_scope)
     if trace is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Retrieval trace not found.")
     return trace.model_dump(mode="json")

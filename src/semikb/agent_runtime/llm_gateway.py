@@ -110,11 +110,7 @@ class OpenAICompatibleLLMGateway:
         if max_output_tokens < 1:
             raise ValueError("max_output_tokens must be positive")
 
-        provider_names = [self.settings.llm_primary_provider]
-        fallback = self.settings.llm_fallback_provider.strip().lower()
-        if allow_fallback and fallback and fallback != provider_names[0].strip().lower():
-            provider_names.append(fallback)
-
+        provider_names = self._provider_names(allow_fallback)
         attempted: list[str] = []
         last_error: Exception | None = None
         for index, provider_name in enumerate(provider_names):
@@ -135,6 +131,48 @@ class OpenAICompatibleLLMGateway:
         attempted_text = ", ".join(attempted)
         raise LLMProviderError(attempted_text, "all configured providers were unavailable") from last_error
 
+    def complete_sync(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        response_json: bool = False,
+        max_output_tokens: int = 1024,
+        allow_fallback: bool = True,
+    ) -> LLMCompletion:
+        """Synchronous entry point for retrieval workers and FastAPI thread-pool routes."""
+
+        if not messages:
+            raise ValueError("messages must not be empty")
+        if max_output_tokens < 1:
+            raise ValueError("max_output_tokens must be positive")
+
+        attempted: list[str] = []
+        last_error: Exception | None = None
+        for index, provider_name in enumerate(self._provider_names(allow_fallback)):
+            attempted.append(provider_name.strip().lower())
+            try:
+                config = resolve_provider_config(self.settings, provider_name)
+                return self._complete_sync_with_provider(
+                    config,
+                    messages,
+                    response_json=response_json,
+                    max_output_tokens=max_output_tokens,
+                    fallback_used=index > 0,
+                    attempted_providers=tuple(attempted),
+                )
+            except (LLMConfigurationError, LLMProviderError, httpx.HTTPError) as exc:
+                last_error = exc
+
+        attempted_text = ", ".join(attempted)
+        raise LLMProviderError(attempted_text, "all configured providers were unavailable") from last_error
+
+    def _provider_names(self, allow_fallback: bool) -> list[str]:
+        provider_names = [self.settings.llm_primary_provider]
+        fallback = self.settings.llm_fallback_provider.strip().lower()
+        if allow_fallback and fallback and fallback != provider_names[0].strip().lower():
+            provider_names.append(fallback)
+        return provider_names
+
     async def _complete_with_provider(
         self,
         config: LLMProviderConfig,
@@ -145,17 +183,12 @@ class OpenAICompatibleLLMGateway:
         fallback_used: bool,
         attempted_providers: tuple[str, ...],
     ) -> LLMCompletion:
-        payload: dict[str, Any] = {
-            "model": config.model,
-            "messages": messages,
-            config.max_tokens_field: max_output_tokens,
-        }
-        if response_json:
-            payload["response_format"] = {"type": "json_object"}
-        if config.reasoning_effort:
-            payload["reasoning_effort"] = config.reasoning_effort
-        if config.verbosity:
-            payload["verbosity"] = config.verbosity
+        payload = self._build_payload(
+            config,
+            messages,
+            response_json=response_json,
+            max_output_tokens=max_output_tokens,
+        )
 
         endpoint = f"{config.base_url.rstrip('/')}/chat/completions"
         headers = {
@@ -168,6 +201,75 @@ class OpenAICompatibleLLMGateway:
         ) as client:
             response = await client.post(endpoint, headers=headers, json=payload)
 
+        return self._parse_completion(
+            response,
+            config,
+            fallback_used=fallback_used,
+            attempted_providers=attempted_providers,
+        )
+
+    def _complete_sync_with_provider(
+        self,
+        config: LLMProviderConfig,
+        messages: list[dict[str, Any]],
+        *,
+        response_json: bool,
+        max_output_tokens: int,
+        fallback_used: bool,
+        attempted_providers: tuple[str, ...],
+    ) -> LLMCompletion:
+        payload = self._build_payload(
+            config,
+            messages,
+            response_json=response_json,
+            max_output_tokens=max_output_tokens,
+        )
+        endpoint = f"{config.base_url.rstrip('/')}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {config.api_key}",
+            "Content-Type": "application/json",
+        }
+        with httpx.Client(
+            timeout=self.settings.llm_timeout_seconds,
+            transport=self.transport,
+        ) as client:
+            response = client.post(endpoint, headers=headers, json=payload)
+        return self._parse_completion(
+            response,
+            config,
+            fallback_used=fallback_used,
+            attempted_providers=attempted_providers,
+        )
+
+    @staticmethod
+    def _build_payload(
+        config: LLMProviderConfig,
+        messages: list[dict[str, Any]],
+        *,
+        response_json: bool,
+        max_output_tokens: int,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "model": config.model,
+            "messages": messages,
+            config.max_tokens_field: max_output_tokens,
+        }
+        if response_json:
+            payload["response_format"] = {"type": "json_object"}
+        if config.reasoning_effort:
+            payload["reasoning_effort"] = config.reasoning_effort
+        if config.verbosity:
+            payload["verbosity"] = config.verbosity
+        return payload
+
+    @staticmethod
+    def _parse_completion(
+        response: httpx.Response,
+        config: LLMProviderConfig,
+        *,
+        fallback_used: bool,
+        attempted_providers: tuple[str, ...],
+    ) -> LLMCompletion:
         if response.is_error:
             raise LLMProviderError(
                 config.provider,

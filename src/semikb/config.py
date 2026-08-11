@@ -49,6 +49,19 @@ class Settings(BaseSettings):
     qwen_api_base_url: str = ""
     qwen_api_key: str = ""
     qwen_model: str = ""
+    hyde_enabled: bool = True
+    hyde_max_output_tokens: int = Field(default=256, ge=32, le=2048)
+    retrieval_recall_k: int = Field(default=20, ge=2, le=100)
+    retrieval_rrf_k: int = Field(default=60, ge=1, le=1000)
+    retrieval_min_evidence: int = Field(default=1, ge=1, le=20)
+    retrieval_max_evidence: int = Field(default=8, ge=1, le=20)
+    retrieval_score_cliff_ratio: float = Field(default=0.45, ge=0, le=1)
+    retrieval_rerank_min_score: float = Field(default=0.35, ge=0, le=1)
+    rerank_provider: str = "qianwen"
+    rerank_api_base_url: str = ""
+    rerank_api_key: str = ""
+    rerank_model: str = "qwen3-rerank"
+    rerank_timeout_seconds: int = Field(default=60, ge=5, le=600)
     aliyun_web_mcp_url: str = "https://dashscope.aliyuncs.com/api/v1/mcps/WebSearch/mcp"
     aliyun_web_mcp_api_key: str = ""
     aliyun_web_mcp_tool_name: str = "web_search"

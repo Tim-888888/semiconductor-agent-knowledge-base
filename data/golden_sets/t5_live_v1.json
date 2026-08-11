@@ -1,0 +1,61 @@
+{
+  "dataset_version": "t5-live-v1",
+  "source_kind": "synthetic",
+  "description": "Live T5 retrieval acceptance over the CC0 synthetic T4 corpus.",
+  "cases": [
+    {
+      "case_id": "T5-LIVE-001",
+      "question": "ETCH-03 Chamber B 清腔后首片出现了什么缺陷？",
+      "expected_chunk_ids": ["T4-CASE-ETCH-03-R1-001"],
+      "tags": ["exact_tool", "phenomenon"]
+    },
+    {
+      "case_id": "T5-LIVE-002",
+      "question": "ETCH-03 Chamber B 出现 pressure 波动时应检查什么？",
+      "expected_chunk_ids": ["T4-CASE-ETCH-03-R1-002", "T4-RETRY-SOP-ETCH-03-R1-001"],
+      "tags": ["pressure", "procedure"]
+    },
+    {
+      "case_id": "T5-LIVE-003",
+      "question": "edge-ring 处理后恢复生产前需要怎样验证 monitor wafer？",
+      "expected_chunk_ids": ["T4-CASE-ETCH-03-R1-003"],
+      "tags": ["validation", "monitor_wafer"]
+    },
+    {
+      "case_id": "T5-LIVE-004",
+      "question": "有没有 ETCH-03 Chamber B 的边缘环状缺陷晶圆图？",
+      "expected_chunk_ids": ["T4-CASE-ETCH-03-R1-IMAGE-001"],
+      "tags": ["image_text", "wafer_map"]
+    },
+    {
+      "case_id": "T5-LIVE-005",
+      "question": "pressure alarm 后能否自动恢复 recipe？",
+      "expected_chunk_ids": ["T4-RETRY-SOP-ETCH-03-R1-001"],
+      "tags": ["sop", "approval"]
+    },
+    {
+      "case_id": "T5-LIVE-006",
+      "question": "P-BETA 的 ETCH-03 异常资料有哪些？",
+      "expected_chunk_ids": [],
+      "expected_outcome": "no_evidence",
+      "actor_scope": {
+        "user_id": "p_beta_engineer",
+        "roles": ["engineer"],
+        "access_scope_keys": ["demo_engineering"],
+        "fabs": ["FAB-01"],
+        "products": ["P-BETA"],
+        "tool_ids": ["ETCH-03"]
+      },
+      "tags": ["product_acl", "negative"],
+      "failure_labels": ["unauthorized_product_returned"]
+    },
+    {
+      "case_id": "T5-LIVE-007",
+      "question": "CMP-99 抛光液流量校准步骤是什么？",
+      "expected_chunk_ids": [],
+      "expected_outcome": "no_evidence",
+      "tags": ["out_of_domain", "negative"],
+      "failure_labels": ["irrelevant_evidence_returned"]
+    }
+  ]
+}

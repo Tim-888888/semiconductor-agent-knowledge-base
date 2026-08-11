@@ -206,8 +206,11 @@ class RetrievalCandidate(BaseModel):
     routes: list[str]
     dense_score: float
     sparse_score: float
+    hyde_score: float = 0.0
     rrf_score: float
     rerank_score: float
+    route_ranks: dict[str, int] = Field(default_factory=dict)
+    context_selection_reason: str | None = None
     selected: bool = False
     exclusion_reason: str | None = None
     protected_evidence: bool = False
@@ -228,6 +231,8 @@ class RetrievalTrace(BaseModel):
     final_evidence_ids: list[str] = Field(default_factory=list)
     image_asset_ids: list[str] = Field(default_factory=list)
     external_evidence: list[dict[str, Any]] = Field(default_factory=list)
+    component_versions: dict[str, str] = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)
     timings_ms: dict[str, float] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=utc_now)
 
@@ -285,11 +290,24 @@ class SendMessageRequest(BaseModel):
     content: str = Field(min_length=1, max_length=8000)
 
 
+class RetrievalConstraints(BaseModel):
+    fab: str | None = None
+    product: str | None = None
+    process_layer: str | None = None
+    tool_id: str | None = None
+    chamber: str | None = None
+    recipe_id: str | None = None
+    recipe_version: str | None = None
+    as_of: datetime | None = None
+    use_hyde: bool | None = None
+
+
 class SearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=4000)
     actor_scope: ActorScope = Field(default_factory=ActorScope)
     thread_id: str | None = None
     top_k: int = Field(default=5, ge=1, le=20)
+    constraints: RetrievalConstraints | None = None
 
 
 class IngestDocumentRequest(BaseModel):

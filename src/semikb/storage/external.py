@@ -57,6 +57,11 @@ def service_configuration_health(settings: Settings) -> list[ServiceHealth]:
         },
         "llm_primary": _llm_requirements(settings, settings.llm_primary_provider),
         "llm_fallback": _llm_requirements(settings, settings.llm_fallback_provider),
+        "reranker": {
+            "RERANK_API_BASE_URL": settings.rerank_api_base_url,
+            "RERANK_API_KEY": settings.rerank_api_key,
+            "RERANK_MODEL": settings.rerank_model,
+        },
         "aliyun_web_mcp": {
             "ALIYUN_WEB_MCP_URL": settings.aliyun_web_mcp_url,
             "ALIYUN_WEB_MCP_API_KEY": settings.aliyun_web_mcp_api_key,

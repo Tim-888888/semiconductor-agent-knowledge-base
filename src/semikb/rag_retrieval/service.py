@@ -6,7 +6,13 @@ import re
 from datetime import UTC, datetime, timedelta
 from time import perf_counter
 
-from semikb.contracts.models import ActorScope, Chunk, RetrievalCandidate, RetrievalTrace
+from semikb.contracts.models import (
+    ActorScope,
+    Chunk,
+    RetrievalCandidate,
+    RetrievalConstraints,
+    RetrievalTrace,
+)
 from semikb.storage.memory import DemoStore
 
 IDENTIFIER_PATTERN = re.compile(r"[a-z]+-\d+(?:\.\d+)?|v\d+(?:\.\d+)?|[a-z]+\d*", re.IGNORECASE)
@@ -40,10 +46,29 @@ class RetrievalService:
         *,
         top_k: int = 5,
         thread_id: str | None = None,
+        constraints: RetrievalConstraints | None = None,
     ) -> tuple[list[Chunk], RetrievalTrace]:
         started = perf_counter()
         query_tokens = tokenize(query)
         accessible = self.store.list_published_chunks(actor_scope)
+        if constraints:
+            accessible = [
+                chunk
+                for chunk in accessible
+                if all(
+                    not getattr(constraints, field)
+                    or getattr(chunk, field) == getattr(constraints, field)
+                    for field in (
+                        "fab",
+                        "product",
+                        "process_layer",
+                        "tool_id",
+                        "chamber",
+                        "recipe_id",
+                        "recipe_version",
+                    )
+                )
+            ]
         scored = [self._score(chunk, query_tokens) for chunk in accessible]
         dense_ranked = sorted(scored, key=lambda item: item[1], reverse=True)
         sparse_ranked = sorted(scored, key=lambda item: item[2], reverse=True)
@@ -97,6 +122,11 @@ class RetrievalService:
                 "access_scope_keys": actor_scope.access_scope_keys,
                 "approval_status": "approved",
                 "lifecycle": "published",
+                **(
+                    constraints.model_dump(mode="json", exclude_none=True)
+                    if constraints
+                    else {}
+                ),
             },
             routes=["dense", "sparse", "rrf", "reranker"],
             candidates=candidates,
@@ -107,6 +137,16 @@ class RetrievalService:
         )
         self.store.save_trace(trace)
         return [self.store.get_chunk(candidate.chunk_id) for candidate in selected if self.store.get_chunk(candidate.chunk_id)], trace
+
+    def get_trace(
+        self,
+        trace_id: str,
+        actor_scope: ActorScope | None = None,
+    ) -> RetrievalTrace | None:
+        return self.store.get_trace(trace_id, actor_scope)
+
+    def list_traces(self, actor_scope: ActorScope | None = None) -> list[RetrievalTrace]:
+        return self.store.list_traces(actor_scope)
 
     @staticmethod
     def _score(chunk: Chunk, query_tokens: set[str]) -> tuple[Chunk, float, float]:

@@ -9,6 +9,8 @@ from semikb.agent_runtime.service import ConversationService
 from semikb.config import Settings, get_settings
 from semikb.evaluation.service import EvaluationService
 from semikb.rag_ingestion.service import IngestionService
+from semikb.rag_retrieval.encoders import BgeM3Encoder
+from semikb.rag_retrieval.production_service import ProductionRetrievalService
 from semikb.rag_retrieval.service import RetrievalService
 from semikb.storage.memory import DemoStore
 from semikb.storage.production_ingestion import ProductionIngestionStore
@@ -23,8 +25,13 @@ class ApplicationContainer:
         self.ingestion_store = (
             self.store if settings.demo_mode else ProductionIngestionStore(settings)
         )
-        self.ingestion = IngestionService(self.ingestion_store, settings)
-        self.retrieval = RetrievalService(self.store)
+        shared_encoder = None if settings.demo_mode else BgeM3Encoder(settings)
+        self.ingestion = IngestionService(self.ingestion_store, settings, encoder=shared_encoder)
+        self.retrieval = (
+            RetrievalService(self.store)
+            if settings.demo_mode
+            else ProductionRetrievalService(settings, encoder=shared_encoder)
+        )
         root = Path(__file__).resolve().parents[2]
         self.evaluation = EvaluationService(self.store, self.retrieval, root / "data" / "golden_sets")
         self.conversations = ConversationService(self.store, self.retrieval, settings)

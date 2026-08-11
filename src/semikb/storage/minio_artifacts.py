@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import re
+from datetime import timedelta
 from pathlib import Path
 from urllib.parse import quote
 
@@ -125,6 +126,15 @@ class MinioArtifactRepository:
         if hashlib.sha256(content).hexdigest() != object_ref.sha256:
             raise ValueError("Stored object failed SHA-256 verification.")
         return content
+
+    def presign_get(self, object_ref: ObjectRef, *, expires: timedelta) -> str:
+        client = self._factory.create_minio()
+        return client.presigned_get_object(
+            object_ref.bucket,
+            object_ref.object_key,
+            expires=expires,
+            version_id=object_ref.version_id,
+        )
 
     def _put(
         self,

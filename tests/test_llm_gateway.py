@@ -55,6 +55,34 @@ def test_provider_config_repr_redacts_api_key() -> None:
     assert "closeai-secret" not in repr(config)
 
 
+def test_sync_gateway_uses_same_luna_parameter_contract() -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={
+                "model": "gpt-5.6-luna-test",
+                "choices": [{"message": {"content": "hypothetical passage"}}],
+            },
+        )
+
+    gateway = OpenAICompatibleLLMGateway(
+        llm_settings(),
+        transport=httpx.MockTransport(handler),
+    )
+    result = gateway.complete_sync(
+        [{"role": "user", "content": "Generate HyDE"}],
+        max_output_tokens=64,
+        allow_fallback=False,
+    )
+
+    assert captured["max_completion_tokens"] == 64
+    assert "temperature" not in captured
+    assert result.reported_model == "gpt-5.6-luna-test"
+
+
 @pytest.mark.asyncio
 async def test_closeai_uses_luna_compatible_parameters() -> None:
     captured: dict[str, object] = {}

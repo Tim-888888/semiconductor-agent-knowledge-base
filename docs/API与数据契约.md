@@ -22,6 +22,11 @@
 LangGraph `InMemorySaver`；MongoDB 部署适配器需要写入 `checkpoints`、`checkpoint_writes`，
 并在同一 `thread_id` 上恢复最近状态。
 
+`POST /retrieval/search` 可选接收 `constraints`：`fab`、`product`、`process_layer`、
+`tool_id`、`chamber`、`recipe_id`、`recipe_version`、`as_of`、`use_hyde`。这些字段经过
+Pydantic 校验后才生成 Milvus 表达式，客户端不能提交原始过滤表达式。响应 Trace 记录每条候选的
+Dense/Sparse/HyDE 分数、路由排名、RRF、Rerank、选择原因、组件版本和安全降级告警。
+
 ## 知识与运维接口
 
 | 方法 | 路径 | 作用 |
