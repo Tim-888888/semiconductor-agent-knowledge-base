@@ -14,6 +14,7 @@ from semikb.contracts.models import Chunk
 from semikb.rag_retrieval.milvus_schema import chunk_to_milvus_row
 from semikb.storage.clients import StorageClientFactory, StorageConfigurationError
 from semikb.storage.external import service_configuration_health
+from semikb.storage.milvus_chunks import _alias_names
 from semikb.storage.mongo_index_migration import (
     MigrationSafetyError,
     build_migration_plan,
@@ -176,6 +177,13 @@ def test_milvus_row_rejects_wrong_dense_dimension() -> None:
 
     with pytest.raises(ValueError, match="dimension mismatch"):
         chunk_to_milvus_row(chunk, [0.1], {1: 0.5}, embedding_dim=4)
+
+
+def test_milvus_alias_response_is_normalized_across_client_versions() -> None:
+    assert _alias_names({"aliases": ["semikb_chunks_active"]}) == {
+        "semikb_chunks_active"
+    }
+    assert _alias_names(["semikb_chunks_active"]) == {"semikb_chunks_active"}
 
 
 def test_public_bucket_policy_detection() -> None:

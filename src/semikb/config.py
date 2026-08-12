@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     minio_secret_key: str = ""
     minio_secure: bool = False
     redis_url: str = ""
-    milvus_index_version: str = "v2"
+    milvus_index_version: str = "v3"
     milvus_require_active_alias: bool = True
 
     mineru_api_base_url: str = ""
@@ -56,12 +56,20 @@ class Settings(BaseSettings):
     retrieval_min_evidence: int = Field(default=1, ge=1, le=20)
     retrieval_max_evidence: int = Field(default=8, ge=1, le=20)
     retrieval_score_cliff_ratio: float = Field(default=0.45, ge=0, le=1)
-    retrieval_rerank_min_score: float = Field(default=0.35, ge=0, le=1)
+    retrieval_rerank_min_score: float = Field(default=0.40, ge=0, le=1)
     rerank_provider: str = "qianwen"
     rerank_api_base_url: str = ""
     rerank_api_key: str = ""
     rerank_model: str = "qwen3-rerank"
     rerank_timeout_seconds: int = Field(default=60, ge=5, le=600)
+    embedding_provider: str = "qianwen"
+    embedding_api_base_url: str = (
+        "https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding"
+    )
+    embedding_api_key: str = ""
+    embedding_model: str = "qwen3.7-text-embedding"
+    embedding_timeout_seconds: int = Field(default=60, ge=5, le=600)
+    sparse_encoder_version: str = "lexical-hash-v1"
     aliyun_web_mcp_url: str = "https://dashscope.aliyuncs.com/api/v1/mcps/WebSearch/mcp"
     aliyun_web_mcp_api_key: str = ""
     aliyun_web_mcp_tool_name: str = "web_search"
@@ -69,11 +77,16 @@ class Settings(BaseSettings):
     agent_max_clarification_rounds: int = Field(default=2, ge=1, le=3)
     agent_answer_max_output_tokens: int = Field(default=1400, ge=256, le=4096)
 
-    bge_m3_model_path: str = ""
-    bge_reranker_model_path: str = ""
-    bge_use_fp16: bool = False
     embedding_dim: int = Field(default=1024, ge=1)
-    embedding_batch_size: int = Field(default=16, ge=1, le=256)
+    embedding_batch_size: int = Field(default=10, ge=1, le=256)
+
+    @property
+    def resolved_embedding_api_key(self) -> str:
+        return self.embedding_api_key or self.rerank_api_key
+
+    @property
+    def embedding_version(self) -> str:
+        return f"{self.embedding_model}+{self.sparse_encoder_version}"
 
     @property
     def allowed_domains(self) -> tuple[str, ...]:

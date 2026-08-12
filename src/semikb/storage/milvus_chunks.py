@@ -3,12 +3,22 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Any
 
 from semikb.config import Settings
 from semikb.contracts.models import Chunk, DocumentLifecycle
 from semikb.rag_retrieval.encoders import HybridEmbedding
 from semikb.rag_retrieval.milvus_schema import chunk_to_milvus_row, collection_name
 from semikb.storage.clients import StorageClientFactory
+
+
+def _alias_names(result: Any) -> set[str]:
+    """Normalize pymilvus alias responses across client versions."""
+    if isinstance(result, dict):
+        aliases = result.get("aliases", [])
+    else:
+        aliases = result
+    return {str(alias) for alias in aliases or []}
 
 
 class MilvusChunkRepository:
@@ -69,9 +79,11 @@ class MilvusChunkRepository:
         physical_collection = collection_name(index_version)
         alias = "semikb_chunks_active"
         with self._factory.milvus() as client:
-            if alias in client.list_aliases(collection_name=physical_collection):
+            if alias in _alias_names(
+                client.list_aliases(collection_name=physical_collection)
+            ):
                 return
-            if alias not in client.list_aliases():
+            if alias not in _alias_names(client.list_aliases()):
                 client.create_alias(physical_collection, alias)
                 return
             client.alter_alias(physical_collection, alias)

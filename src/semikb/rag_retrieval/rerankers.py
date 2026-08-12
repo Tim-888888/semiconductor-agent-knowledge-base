@@ -8,7 +8,6 @@ from typing import Protocol
 import httpx
 
 from semikb.config import Settings
-from semikb.rag_retrieval.encoders import BgeReranker
 
 
 class Reranker(Protocol):
@@ -77,19 +76,8 @@ class QianwenReranker:
         return scores
 
 
-class LocalBgeReranker:
-    def __init__(self, settings: Settings) -> None:
-        self._reranker = BgeReranker(settings)
-        self.model_name = "bge-reranker-local"
-
-    def score(self, query: str, passages: Sequence[str]) -> list[float]:
-        return self._reranker.score(query, passages)
-
-
 def create_reranker(settings: Settings) -> Reranker:
     provider = settings.rerank_provider.strip().lower()
     if provider == "qianwen":
         return QianwenReranker(settings)
-    if provider == "bge":
-        return LocalBgeReranker(settings)
     raise RerankerError(f"Unsupported reranker provider: {settings.rerank_provider}")

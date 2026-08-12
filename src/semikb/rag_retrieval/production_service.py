@@ -15,7 +15,7 @@ from semikb.contracts.models import (
     RetrievalConstraints,
     RetrievalTrace,
 )
-from semikb.rag_retrieval.encoders import BgeM3Encoder, HybridEncoder
+from semikb.rag_retrieval.encoders import HybridEncoder, create_hybrid_encoder
 from semikb.rag_retrieval.production_repository import (
     ProductionRetrievalRepository,
     VectorHit,
@@ -88,7 +88,7 @@ class ProductionRetrievalService:
     ) -> None:
         self.settings = settings
         self.repository = repository or ProductionRetrievalRepository(settings)
-        self.encoder = encoder or BgeM3Encoder(settings)
+        self.encoder = encoder or create_hybrid_encoder(settings)
         self.reranker = reranker or create_reranker(settings)
         self.hyde_generator = hyde_generator or HydeGenerator(settings)
 
@@ -107,8 +107,13 @@ class ProductionRetrievalService:
         timings: dict[str, float] = {}
         warnings: list[str] = []
         component_versions = {
-            "embedding": "bge-m3",
+            "embedding": getattr(self.encoder, "model_name", self.settings.embedding_model),
             "embedding_dim": str(self.settings.embedding_dim),
+            "sparse_encoder": getattr(
+                self.encoder,
+                "sparse_encoder_version",
+                self.settings.sparse_encoder_version,
+            ),
             "reranker": self.reranker.model_name,
             "index_version": self.settings.milvus_index_version,
         }

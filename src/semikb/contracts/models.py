@@ -99,7 +99,7 @@ class DocumentRevision(BaseModel):
     recipe_version: str | None = None
     parser_version: str = "demo-parser-v1"
     chunker_version: str = "semantic-v1"
-    embedding_version: str = "bge-m3-demo-v1"
+    embedding_version: str = "deterministic-demo-v1"
     index_version: str = "v1"
     created_at: datetime = Field(default_factory=utc_now)
 
@@ -129,7 +129,7 @@ class Chunk(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     parser_version: str = "demo-parser-v1"
     chunker_version: str = "semantic-v1"
-    embedding_version: str = "bge-m3-demo-v1"
+    embedding_version: str = "deterministic-demo-v1"
     index_version: str = "v1"
     created_at: datetime = Field(default_factory=utc_now)
 
@@ -182,7 +182,7 @@ class IngestionJob(BaseModel):
     idempotency_key: str
     parser_version: str = "demo-parser-v1"
     chunker_version: str = "semantic-v1"
-    embedding_version: str = "bge-m3-demo-v1"
+    embedding_version: str = "deterministic-demo-v1"
     index_version: str = "v1"
     chunks_count: int = 0
     images_count: int = 0

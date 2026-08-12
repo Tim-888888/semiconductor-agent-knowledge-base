@@ -108,8 +108,9 @@ def main() -> None:
         for name, options in variants.items()
     }
     full = results["dense_sparse_hyde_rerank"]
-    if full["recall_at_5"] < 0.85 or full["no_evidence_accuracy"] < 1.0:
-        raise RuntimeError("Full T5 retrieval pipeline failed the live acceptance threshold.")
+    threshold_failed = (
+        full["recall_at_5"] < 0.85 or full["no_evidence_accuracy"] < 1.0
+    )
     output_results = results if args.details else {
         name: {key: value for key, value in result.items() if key != "case_results"}
         for name, result in results.items()
@@ -125,6 +126,8 @@ def main() -> None:
             indent=2,
         )
     )
+    if threshold_failed:
+        raise RuntimeError("Full T5 retrieval pipeline failed the live acceptance threshold.")
 
 
 if __name__ == "__main__":

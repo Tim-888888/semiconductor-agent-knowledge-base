@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from semikb.config import get_settings
 from semikb.contracts.models import IngestionStatus, ObjectRef
 from semikb.rag_ingestion.service import IngestionService
-from semikb.rag_retrieval.encoders import BgeM3Encoder, HybridEmbedding
+from semikb.rag_retrieval.encoders import HybridEmbedding, create_hybrid_encoder
 from semikb.rag_retrieval.milvus_schema import collection_name
 from semikb.storage.clients import StorageClientFactory
 from semikb.storage.production_ingestion import ProductionIngestionStore
@@ -82,10 +82,10 @@ def _retry_payload() -> dict[str, object]:
 
 
 def main() -> None:
-    settings = get_settings().model_copy(update={"demo_mode": False, "bge_use_fp16": False})
+    settings = get_settings().model_copy(update={"demo_mode": False})
     factory = StorageClientFactory(settings)
     store = ProductionIngestionStore(settings, factory)
-    encoder = BgeM3Encoder(settings)
+    encoder = create_hybrid_encoder(settings)
     service = IngestionService(store, settings, encoder=encoder)
 
     main_job = service.ingest_payload(_main_payload(), created_by="t4_acceptance")

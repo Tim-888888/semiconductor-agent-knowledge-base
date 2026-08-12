@@ -62,6 +62,11 @@ def service_configuration_health(settings: Settings) -> list[ServiceHealth]:
             "RERANK_API_KEY": settings.rerank_api_key,
             "RERANK_MODEL": settings.rerank_model,
         },
+        "embedding": {
+            "EMBEDDING_API_BASE_URL": settings.embedding_api_base_url,
+            "EMBEDDING_API_KEY or RERANK_API_KEY": settings.resolved_embedding_api_key,
+            "EMBEDDING_MODEL": settings.embedding_model,
+        },
         "aliyun_web_mcp": {
             "ALIYUN_WEB_MCP_URL": settings.aliyun_web_mcp_url,
             "ALIYUN_WEB_MCP_API_KEY": settings.aliyun_web_mcp_api_key,

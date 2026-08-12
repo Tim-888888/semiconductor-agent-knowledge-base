@@ -268,8 +268,17 @@ class EvaluationService:
 
     def _configured_component_versions(self) -> dict[str, str]:
         return {
-            "embedding": "bge-m3" if not self.settings.demo_mode else "deterministic-demo",
+            "embedding": (
+                self.settings.embedding_model
+                if not self.settings.demo_mode
+                else "deterministic-demo"
+            ),
             "embedding_dim": str(self.settings.embedding_dim),
+            "sparse_encoder": (
+                self.settings.sparse_encoder_version
+                if not self.settings.demo_mode
+                else "lexical-hash-demo-v1"
+            ),
             "reranker": self.settings.rerank_model,
             "index_version": self.settings.milvus_index_version,
             "hyde_policy": "conditional" if self.settings.hyde_enabled else "disabled",

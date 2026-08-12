@@ -25,10 +25,9 @@ from semikb.contracts.models import (
 from semikb.rag_ingestion.chunker import chunk_markdown
 from semikb.rag_ingestion.mineru import MinerUPrecisionClient, ParsedDocument
 from semikb.rag_retrieval.encoders import (
-    BgeM3Encoder,
-    DeterministicHybridEncoder,
     HybridEmbedding,
     HybridEncoder,
+    create_hybrid_encoder,
 )
 from semikb.storage.ingestion import IngestionStore
 
@@ -46,11 +45,7 @@ class IngestionService:
     ) -> None:
         self.store = store
         self.settings = settings or Settings()
-        self.encoder = encoder or (
-            DeterministicHybridEncoder(self.settings.embedding_dim)
-            if self.settings.demo_mode
-            else BgeM3Encoder(self.settings)
-        )
+        self.encoder = encoder or create_hybrid_encoder(self.settings)
 
     def submit_payload(
         self,
@@ -128,7 +123,11 @@ class IngestionService:
             ),
             parser_version=parser_version,
             chunker_version="semantic-v1",
-            embedding_version=("bge-m3-demo-v1" if self.settings.demo_mode else "bge-m3-v1"),
+            embedding_version=(
+                "deterministic-demo-v1"
+                if self.settings.demo_mode
+                else self.settings.embedding_version
+            ),
             index_version=self.settings.milvus_index_version,
             created_by=created_by,
         )
@@ -276,7 +275,7 @@ class IngestionService:
             self.store.update_job(
                 job.job_id,
                 IngestionStatus.EMBEDDING,
-                "Generating dense and sparse BGE-M3 representations.",
+                "Generating online Dense and model-free Sparse representations.",
                 75,
             )
             embeddings = self._encode_chunks(chunks)

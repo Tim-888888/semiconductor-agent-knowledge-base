@@ -34,7 +34,7 @@ def tokenize(value: str) -> set[str]:
 
 
 class RetrievalService:
-    """A replaceable service: demo scoring today, Milvus/BGE adapters after configuration."""
+    """A replaceable service: deterministic demo scoring or configured production retrieval."""
 
     def __init__(self, store: DemoStore) -> None:
         self.store = store

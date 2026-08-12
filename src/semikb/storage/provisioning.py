@@ -26,7 +26,7 @@ def provision(
     _require_storage_configuration(settings)
     mongo_created = _provision_mongodb(settings)
     buckets_created = _provision_minio(settings)
-    milvus_result = _provision_milvus(
+    milvus_result = provision_milvus_index(
         settings,
         index_version or settings.milvus_index_version,
     )
@@ -85,7 +85,7 @@ def _provision_minio(settings: Settings) -> list[str]:
     return created
 
 
-def _provision_milvus(settings: Settings, index_version: str) -> dict[str, str]:
+def provision_milvus_index(settings: Settings, index_version: str) -> dict[str, str]:
     collection = collection_name(index_version)
     factory = StorageClientFactory(settings)
     with factory.milvus() as client:

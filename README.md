@@ -12,8 +12,8 @@ manufacturing data.
 
 | Capability | Phase 1 runnable Demo | External-service activation |
 | --- | --- | --- |
-| Ingestion | Markdown/fixture ingestion, SHA-256 idempotency, quality gate, semantic chunks | Celery Worker, MinerU adapter, BGE-M3 and MinIO/Mongo/Milvus production repositories are implemented and T4 live acceptance has passed |
-| Retrieval | Version/ACL-aware Dense + Sparse + RRF + deterministic rerank and cutoff | Live BGE-M3/Milvus + conditional Luna HyDE + qwen3-rerank pipeline passed T5 synthetic acceptance |
+| Ingestion | Markdown/fixture ingestion, SHA-256 idempotency, quality gate, semantic chunks | Celery Worker, MinerU adapter, online Qwen embedding and MinIO/Mongo/Milvus production repositories are implemented and live acceptance has passed |
+| Retrieval | Version/ACL-aware Dense + Sparse + RRF + deterministic rerank and cutoff | Online qwen3.7-text-embedding + CPU lexical Sparse + Milvus + conditional Luna HyDE + qwen3-rerank passed the synthetic acceptance gate |
 | Conversation | LangGraph `interrupt/resume`, two clarification rounds, evidence ledger and explicit memory | MongoDB Checkpointer/Store plus Luna primary/Qwen fallback answer generation passed restart acceptance |
 | Operations | Trace, golden-set evaluation, task-centre UI | Real API/Worker-backed Trace, ingestion, evaluation and responsive browser workflows passed T8 acceptance; production observability remains T9 scope |
 
@@ -22,7 +22,7 @@ manufacturing data.
 1. Use the `dl` Conda environment with Python 3.12.
 2. Copy `.env.example` to `.env` and fill service values when external services are ready.
 3. Keep `DEMO_MODE=true` to run the synthetic-data workflow without external services.
-4. Install backend dependencies with `pip install -e .[dev,rag]`.
+4. Install backend dependencies with `pip install -e .[dev]`.
 5. Start the API with `uvicorn semikb.api.main:app --reload --port 8000`.
 6. Install and start the web application from `web/` with `npm install` and `npm run dev`.
 
@@ -35,6 +35,9 @@ The credential-safe primary LLM smoke test is
 `python scripts/verify_llm_gateway.py`.
 The live T5 baseline comparison is
 `python scripts/verify_t5_retrieval.py`.
+The governed online-embedding index rebuild defaults to dry-run:
+`python scripts/migrate_embedding_index.py --target-index-version v4`; add `--apply`
+only after reviewing the plan and keeping the source Collection for rollback.
 The live T6 interrupt/resume acceptance is
 `python scripts/verify_t6_agent.py`.
 The live T7 evaluation acceptance is
