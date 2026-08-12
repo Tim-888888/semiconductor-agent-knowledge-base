@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -42,6 +45,28 @@ class LLMCompletion:
     reported_model: str
     fallback_used: bool
     attempted_providers: tuple[str, ...]
+    usage: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class LLMStreamProbe:
+    """Credential-safe evidence that a Provider emitted OpenAI-compatible deltas."""
+
+    provider: str
+    requested_model: str
+    reported_model: str
+    content: str = field(repr=False)
+    content_sha256: str
+    content_length: int
+    event_count: int
+    content_delta_count: int
+    reasoning_delta_count: int
+    first_event_ms: float
+    first_content_delta_ms: float
+    total_ms: float
+    finish_reason: str | None
+    done_received: bool
+    termination: str
     usage: dict[str, Any]
 
 
@@ -131,6 +156,33 @@ class OpenAICompatibleLLMGateway:
         attempted_text = ", ".join(attempted)
         raise LLMProviderError(attempted_text, "all configured providers were unavailable") from last_error
 
+    async def probe_stream(
+        self,
+        provider: str,
+        messages: list[dict[str, Any]],
+        *,
+        max_output_tokens: int = 128,
+    ) -> LLMStreamProbe:
+        """Probe one Provider directly; fallback would hide which endpoint was tested."""
+
+        if not messages:
+            raise ValueError("messages must not be empty")
+        if max_output_tokens < 1:
+            raise ValueError("max_output_tokens must be positive")
+        config = resolve_provider_config(self.settings, provider)
+        try:
+            return await self._probe_stream_with_provider(
+                config,
+                messages,
+                max_output_tokens=max_output_tokens,
+            )
+        except LLMProviderError:
+            raise
+        except httpx.TimeoutException as exc:
+            raise LLMProviderError(config.provider, "stream request timed out") from exc
+        except httpx.HTTPError as exc:
+            raise LLMProviderError(config.provider, "stream network error") from exc
+
     def complete_sync(
         self,
         messages: list[dict[str, Any]],
@@ -208,6 +260,147 @@ class OpenAICompatibleLLMGateway:
             attempted_providers=attempted_providers,
         )
 
+    async def _probe_stream_with_provider(
+        self,
+        config: LLMProviderConfig,
+        messages: list[dict[str, Any]],
+        *,
+        max_output_tokens: int,
+    ) -> LLMStreamProbe:
+        payload = self._build_payload(
+            config,
+            messages,
+            response_json=False,
+            max_output_tokens=max_output_tokens,
+            stream=True,
+        )
+        endpoint = f"{config.base_url.rstrip('/')}/chat/completions"
+        headers = {
+            "Accept": "text/event-stream",
+            "Authorization": f"Bearer {config.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        started = time.perf_counter()
+        event_count = 0
+        content_chunks: list[str] = []
+        content_delta_count = 0
+        reasoning_delta_count = 0
+        first_event_ms: float | None = None
+        first_content_delta_ms: float | None = None
+        reported_model = config.model
+        finish_reason: str | None = None
+        done_received = False
+        usage: dict[str, Any] = {}
+        pending_data: list[str] = []
+
+        def elapsed_ms() -> float:
+            return round((time.perf_counter() - started) * 1000, 2)
+
+        def consume_event(raw_data: str) -> None:
+            nonlocal event_count
+            nonlocal content_delta_count
+            nonlocal reasoning_delta_count
+            nonlocal first_event_ms
+            nonlocal first_content_delta_ms
+            nonlocal reported_model
+            nonlocal finish_reason
+            nonlocal done_received
+            nonlocal usage
+
+            if raw_data.strip() == "[DONE]":
+                done_received = True
+                return
+            try:
+                body = json.loads(raw_data)
+            except (TypeError, ValueError) as exc:
+                raise LLMProviderError(config.provider, "invalid streaming JSON event") from exc
+            if not isinstance(body, dict):
+                raise LLMProviderError(config.provider, "invalid streaming event shape")
+
+            event_count += 1
+            if first_event_ms is None:
+                first_event_ms = elapsed_ms()
+            if body.get("model"):
+                reported_model = str(body["model"])
+            raw_usage = body.get("usage")
+            if isinstance(raw_usage, dict):
+                usage = raw_usage
+
+            choices = body.get("choices")
+            if not isinstance(choices, list) or not choices:
+                return
+            choice = choices[0]
+            if not isinstance(choice, dict):
+                return
+            if choice.get("finish_reason") is not None:
+                finish_reason = str(choice["finish_reason"])
+            delta = choice.get("delta")
+            if not isinstance(delta, dict):
+                return
+            reasoning = delta.get("reasoning_content")
+            if isinstance(reasoning, str) and reasoning:
+                reasoning_delta_count += 1
+            content = delta.get("content")
+            if isinstance(content, str) and content:
+                if first_content_delta_ms is None:
+                    first_content_delta_ms = elapsed_ms()
+                content_delta_count += 1
+                content_chunks.append(content)
+
+        async with httpx.AsyncClient(
+            timeout=self.settings.llm_timeout_seconds,
+            transport=self.transport,
+        ) as client:
+            async with client.stream("POST", endpoint, headers=headers, json=payload) as response:
+                if response.is_error:
+                    raise LLMProviderError(
+                        config.provider,
+                        f"HTTP {response.status_code}",
+                        status_code=response.status_code,
+                    )
+                content_type = response.headers.get("content-type", "").lower()
+                if "text/event-stream" not in content_type:
+                    raise LLMProviderError(config.provider, "invalid streaming content type")
+
+                async for line in response.aiter_lines():
+                    if line == "":
+                        if pending_data:
+                            consume_event("\n".join(pending_data))
+                            pending_data.clear()
+                        continue
+                    if line.startswith(":"):
+                        continue
+                    if line.startswith("data:"):
+                        pending_data.append(line[5:].lstrip())
+                if pending_data:
+                    consume_event("\n".join(pending_data))
+
+        content = "".join(content_chunks)
+        if not done_received and finish_reason is None:
+            raise LLMProviderError(config.provider, "stream ended before a terminal signal")
+        if not content.strip() or first_content_delta_ms is None:
+            raise LLMProviderError(config.provider, "stream contained no visible content delta")
+
+        return LLMStreamProbe(
+            provider=config.provider,
+            requested_model=config.model,
+            reported_model=reported_model,
+            content=content,
+            content_sha256=hashlib.sha256(content.encode("utf-8")).hexdigest(),
+            content_length=len(content),
+            event_count=event_count,
+            content_delta_count=content_delta_count,
+            reasoning_delta_count=reasoning_delta_count,
+            first_event_ms=first_event_ms or first_content_delta_ms,
+            first_content_delta_ms=first_content_delta_ms,
+            total_ms=elapsed_ms(),
+            finish_reason=finish_reason,
+            done_received=done_received,
+            termination="done_marker" if done_received else "finish_reason_eof",
+            usage=usage,
+        )
+
     def _complete_sync_with_provider(
         self,
         config: LLMProviderConfig,
@@ -248,6 +441,7 @@ class OpenAICompatibleLLMGateway:
         *,
         response_json: bool,
         max_output_tokens: int,
+        stream: bool = False,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "model": config.model,
@@ -256,6 +450,8 @@ class OpenAICompatibleLLMGateway:
         }
         if response_json:
             payload["response_format"] = {"type": "json_object"}
+        if stream:
+            payload["stream"] = True
         if config.reasoning_effort:
             payload["reasoning_effort"] = config.reasoning_effort
         if config.verbosity:

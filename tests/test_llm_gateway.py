@@ -7,6 +7,7 @@ import pytest
 
 from semikb.agent_runtime.llm_gateway import (
     LLMConfigurationError,
+    LLMProviderError,
     OpenAICompatibleLLMGateway,
     resolve_provider_config,
 )
@@ -150,3 +151,121 @@ async def test_primary_failure_falls_back_with_qwen_parameter_shape() -> None:
     assert result.provider == "qwen"
     assert result.fallback_used is True
     assert result.attempted_providers == ("closeai", "qwen")
+
+
+class ChunkedAsyncStream(httpx.AsyncByteStream):
+    def __init__(self, chunks: list[bytes]) -> None:
+        self.chunks = chunks
+
+    async def __aiter__(self):
+        for chunk in self.chunks:
+            yield chunk
+
+
+@pytest.mark.asyncio
+async def test_stream_probe_parses_network_splits_and_ignores_reasoning_content() -> None:
+    captured: dict[str, object] = {}
+    body = (
+        'data: {"model":"gpt-5.6-luna-stream","choices":[{"delta":{"reasoning_content":"hidden"}}]}\n\n'
+        'data: {"choices":[{"delta":{"content":"流"}}]}\n\n'
+        'data: {"choices":[{"delta":{"content":"式输出"},"finish_reason":"stop"}]}\n\n'
+        'data: [DONE]\n\n'
+    ).encode()
+    split_at = body.index("流".encode()) + 1
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream; charset=utf-8"},
+            stream=ChunkedAsyncStream([body[:split_at], body[split_at:]]),
+        )
+
+    gateway = OpenAICompatibleLLMGateway(
+        llm_settings(),
+        transport=httpx.MockTransport(handler),
+    )
+    result = await gateway.probe_stream(
+        "closeai",
+        [{"role": "user", "content": "stream"}],
+        max_output_tokens=32,
+    )
+
+    assert captured["stream"] is True
+    assert captured["max_completion_tokens"] == 32
+    assert result.content == "流式输出"
+    assert result.content_delta_count == 2
+    assert result.reasoning_delta_count == 1
+    assert result.reported_model == "gpt-5.6-luna-stream"
+    assert result.done_received is True
+    assert "hidden" not in repr(result)
+
+
+@pytest.mark.asyncio
+async def test_stream_probe_rejects_a_stream_without_done_marker() -> None:
+    async def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            content=b'data: {"choices":[{"delta":{"content":"partial"}}]}\n\n',
+        )
+
+    gateway = OpenAICompatibleLLMGateway(
+        llm_settings(),
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(LLMProviderError, match="ended before a terminal signal"):
+        await gateway.probe_stream(
+            "qwen",
+            [{"role": "user", "content": "stream"}],
+        )
+
+
+@pytest.mark.asyncio
+async def test_stream_probe_accepts_finish_reason_followed_by_clean_eof() -> None:
+    async def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            content=(
+                b'data: {"choices":[{"delta":{"content":"complete"},'
+                b'"finish_reason":"stop"}]}\n\n'
+            ),
+        )
+
+    gateway = OpenAICompatibleLLMGateway(
+        llm_settings(),
+        transport=httpx.MockTransport(handler),
+    )
+    result = await gateway.probe_stream(
+        "closeai",
+        [{"role": "user", "content": "stream"}],
+    )
+
+    assert result.done_received is False
+    assert result.finish_reason == "stop"
+    assert result.termination == "finish_reason_eof"
+
+
+@pytest.mark.asyncio
+async def test_stream_probe_redacts_network_failures() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError(
+            "upstream contained closeai-secret",
+            request=request,
+        )
+
+    gateway = OpenAICompatibleLLMGateway(
+        llm_settings(),
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(LLMProviderError, match="stream network error") as raised:
+        await gateway.probe_stream(
+            "closeai",
+            [{"role": "user", "content": "stream"}],
+        )
+
+    assert "closeai-secret" not in str(raised.value)
+    assert "closeai.invalid" not in str(raised.value)

@@ -7,7 +7,7 @@ from semikb.agent_runtime.graph import ConversationGraph
 from semikb.agent_runtime.service import ConversationService
 from semikb.agent_runtime.tools import ToolArguments
 from semikb.config import Settings
-from semikb.contracts.models import ActorScope, CreateMemoryRequest
+from semikb.contracts.models import ActorScope, CreateMemoryRequest, SendMessageResponse
 
 
 @pytest.mark.asyncio
@@ -17,6 +17,7 @@ async def test_interrupted_graph_resumes_after_service_recreation(seeded_service
 
     first = await service.send_message(thread.thread_id, "最近蚀刻良率下降，帮我调查根因")
     assert first["clarification_required"] is True
+    assert SendMessageResponse.model_validate(first).clarification_required is True
 
     restarted = ConversationService(
         store,
@@ -31,6 +32,7 @@ async def test_interrupted_graph_resumes_after_service_recreation(seeded_service
     )
 
     assert second["clarification_required"] is False
+    assert SendMessageResponse.model_validate(second).clarification_required is False
     assert second["trace_id"]
     assert second["evidence_ledger"]
     assert all(

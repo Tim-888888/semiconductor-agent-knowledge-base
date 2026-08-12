@@ -239,6 +239,8 @@ class RetrievalTrace(BaseModel):
 
 class ChatMessage(BaseModel):
     message_id: str = Field(default_factory=lambda: new_id("msg"))
+    request_id: str | None = None
+    run_id: str | None = None
     role: str
     content: str
     created_at: datetime = Field(default_factory=utc_now)
@@ -291,6 +293,26 @@ class AgentAnswer(BaseModel):
     unknowns: list[str] = Field(default_factory=list)
     next_actions: list[str] = Field(default_factory=list)
     confidence: str = Field(default="low", pattern="^(low|medium|high)$")
+
+
+class SendMessageResponse(BaseModel):
+    """Canonical completed result shared by synchronous and streaming messages."""
+
+    thread: ThreadRecord
+    response: str
+    clarification_required: bool
+    missing_fields: list[str] = Field(default_factory=list)
+    clarification_round: int | None = None
+    status: str | None = None
+    answer: AgentAnswer | None = None
+    citations: list[dict[str, Any]] = Field(default_factory=list)
+    trace_id: str | None = None
+    image_asset_ids: list[str] = Field(default_factory=list)
+    tool_facts: list[dict[str, Any]] = Field(default_factory=list)
+    external_evidence: list[dict[str, Any]] = Field(default_factory=list)
+    evidence_ledger: list[dict[str, Any]] = Field(default_factory=list)
+    model_metadata: dict[str, Any] = Field(default_factory=dict)
+    verification_warnings: list[str] = Field(default_factory=list)
 
 
 class MemoryRecord(BaseModel):

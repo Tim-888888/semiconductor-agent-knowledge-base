@@ -24,6 +24,34 @@ LangGraph `InMemorySaver`；真实模式使用官方 `MongoDBSaver` 写入 `chec
 持久化暂停；下一条同线程消息使用 `Command(resume=...)` 恢复。最多追问两轮，仍缺少关键字段时
 返回 `insufficient_information`，不调用检索或制造工具。
 
+### T9-4.1 流式消息契约
+
+`POST /threads/{thread_id}/messages/stream` 的线协议已在 T9-4.1 冻结，路由本身由 T9-4.2 实现。
+请求体为 `StreamMessageRequest`，包含 `content` 和客户端生成、重试时复用的 `request_id`；原非流式
+接口继续保留。
+
+SSE 每条事件采用以下格式，其中 `data` 是单行 UTF-8 JSON，包含与 SSE 字段一致的完整事件信封：
+
+```text
+id: sse_<id>
+event: stage
+data: {"event":"stage","event_id":"sse_<id>","request_id":"req_<id>","thread_id":"thread_<id>","sequence":2,"emitted_at":"<UTC>","data":{"stage":"analyzing_request","message":"正在分析问题"}}
+
+```
+
+首事件必须是 `accepted`，序号从 1 连续递增，末事件必须是 `completed` 或 `error`。合法事件为
+`accepted`、`stage`、`evidence`、`answer_delta`、`heartbeat`、`completed` 和 `error`。`completed`
+携带与非流式接口相同的 `SendMessageResponse`；事件模型和稳定枚举位于
+`semikb.contracts.streaming`。
+
+鉴权、Scope、请求格式和线程存在性在发送 SSE 响应头前验证，失败沿用普通 `401/403/404/422` JSON。
+响应头发出后的失败只能返回脱敏 `error` 事件。稳定错误码包括请求冲突/处理中、Provider 超时/限流/
+不可用、答案校验失败、取消和内部错误；不得返回异常堆栈、内部 Prompt、思维过程或密钥。
+
+取消与断连语义固定为：`AbortController` 或连接中断取消当前下游生成；已完整持久化的结果不回滚，
+未完成的助手 Delta 不写入 `agent_threads`。客户端重新读取线程和请求台账进行对账，不能把本地半截文本
+当作最终答案。
+
 ## 长期记忆
 
 | 方法 | 路径 | 作用 |

@@ -16,7 +16,19 @@ from semikb.contracts.models import (
     RetrievalTrace,
     SearchRequest,
     SendMessageRequest,
+    SendMessageResponse,
     ThreadRecord,
+)
+from semikb.contracts.streaming import (
+    AgentMessageRequestRecord,
+    AgentMessageRequestStatus,
+    AgentStreamErrorCode,
+    AgentStreamEvent,
+    AgentStreamEventType,
+    AgentStreamStage,
+    StreamMessageRequest,
+    agent_stream_event_adapter,
+    validate_stream_event_sequence,
 )
 
 __all__ = [
@@ -35,5 +47,15 @@ __all__ = [
     "RetrievalTrace",
     "SearchRequest",
     "SendMessageRequest",
+    "SendMessageResponse",
     "ThreadRecord",
+    "AgentMessageRequestRecord",
+    "AgentMessageRequestStatus",
+    "AgentStreamErrorCode",
+    "AgentStreamEvent",
+    "AgentStreamEventType",
+    "AgentStreamStage",
+    "StreamMessageRequest",
+    "agent_stream_event_adapter",
+    "validate_stream_event_sequence",
 ]
