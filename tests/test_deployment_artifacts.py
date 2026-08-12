@@ -76,7 +76,10 @@ def test_production_compose_is_single_node_hardened_and_exposes_only_web() -> No
     assert "internal: true" in compose
     assert "assets:" in compose
     assert "--requirepass" in compose
-    assert "authorizationEnabled: true" in (ROOT / "deploy/milvus/milvus.yaml").read_text(encoding="utf-8")
+    assert "authorizationEnabled: false/authorizationEnabled: true" in compose
+    assert "grep -q 'authorizationEnabled: true' /milvus/configs/milvus.yaml" in compose
+    assert "./deploy/milvus/milvus.yaml:/milvus/configs/milvus.yaml" not in compose
+    assert not (ROOT / "deploy/milvus/milvus.yaml").exists()
     assert "--concurrency=1" in compose
     assert compose.count("mem_limit:") == 10
     assert "MINIO_PUBLIC_BASE_URL: /objects" in compose

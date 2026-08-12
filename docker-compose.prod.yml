@@ -64,7 +64,13 @@ services:
   milvus:
     <<: *runtime-hardening
     image: milvusdb/milvus:v2.5.5
-    command: ["milvus", "run", "standalone"]
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        sed -i 's/authorizationEnabled: false/authorizationEnabled: true/' /milvus/configs/milvus.yaml
+        grep -q 'authorizationEnabled: true' /milvus/configs/milvus.yaml
+        exec milvus run standalone
     environment:
       ETCD_ENDPOINTS: etcd:2379
       MINIO_ADDRESS: milvus-minio:9000
@@ -72,7 +78,6 @@ services:
       MINIO_SECRET_ACCESS_KEY: ${MILVUS_MINIO_ROOT_PASSWORD:?MILVUS_MINIO_ROOT_PASSWORD is required}
     volumes:
       - ${SEMIKB_DATA_ROOT:?SEMIKB_DATA_ROOT is required}/milvus/data:/var/lib/milvus
-      - ./deploy/milvus/milvus.yaml:/milvus/configs/milvus.yaml:ro
     networks:
       - data
     depends_on:
