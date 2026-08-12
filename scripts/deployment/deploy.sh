@@ -33,7 +33,10 @@ if [[ "$seed_demo" == "true" ]]; then
   docker compose --env-file .env -f docker-compose.prod.yml run --rm --no-deps api \
     python -m semikb.deployment.seed_demo_corpus --apply
 fi
-docker compose --env-file .env -f docker-compose.prod.yml up -d api worker web
+docker compose --env-file .env -f docker-compose.prod.yml up -d api worker
+# Nginx resolves the API container when it starts. Recreate Web after an API image update
+# so an old upstream container IP cannot leave the public route returning 502.
+docker compose --env-file .env -f docker-compose.prod.yml up -d --force-recreate web
 docker compose --env-file .env -f docker-compose.prod.yml ps
 if [[ "$seed_demo" == "true" ]]; then
   echo "Services started with the governed CC0 synthetic corpus."

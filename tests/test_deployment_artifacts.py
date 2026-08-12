@@ -111,6 +111,9 @@ def test_deployment_scripts_keep_restore_and_stage_guards() -> None:
     assert 'docker wait "$milvus_init_id"' in deploy
     assert "--seed-demo" in deploy
     assert "seed_demo_corpus --apply" in deploy
+    assert "up -d api worker" in deploy
+    assert "up -d --force-recreate web" in deploy
+    assert "-f docker-compose.yml -f docker-compose.prod.yml" not in deploy
     assert "--confirm-empty-target" in restore
     assert "--env" in restore
     assert "Refusing restore because target is not empty" in restore
