@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -109,6 +110,19 @@ def test_alibaba_linux_installer_is_platform_gated_and_non_destructive() -> None
     assert "systemctl enable --now docker" in installer
     assert "remove" not in installer
     assert "rm -rf" not in installer
+
+
+def test_linux_deployment_scripts_are_executable_in_git() -> None:
+    scripts = sorted((ROOT / "scripts/deployment").glob("*.sh"))
+
+    for script in scripts:
+        relative = script.relative_to(ROOT).as_posix()
+        stage = subprocess.check_output(
+            ["git", "ls-files", "--stage", "--", relative],
+            cwd=ROOT,
+            text=True,
+        )
+        assert stage.startswith("100755 "), f"{relative} must be executable after clone"
 
 
 def test_deployment_seed_uses_the_governed_synthetic_corpus() -> None:
