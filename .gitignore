@@ -3,6 +3,7 @@
 !.env.example
 
 .idea/
+.tmp/
 __pycache__/
 *.py[cod]
 *.tsbuildinfo

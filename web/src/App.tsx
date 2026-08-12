@@ -192,7 +192,7 @@ function App() {
   async function submitQuestion(event: FormEvent) {
     event.preventDefault();
     if (!thread || !query.trim()) return;
-    await runStream(query.trim(), `web_${crypto.randomUUID()}`, true);
+    await runStream(query.trim(), newStreamRequestId(), true);
   }
 
   async function runStream(content: string, requestId: string, optimistic: boolean) {
@@ -482,6 +482,13 @@ function viewTitle(view: View) {
 
 function messageFrom(value: unknown, fallback: string): string {
   return value instanceof Error ? value.message : fallback;
+}
+
+function newStreamRequestId(): string {
+  const words = new Uint32Array(4);
+  window.crypto.getRandomValues(words);
+  const random = Array.from(words, (word) => word.toString(16).padStart(8, "0")).join("");
+  return `web_${Date.now().toString(36)}_${random}`;
 }
 
 export default App;
