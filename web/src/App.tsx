@@ -3,6 +3,7 @@ import {
   Activity,
   ClipboardCheck,
   Image as ImageIcon,
+  KeyRound,
   LoaderCircle,
   MessageSquareText,
   SearchCheck,
@@ -10,6 +11,7 @@ import {
   X
 } from "lucide-react";
 import {
+  ApiError,
   bootstrapToken,
   createThread,
   getEvaluation,
@@ -64,6 +66,8 @@ function App() {
   const [asset, setAsset] = useState<AssetAccess | null>(null);
   const [assetModalOpen, setAssetModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [accessRequired, setAccessRequired] = useState(false);
+  const [accessKey, setAccessKey] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -75,35 +79,66 @@ function App() {
   const hasPendingJobs = jobs.some((job) => !["published", "failed"].includes(job.status));
   const hasPendingEvaluations = evaluations.some((run) => ["queued", "running"].includes(run.status));
 
+  async function initializeWorkspace(demoAccessKey: string) {
+    await bootstrapToken(demoAccessKey);
+    const [existingThreads, nextJobs, nextTraces, nextEvaluations, nextDatasets] = await Promise.all([
+      listThreads(),
+      listJobs(),
+      listTraces(),
+      listEvaluations(),
+      listEvaluationDatasets()
+    ]);
+    const activeThread = existingThreads[0] ?? await createThread("ETCH-03 异常调查");
+    setThreads(existingThreads.length ? existingThreads : [activeThread]);
+    setThread(activeThread);
+    setJobs(nextJobs);
+    setSelectedJob(nextJobs[0]);
+    setTraces(nextTraces);
+    setSelectedTrace(nextTraces[0]);
+    setEvaluations(nextEvaluations);
+    setSelectedEvaluation(nextEvaluations[0]);
+    setDatasets(nextDatasets);
+  }
+
   useEffect(() => {
     async function initialize() {
+      const savedAccessKey = window.sessionStorage.getItem("semikb_demo_access_key") ?? "";
       try {
-        await bootstrapToken();
-        const [existingThreads, nextJobs, nextTraces, nextEvaluations, nextDatasets] = await Promise.all([
-          listThreads(),
-          listJobs(),
-          listTraces(),
-          listEvaluations(),
-          listEvaluationDatasets()
-        ]);
-        const activeThread = existingThreads[0] ?? await createThread("ETCH-03 异常调查");
-        setThreads(existingThreads.length ? existingThreads : [activeThread]);
-        setThread(activeThread);
-        setJobs(nextJobs);
-        setSelectedJob(nextJobs[0]);
-        setTraces(nextTraces);
-        setSelectedTrace(nextTraces[0]);
-        setEvaluations(nextEvaluations);
-        setSelectedEvaluation(nextEvaluations[0]);
-        setDatasets(nextDatasets);
+        await initializeWorkspace(savedAccessKey);
       } catch (caught) {
-        setError(messageFrom(caught, "无法连接后端服务。"));
+        if (caught instanceof ApiError && caught.status === 401) {
+          window.sessionStorage.removeItem("semikb_demo_access_key");
+          setAccessRequired(true);
+          setError(savedAccessKey ? "访问码无效，请重新输入。" : "请输入测试访问码。" );
+        } else {
+          setError(messageFrom(caught, "无法连接后端服务。"));
+        }
       } finally {
         setLoading(false);
       }
     }
     void initialize();
   }, []);
+
+  async function submitAccessKey(event: FormEvent) {
+    event.preventDefault();
+    if (!accessKey.trim()) return;
+    setLoading(true);
+    setError("");
+    try {
+      await initializeWorkspace(accessKey.trim());
+      window.sessionStorage.setItem("semikb_demo_access_key", accessKey.trim());
+      setAccessRequired(false);
+    } catch (caught) {
+      setError(
+        caught instanceof ApiError && caught.status === 401
+          ? "访问码无效，请重新输入。"
+          : messageFrom(caught, "无法连接后端服务。")
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (!hasPendingJobs && !hasPendingEvaluations) return;
@@ -266,6 +301,16 @@ function App() {
   }
 
   if (loading) return <div className="loading-screen"><LoaderCircle className="spin" size={28} />正在连接知识服务</div>;
+
+  if (accessRequired) return <main className="access-screen">
+    <form className="access-panel" onSubmit={submitAccessKey}>
+      <div className="access-heading"><span className="brand-mark">S</span><div><span className="section-label">SEMIKB</span><h1>测试环境访问</h1></div></div>
+      <label htmlFor="demo-access-key">访问码</label>
+      <div className="access-input-row"><KeyRound size={18} /><input id="demo-access-key" type="password" autoComplete="current-password" value={accessKey} onChange={(event) => setAccessKey(event.target.value)} autoFocus /></div>
+      {error && <div className="error-banner" role="alert">{error}</div>}
+      <button className="command-button" type="submit" disabled={!accessKey.trim()}>进入工作台</button>
+    </form>
+  </main>;
 
   return <div className="app-shell">
     <aside className="sidebar">

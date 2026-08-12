@@ -36,6 +36,17 @@ h4 { margin: 0; font-size: 13px; }
 .spin { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+.access-screen { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #eef0ed; }
+.access-panel { width: min(100%, 390px); padding: 24px; border: 1px solid var(--line); border-top: 3px solid var(--green); border-radius: 4px; background: #fff; box-shadow: 0 12px 30px rgb(32 41 37 / 10%); }
+.access-heading { display: flex; align-items: center; gap: 11px; margin-bottom: 22px; }
+.access-heading .section-label { margin-bottom: 3px; }
+.access-panel > label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.access-input-row { display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: center; gap: 7px; padding-left: 9px; border: 1px solid #bdc7c0; border-radius: 4px; color: var(--muted); background: #fff; }
+.access-input-row:focus-within { outline: 2px solid #4e8fc2; outline-offset: 2px; }
+.access-input-row input { width: 100%; border: 0; outline: 0; }
+.access-panel .error-banner { margin: 12px 0 0; }
+.access-panel .command-button { width: 100%; margin-top: 14px; }
+
 .app-shell { min-height: 100vh; display: grid; grid-template-columns: 224px minmax(0, 1fr); }
 .sidebar { position: sticky; top: 0; height: 100vh; z-index: 20; background: var(--charcoal); color: #eef2ed; display: flex; flex-direction: column; padding: 18px 12px; }
 .brand { display: flex; align-items: center; gap: 10px; height: 45px; padding: 0 9px 18px; font-weight: 800; letter-spacing: 0; }

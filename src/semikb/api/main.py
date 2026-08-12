@@ -2,11 +2,22 @@
 
 from __future__ import annotations
 
+import hmac
 import json
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Response, UploadFile, status
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Response,
+    UploadFile,
+    status,
+)
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
@@ -69,11 +80,33 @@ def health(container: Annotated[ApplicationContainer, Depends(get_app_container)
     }
 
 
+@app.get("/api/v1/live")
+def live() -> dict[str, str]:
+    """Container liveness probe that does not initialize external clients."""
+
+    return {"status": "ok"}
+
+
 @app.post("/api/v1/auth/demo-token")
 def issue_demo_token(
     scope: ActorScope,
     settings: Annotated[Settings, Depends(get_app_settings)],
+    x_demo_access_key: Annotated[str | None, Header(alias="X-Demo-Access-Key")] = None,
 ) -> dict[str, str]:
+    if settings.demo_access_key:
+        if not x_demo_access_key or not hmac.compare_digest(
+            x_demo_access_key,
+            settings.demo_access_key,
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid demo access key.",
+            )
+    elif settings.app_env.lower() == "production":
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Demo access key is not configured.",
+        )
     return {"access_token": create_demo_token(scope, settings), "token_type": "bearer"}
 
 
@@ -227,8 +260,11 @@ async def upload_ingestion_document(
     source_bytes = await file.read()
     if not source_bytes:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Uploaded file is empty.")
-    if len(source_bytes) > 200 * 1024 * 1024:
-        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="File exceeds the 200 MiB limit.")
+    if len(source_bytes) > container.settings.max_upload_mib * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File exceeds the {container.settings.max_upload_mib} MiB limit.",
+        )
     filename = file.filename or "upload.bin"
     ingestion_method = (
         container.ingestion.ingest_file

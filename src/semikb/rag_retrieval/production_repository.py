@@ -110,7 +110,10 @@ class ProductionRetrievalRepository:
     def __init__(self, settings: Settings, factory: StorageClientFactory | None = None) -> None:
         self._settings = settings
         self._factory = factory or StorageClientFactory(settings)
-        self._artifacts = MinioArtifactRepository(self._factory)
+        self._artifacts = MinioArtifactRepository(
+            self._factory,
+            public_base_url=settings.minio_public_base_url,
+        )
         search_collection = settings.milvus_search_collection.strip()
         allowed_collections = {
             "semikb_chunks_active",

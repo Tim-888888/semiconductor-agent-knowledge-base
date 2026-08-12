@@ -52,4 +52,8 @@ The live T7 evaluation acceptance is
 The T8 browser click and screenshot record is
 `docs/T8浏览器验收.md`.
 
+The hardened single-node deployment artifacts are documented in
+`docs/T9-2生产部署产物加固验收.md`. They are locally validated but not yet accepted on the
+target ECS; T9 remains incomplete until the live deployment and end-to-end recovery tests pass.
+
 See `docs/` for storage, API, security, testing, and deployment decisions.

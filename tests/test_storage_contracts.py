@@ -3,18 +3,19 @@ from __future__ import annotations
 from collections.abc import Iterator
 from contextlib import contextmanager
 from copy import deepcopy
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from semikb.config import Settings
-from semikb.contracts.models import Chunk
+from semikb.contracts.models import Chunk, ObjectRef
 from semikb.rag_retrieval.milvus_schema import chunk_to_milvus_row
 from semikb.storage.clients import StorageClientFactory, StorageConfigurationError
 from semikb.storage.external import service_configuration_health
 from semikb.storage.milvus_chunks import _alias_names
+from semikb.storage.minio_artifacts import MinioArtifactRepository
 from semikb.storage.mongo_index_migration import (
     MigrationSafetyError,
     build_migration_plan,
@@ -192,6 +193,35 @@ def test_public_bucket_policy_detection() -> None:
 
     assert _public_bucket_policy(private_policy) is False
     assert _public_bucket_policy(public_policy) is True
+
+
+def test_minio_presigned_url_can_be_rewritten_to_same_origin_proxy() -> None:
+    class FakeMinio:
+        def presigned_get_object(self, bucket, object_key, *, expires, version_id):
+            assert bucket == "semikb-derived"
+            assert object_key == "documents/CASE/R1/assets/IMG/original.png"
+            return (
+                "http://minio:9000/semikb-derived/documents/CASE/R1/assets/IMG/original.png"
+                "?X-Amz-Signature=abc123"
+            )
+
+    class FakeFactory:
+        def create_minio(self):
+            return FakeMinio()
+
+    repository = MinioArtifactRepository(FakeFactory(), public_base_url="/objects")
+    reference = ObjectRef(
+        bucket="semikb-derived",
+        object_key="documents/CASE/R1/assets/IMG/original.png",
+        content_type="image/png",
+        sha256="0" * 64,
+    )
+
+    url = repository.presign_get(reference, expires=timedelta(minutes=5))
+
+    assert url.startswith("/objects/semikb-derived/documents/CASE/R1/assets/IMG/original.png?")
+    assert "X-Amz-Signature=abc123" in url
+    assert "minio:9000" not in url
 
 
 def migration_snapshot(

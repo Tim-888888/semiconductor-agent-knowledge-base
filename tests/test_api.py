@@ -62,6 +62,66 @@ def test_api_can_create_continuous_thread_and_expose_owned_trace() -> None:
     assert trace_response.json()["actor_user_id"] == "test_engineer"
 
 
+def test_liveness_probe_does_not_initialize_application_container() -> None:
+    def fail_if_called():
+        raise AssertionError("liveness must not initialize external dependencies")
+
+    app.dependency_overrides[get_container] = fail_if_called
+    try:
+        response = TestClient(app).get("/api/v1/live")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_production_demo_token_requires_configured_access_key() -> None:
+    protected = Settings(
+        _env_file=None,
+        app_env="production",
+        demo_access_key="deployment-access-code",
+    )
+    from semikb.api.main import get_app_settings
+
+    app.dependency_overrides[get_app_settings] = lambda: protected
+    client = TestClient(app)
+    payload = {"user_id": "test_engineer", "roles": ["engineer"]}
+    try:
+        assert client.post("/api/v1/auth/demo-token", json=payload).status_code == 401
+        assert client.post(
+            "/api/v1/auth/demo-token",
+            json=payload,
+            headers={"X-Demo-Access-Key": "wrong"},
+        ).status_code == 401
+        accepted = client.post(
+            "/api/v1/auth/demo-token",
+            json=payload,
+            headers={"X-Demo-Access-Key": "deployment-access-code"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert accepted.status_code == 200
+    assert accepted.json()["token_type"] == "bearer"
+
+
+def test_production_demo_token_fails_closed_without_access_key_configuration() -> None:
+    unconfigured = Settings(_env_file=None, app_env="production", demo_access_key="")
+    from semikb.api.main import get_app_settings
+
+    app.dependency_overrides[get_app_settings] = lambda: unconfigured
+    try:
+        response = TestClient(app).post(
+            "/api/v1/auth/demo-token",
+            json={"user_id": "test_engineer", "roles": ["engineer"]},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 503
+
+
 def test_api_accepts_markdown_upload_as_an_ingestion_job() -> None:
     get_container.cache_clear()
     client = TestClient(app)

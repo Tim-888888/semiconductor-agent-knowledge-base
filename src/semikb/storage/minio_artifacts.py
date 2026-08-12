@@ -7,7 +7,7 @@ import io
 import re
 from datetime import timedelta
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit, urlunsplit
 
 from semikb.contracts.models import ObjectRef
 from semikb.storage.clients import StorageClientFactory
@@ -24,8 +24,13 @@ def _segment(value: str, field: str) -> str:
 class MinioArtifactRepository:
     """Stores immutable source and derived artifacts under deterministic keys."""
 
-    def __init__(self, factory: StorageClientFactory) -> None:
+    def __init__(
+        self,
+        factory: StorageClientFactory,
+        public_base_url: str = "",
+    ) -> None:
         self._factory = factory
+        self._public_base_url = public_base_url.rstrip("/")
 
     def store_source(
         self,
@@ -129,12 +134,23 @@ class MinioArtifactRepository:
 
     def presign_get(self, object_ref: ObjectRef, *, expires: timedelta) -> str:
         client = self._factory.create_minio()
-        return client.presigned_get_object(
+        signed_url = client.presigned_get_object(
             object_ref.bucket,
             object_ref.object_key,
             expires=expires,
             version_id=object_ref.version_id,
         )
+        if not self._public_base_url:
+            return signed_url
+        signed = urlsplit(signed_url)
+        public = urlsplit(self._public_base_url)
+        public_path = public.path.rstrip("/")
+        rewritten_path = f"{public_path}{signed.path}"
+        if public.scheme and public.netloc:
+            return urlunsplit(
+                (public.scheme, public.netloc, rewritten_path, signed.query, signed.fragment)
+            )
+        return urlunsplit(("", "", rewritten_path, signed.query, signed.fragment))
 
     def _put(
         self,

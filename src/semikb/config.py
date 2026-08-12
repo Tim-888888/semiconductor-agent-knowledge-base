@@ -15,8 +15,10 @@ class Settings(BaseSettings):
     demo_mode: bool = True
     api_prefix: str = "/api/v1"
     jwt_secret: str = "change-this-demo-secret-before-shared-use"
+    demo_access_key: str = ""
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 480
+    max_upload_mib: int = Field(default=100, ge=1, le=200)
 
     mongodb_uri: str = ""
     mongodb_database: str = "semikb"
@@ -26,6 +28,7 @@ class Settings(BaseSettings):
     minio_access_key: str = ""
     minio_secret_key: str = ""
     minio_secure: bool = False
+    minio_public_base_url: str = ""
     redis_url: str = ""
     milvus_index_version: str = "v4"
     milvus_search_collection: str = "semikb_chunks_active"

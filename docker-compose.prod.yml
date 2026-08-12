@@ -1,47 +1,301 @@
+name: semikb
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "3"
+
+x-runtime-hardening: &runtime-hardening
+  restart: unless-stopped
+  init: true
+  security_opt:
+    - no-new-privileges:true
+  logging: *default-logging
+
 services:
+  etcd:
+    <<: *runtime-hardening
+    image: quay.io/coreos/etcd:v3.5.18
+    command:
+      - etcd
+      - --advertise-client-urls=http://etcd:2379
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --data-dir=/etcd
+      - --auto-compaction-mode=revision
+      - --auto-compaction-retention=1000
+      - --quota-backend-bytes=4294967296
+      - --snapshot-count=50000
+    environment:
+      ETCDCTL_API: "3"
+    volumes:
+      - ${SEMIKB_DATA_ROOT:?SEMIKB_DATA_ROOT is required}/milvus/etcd:/etcd
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 256m
+    cpus: 0.25
+    pids_limit: 100
+
+  milvus-minio:
+    <<: *runtime-hardening
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    command: minio server /minio_data
+    environment:
+      MINIO_ACCESS_KEY: ${MILVUS_MINIO_ROOT_USER:?MILVUS_MINIO_ROOT_USER is required}
+      MINIO_SECRET_KEY: ${MILVUS_MINIO_ROOT_PASSWORD:?MILVUS_MINIO_ROOT_PASSWORD is required}
+    volumes:
+      - ${SEMIKB_DATA_ROOT:?SEMIKB_DATA_ROOT is required}/milvus/minio:/minio_data
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 384m
+    cpus: 0.25
+    pids_limit: 150
+
+  milvus:
+    <<: *runtime-hardening
+    image: milvusdb/milvus:v2.5.5
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: milvus-minio:9000
+      MINIO_ACCESS_KEY_ID: ${MILVUS_MINIO_ROOT_USER:?MILVUS_MINIO_ROOT_USER is required}
+      MINIO_SECRET_ACCESS_KEY: ${MILVUS_MINIO_ROOT_PASSWORD:?MILVUS_MINIO_ROOT_PASSWORD is required}
+    volumes:
+      - ${SEMIKB_DATA_ROOT:?SEMIKB_DATA_ROOT is required}/milvus/data:/var/lib/milvus
+      - ./deploy/milvus/milvus.yaml:/milvus/configs/milvus.yaml:ro
+    networks:
+      - data
+    depends_on:
+      etcd:
+        condition: service_healthy
+      milvus-minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    mem_limit: 2560m
+    cpus: 1.25
+    pids_limit: 300
+
+  mongodb:
+    <<: *runtime-hardening
+    image: mongo:8.2.6
+    command: ["mongod", "--bind_ip_all", "--auth", "--wiredTigerCacheSizeGB", "0.25"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?MONGO_ROOT_USERNAME is required}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?MONGO_ROOT_PASSWORD is required}
+      MONGO_INITDB_DATABASE: semikb
+      MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:?MONGO_APP_USERNAME is required}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?MONGO_APP_PASSWORD is required}
+    volumes:
+      - ${SEMIKB_DATA_ROOT:?SEMIKB_DATA_ROOT is required}/mongodb:/data/db
+      - ./deploy/mongodb/init-semikb.sh:/docker-entrypoint-initdb.d/10-init-semikb.sh:ro
+    networks:
+      - data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet --username "$${MONGO_INITDB_ROOT_USERNAME}"
+          --password "$${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin
+          --eval "quit(db.adminCommand('ping').ok ? 0 : 2)"
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
+    mem_limit: 768m
+    cpus: 0.50
+    pids_limit: 250
+
+  minio:
+    <<: *runtime-hardening
+    image: quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+    volumes:
+      - ${SEMIKB_DATA_ROOT:?SEMIKB_DATA_ROOT is required}/minio:/data
+    networks:
+      - data
+      - assets
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 384m
+    cpus: 0.25
+    pids_limit: 150
+
+  redis:
+    <<: *runtime-hardening
+    image: redis:7.4.10-alpine
+    command:
+      - sh
+      - -ec
+      - >-
+        exec redis-server --appendonly yes --appendfsync everysec
+        --protected-mode yes --requirepass "$${REDIS_PASSWORD}"
+        --maxmemory 96mb --maxmemory-policy noeviction
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    volumes:
+      - ${SEMIKB_DATA_ROOT:?SEMIKB_DATA_ROOT is required}/redis:/data
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    mem_limit: 128m
+    cpus: 0.20
+    pids_limit: 100
+
+  milvus-init:
+    build:
+      context: .
+    restart: "no"
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    command: python -m semikb.deployment.milvus_auth
+    environment:
+      MILVUS_URI: http://milvus:19530
+      MILVUS_ROOT_PASSWORD: ${MILVUS_ROOT_PASSWORD:?MILVUS_ROOT_PASSWORD is required}
+    networks:
+      - data
+    depends_on:
+      milvus:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    mem_limit: 128m
+    cpus: 0.20
+    pids_limit: 80
+    logging: *default-logging
+
   api:
+    <<: *runtime-hardening
     build:
       context: .
     env_file: .env
-    environment:
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-    restart: unless-stopped
+    environment: &application-environment
+      APP_ENV: production
+      DEMO_MODE: "false"
+      MONGODB_URI: mongodb://${MONGO_APP_USERNAME}:${MONGO_APP_PASSWORD}@mongodb:27017/semikb?authSource=semikb
+      MONGODB_DATABASE: semikb
+      MILVUS_URI: http://milvus:19530
+      MILVUS_TOKEN: root:${MILVUS_ROOT_PASSWORD}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_SECURE: "false"
+      MINIO_PUBLIC_BASE_URL: /objects
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+    networks:
+      - edge
+      - data
     depends_on:
+      mongodb:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
       redis:
         condition: service_healthy
+      milvus-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/live', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    cap_drop:
+      - ALL
+    mem_limit: 640m
+    cpus: 0.60
+    pids_limit: 200
 
   worker:
+    <<: *runtime-hardening
     build:
       context: .
     env_file: .env
-    environment:
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-    command: celery -A semikb.workers.celery_app:celery_app worker --loglevel=INFO --concurrency=2
-    restart: unless-stopped
+    environment: *application-environment
+    command: celery -A semikb.workers.celery_app:celery_app worker --loglevel=INFO --concurrency=1
+    networks:
+      - edge
+      - data
     depends_on:
+      mongodb:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
       redis:
         condition: service_healthy
+      milvus-init:
+        condition: service_completed_successfully
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    cap_drop:
+      - ALL
+    mem_limit: 896m
+    cpus: 0.80
+    pids_limit: 250
 
   web:
+    <<: *runtime-hardening
     build:
       context: ./web
     ports:
       - "80:80"
-    restart: unless-stopped
+    networks:
+      - edge
+      - assets
     depends_on:
-      - api
-
-  redis:
-    image: redis:7.4-alpine
-    command: redis-server --appendonly yes
-    restart: unless-stopped
-    volumes:
-      - redis_data:/data
+      api:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      interval: 10s
       timeout: 3s
       retries: 10
+    mem_limit: 64m
+    cpus: 0.20
+    pids_limit: 100
 
-volumes:
-  redis_data:
+networks:
+  edge:
+    driver: bridge
+  data:
+    driver: bridge
+    internal: true
+  assets:
+    driver: bridge
+    internal: true

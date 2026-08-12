@@ -12,6 +12,13 @@ import type {
 const apiBase = "/api/v1";
 let token = "";
 
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
   if (!(options.body instanceof FormData)) headers.set("Content-Type", "application/json");
@@ -26,15 +33,18 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     } catch (error) {
       if (!(error instanceof SyntaxError)) throw error;
     }
-    throw new Error(detail || `HTTP ${response.status}`);
+    throw new ApiError(detail || `HTTP ${response.status}`, response.status);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
-export async function bootstrapToken(): Promise<void> {
+export async function bootstrapToken(accessKey = ""): Promise<void> {
+  const headers = new Headers();
+  if (accessKey) headers.set("X-Demo-Access-Key", accessKey);
   const response = await request<{ access_token: string }>("/auth/demo-token", {
     method: "POST",
+    headers,
     body: JSON.stringify({
       user_id: "demo_engineer",
       roles: ["engineer", "knowledge_admin"],
@@ -98,7 +108,9 @@ export async function resolveAsset(imageId: string): Promise<AssetAccess> {
   const access = await getAsset(imageId);
   if (!access.url.startsWith("/")) return access;
   const headers = new Headers();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  if (token && !access.url.startsWith("/objects/")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
   const response = await fetch(access.url, { headers });
   if (!response.ok) throw new Error("图片预览访问失败。");
   const blob = await response.blob();
