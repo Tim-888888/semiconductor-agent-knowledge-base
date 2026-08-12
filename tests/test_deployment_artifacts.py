@@ -90,6 +90,8 @@ def test_production_python_image_uses_hashed_dependency_lock() -> None:
     assert "pip install --require-hashes -r requirements.lock" in dockerfile
     assert "pip install ." not in dockerfile
     assert "PYTHONPATH=/app/src" in dockerfile
+    assert "PIP_DEFAULT_TIMEOUT=180" in dockerfile
+    assert "PIP_RETRIES=10" in dockerfile
     assert "--hash=sha256:" in lock
     assert "langgraph==" in lock
     assert "pymilvus==" in lock
