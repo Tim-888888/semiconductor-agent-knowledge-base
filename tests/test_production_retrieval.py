@@ -4,6 +4,7 @@ import json
 from datetime import UTC, datetime
 
 import httpx
+import pytest
 
 from semikb.config import Settings
 from semikb.contracts.models import (
@@ -43,6 +44,24 @@ def production_settings(**overrides: object) -> Settings:
     }
     values.update(overrides)
     return Settings(_env_file=None, **values)
+
+
+def test_physical_collection_override_must_match_configured_index() -> None:
+    with pytest.raises(ValueError, match="MILVUS_SEARCH_COLLECTION"):
+        ProductionRetrievalRepository(
+            production_settings(
+                milvus_index_version="v4",
+                milvus_search_collection="semikb_chunks_v3",
+            )
+        )
+
+    repository = ProductionRetrievalRepository(
+        production_settings(
+            milvus_index_version="v4",
+            milvus_search_collection="semikb_chunks_v4",
+        )
+    )
+    assert repository._search_collection == "semikb_chunks_v4"
 
 
 def chunk(

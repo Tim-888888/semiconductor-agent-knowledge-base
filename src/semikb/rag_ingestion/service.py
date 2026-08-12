@@ -275,7 +275,10 @@ class IngestionService:
             self.store.update_job(
                 job.job_id,
                 IngestionStatus.EMBEDDING,
-                "Generating online Dense and model-free Sparse representations.",
+                (
+                    "Generating Dense and Sparse representations with "
+                    f"{self.encoder.model_name} / {self.encoder.sparse_encoder_version}."
+                ),
                 75,
             )
             embeddings = self._encode_chunks(chunks)

@@ -123,16 +123,6 @@ function App() {
     setNotice("");
   }, [view]);
 
-  async function refreshThreads(activeId?: string) {
-    const nextThreads = await listThreads();
-    setThreads(nextThreads);
-    const targetId = activeId ?? thread?.thread_id;
-    if (targetId) {
-      const active = await getThread(targetId);
-      setThread(active);
-    }
-  }
-
   async function refreshJobs(preferredId?: string) {
     const nextJobs = await listJobs();
     setJobs(nextJobs);

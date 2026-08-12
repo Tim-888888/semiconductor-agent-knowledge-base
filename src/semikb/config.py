@@ -27,7 +27,8 @@ class Settings(BaseSettings):
     minio_secret_key: str = ""
     minio_secure: bool = False
     redis_url: str = ""
-    milvus_index_version: str = "v3"
+    milvus_index_version: str = "v4"
+    milvus_search_collection: str = "semikb_chunks_active"
     milvus_require_active_alias: bool = True
 
     mineru_api_base_url: str = ""
@@ -68,8 +69,9 @@ class Settings(BaseSettings):
     )
     embedding_api_key: str = ""
     embedding_model: str = "qwen3.7-text-embedding"
+    embedding_output_type: str = "dense&sparse"
     embedding_timeout_seconds: int = Field(default=60, ge=5, le=600)
-    sparse_encoder_version: str = "lexical-hash-v1"
+    sparse_encoder_version: str = "qwen3.7-text-embedding-sparse-v1"
     aliyun_web_mcp_url: str = "https://dashscope.aliyuncs.com/api/v1/mcps/WebSearch/mcp"
     aliyun_web_mcp_api_key: str = ""
     aliyun_web_mcp_tool_name: str = "web_search"

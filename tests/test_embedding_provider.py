@@ -26,7 +26,7 @@ def settings(**updates: object) -> Settings:
     return Settings(**values)
 
 
-def test_qianwen_encoder_returns_normalized_dense_and_model_free_sparse() -> None:
+def test_qianwen_encoder_returns_normalized_dense_and_provider_sparse() -> None:
     captured: dict[str, object] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -38,8 +38,20 @@ def test_qianwen_encoder_returns_normalized_dense_and_model_free_sparse() -> Non
             json={
                 "output": {
                     "embeddings": [
-                        {"text_index": 1, "embedding": [0.0, 3.0, 0.0, 4.0]},
-                        {"text_index": 0, "embedding": [1.0, 0.0, 0.0, 0.0]},
+                        {
+                            "text_index": 1,
+                            "embedding": [0.0, 3.0, 0.0, 4.0],
+                            "sparse_embedding": [
+                                {"index": 91, "token": "验证", "value": 2.5}
+                            ],
+                        },
+                        {
+                            "text_index": 0,
+                            "embedding": [1.0, 0.0, 0.0, 0.0],
+                            "sparse_embedding": [
+                                {"index": 17, "token": "etch", "value": 3.25}
+                            ],
+                        },
                     ]
                 }
             },
@@ -54,13 +66,11 @@ def test_qianwen_encoder_returns_normalized_dense_and_model_free_sparse() -> Non
     assert captured["url"] == "https://example.test/embedding/text-embedding"
     assert captured["authorization"] == "Bearer test-key"
     assert '"dimension":4' in str(captured["payload"]).replace(" ", "")
+    assert '"output_type":"dense&sparse"' in str(captured["payload"]).replace(" ", "")
     assert embeddings[0].dense == [1.0, 0.0, 0.0, 0.0]
     assert embeddings[1].dense == [0.0, 0.6, 0.0, 0.8]
-    assert all(embedding.sparse for embedding in embeddings)
-    assert all(
-        math.isclose(sum(value * value for value in embedding.sparse.values()), 1.0)
-        for embedding in embeddings
-    )
+    assert embeddings[0].sparse == {17: 3.25}
+    assert embeddings[1].sparse == {91: 2.5}
 
 
 def test_qianwen_encoder_can_reuse_reranker_key_without_exposing_it() -> None:
@@ -68,7 +78,17 @@ def test_qianwen_encoder_can_reuse_reranker_key_without_exposing_it() -> None:
         assert request.headers["Authorization"] == "Bearer shared-key"
         return httpx.Response(
             200,
-            json={"output": {"embeddings": [{"text_index": 0, "embedding": [1, 0]}]}},
+            json={
+                "output": {
+                    "embeddings": [
+                        {
+                            "text_index": 0,
+                            "embedding": [1, 0],
+                            "sparse_embedding": [{"index": 1, "value": 1.0}],
+                        }
+                    ]
+                }
+            },
         )
 
     encoder = QianwenHybridEncoder(
@@ -85,7 +105,17 @@ def test_qianwen_encoder_rejects_wrong_dimension_and_safe_http_errors() -> None:
         transport=httpx.MockTransport(
             lambda request: httpx.Response(
                 200,
-                json={"output": {"embeddings": [{"text_index": 0, "embedding": [1, 2]}]}},
+                json={
+                    "output": {
+                        "embeddings": [
+                            {
+                                "text_index": 0,
+                                "embedding": [1, 2],
+                                "sparse_embedding": [{"index": 1, "value": 1.0}],
+                            }
+                        ]
+                    }
+                },
             )
         ),
     )
@@ -99,6 +129,69 @@ def test_qianwen_encoder_rejects_wrong_dimension_and_safe_http_errors() -> None:
     with pytest.raises(EmbeddingProviderError, match="HTTP 429") as exc:
         provider_error.encode(["text"])
     assert "secret" not in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    "sparse_embedding",
+    [
+        [],
+        [{"index": 1, "value": "NaN"}],
+        [{"index": 1, "value": 1.0}, {"index": 1, "value": 2.0}],
+    ],
+)
+def test_qianwen_encoder_rejects_invalid_provider_sparse(
+    sparse_embedding: list[dict[str, object]],
+) -> None:
+    encoder = QianwenHybridEncoder(
+        settings(embedding_dim=2),
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                json={
+                    "output": {
+                        "embeddings": [
+                            {
+                                "text_index": 0,
+                                "embedding": [1, 0],
+                                "sparse_embedding": sparse_embedding,
+                            }
+                        ]
+                    }
+                },
+            )
+        ),
+    )
+
+    with pytest.raises(EmbeddingProviderError, match="invalid Sparse vector"):
+        encoder.encode(["text"])
+
+
+def test_dense_only_mode_keeps_lexical_sparse_for_v3_rollback() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert "output_type" not in request.read().decode()
+        return httpx.Response(
+            200,
+            json={"output": {"embeddings": [{"text_index": 0, "embedding": [1, 0]}]}},
+        )
+
+    encoder = QianwenHybridEncoder(
+        settings(
+            embedding_dim=2,
+            embedding_output_type="dense",
+            sparse_encoder_version="lexical-hash-v1",
+        ),
+        transport=httpx.MockTransport(handler),
+    )
+    embedding = encoder.encode(["ETCH-03 pressure alarm"])[0]
+
+    assert embedding.dense == [1.0, 0.0]
+    assert embedding.sparse
+    assert math.isclose(sum(value * value for value in embedding.sparse.values()), 1.0)
+
+
+def test_qianwen_encoder_rejects_unsupported_output_type() -> None:
+    with pytest.raises(EmbeddingProviderError, match="EMBEDDING_OUTPUT_TYPE"):
+        QianwenHybridEncoder(settings(embedding_output_type="sparse"))
 
 
 def test_lexical_sparse_encoder_is_stable_and_preserves_semiconductor_terms() -> None:

@@ -146,6 +146,13 @@ class ProductionIngestionStore:
                 document,
                 len(chunks),
                 embedding_dim=self._settings.embedding_dim,
+                embedding_output_type=self._settings.embedding_output_type,
+                sparse_encoder_version=self._settings.sparse_encoder_version,
+                normalization=(
+                    "dense_l2_sparse_provider_raw"
+                    if self._settings.embedding_output_type == "dense&sparse"
+                    else "dense_l2_sparse_lexical_l2"
+                ),
             )
             superseded_chunk_ids = self.mongo.supersede_previous(document)
             previous_superseded = bool(document.supersedes_revision)

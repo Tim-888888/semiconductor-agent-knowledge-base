@@ -19,13 +19,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${apiBase}${path}`, { ...options, headers });
   if (!response.ok) {
     const payload = await response.text();
+    let detail = payload;
     try {
       const parsed = JSON.parse(payload) as { detail?: string };
-      throw new Error(parsed.detail ?? payload);
+      detail = parsed.detail ?? payload;
     } catch (error) {
-      if (error instanceof SyntaxError) throw new Error(payload || `HTTP ${response.status}`);
-      throw error;
+      if (!(error instanceof SyntaxError)) throw error;
     }
+    throw new Error(detail || `HTTP ${response.status}`);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;

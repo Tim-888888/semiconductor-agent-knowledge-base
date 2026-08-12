@@ -19,6 +19,7 @@ from semikb.contracts.models import (
     RetrievalConstraints,
     RetrievalTrace,
 )
+from semikb.rag_retrieval.milvus_schema import collection_name
 from semikb.storage.clients import StorageClientFactory
 from semikb.storage.minio_artifacts import MinioArtifactRepository
 
@@ -110,6 +111,16 @@ class ProductionRetrievalRepository:
         self._settings = settings
         self._factory = factory or StorageClientFactory(settings)
         self._artifacts = MinioArtifactRepository(self._factory)
+        search_collection = settings.milvus_search_collection.strip()
+        allowed_collections = {
+            "semikb_chunks_active",
+            collection_name(settings.milvus_index_version),
+        }
+        if search_collection not in allowed_collections:
+            raise ValueError(
+                "MILVUS_SEARCH_COLLECTION must be the active alias or the configured physical index."
+            )
+        self._search_collection = search_collection
 
     def vector_search(
         self,
@@ -126,7 +137,7 @@ class ProductionRetrievalRepository:
         )
         with self._factory.milvus() as client:
             results = client.search(
-                "semikb_chunks_active",
+                self._search_collection,
                 data=[vector],
                 anns_field=vector_field,
                 filter=filter_expression,

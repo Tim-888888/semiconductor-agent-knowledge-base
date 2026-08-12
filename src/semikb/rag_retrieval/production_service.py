@@ -109,6 +109,7 @@ class ProductionRetrievalService:
         component_versions = {
             "embedding": getattr(self.encoder, "model_name", self.settings.embedding_model),
             "embedding_dim": str(self.settings.embedding_dim),
+            "embedding_output_type": self.settings.embedding_output_type,
             "sparse_encoder": getattr(
                 self.encoder,
                 "sparse_encoder_version",

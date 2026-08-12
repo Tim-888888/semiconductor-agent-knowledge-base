@@ -339,6 +339,9 @@ class MongoIngestionRepository:
         chunks_count: int,
         *,
         embedding_dim: int,
+        embedding_output_type: str,
+        sparse_encoder_version: str,
+        normalization: str,
     ) -> None:
         with self._factory.mongodb() as client:
             client[self._database_name].index_releases.update_one(
@@ -350,7 +353,9 @@ class MongoIngestionRepository:
                         "collection": f"semikb_chunks_{document.index_version.replace('-', '_')}",
                         "embedding_version": document.embedding_version,
                         "embedding_dim": embedding_dim,
-                        "normalization": "l2",
+                        "embedding_output_type": embedding_output_type,
+                        "sparse_encoder_version": sparse_encoder_version,
+                        "normalization": normalization,
                         "parser_version": document.parser_version,
                         "chunker_version": document.chunker_version,
                         "last_document_id": document.document_id,

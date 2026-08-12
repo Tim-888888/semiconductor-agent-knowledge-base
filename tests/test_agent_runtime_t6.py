@@ -159,3 +159,23 @@ def test_verifier_rejects_external_only_fact_when_internal_evidence_exists() -> 
     assert "external_only_fact_removed_when_internal_evidence_exists" in result[
         "verification_warnings"
     ]
+
+
+def test_answer_parser_accepts_structured_next_actions() -> None:
+    answer = ConversationGraph._parse_answer(
+        {
+            "facts": [],
+            "hypotheses": [],
+            "unknowns": [{"text": "仍需核对 pressure 趋势"}],
+            "next_actions": [
+                {
+                    "text": "执行 leak check",
+                    "citation_ids": ["chunk:C1"],
+                }
+            ],
+            "confidence": "low",
+        }
+    )
+
+    assert answer.unknowns == ["仍需核对 pressure 趋势"]
+    assert answer.next_actions == ["执行 leak check"]

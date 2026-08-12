@@ -1,5 +1,9 @@
 # Qwen 在线 Embedding 迁移验收
 
+> 历史快照：本文记录首次从 BGE-M3 迁移到 Qwen Dense + 本地词法 Sparse/v3 的过渡方案。
+> 后续确认 Provider 可通过 `output_type=dense&sparse` 原生返回 Sparse，当前基线已升级为 v4；
+> 最新结论见 `Qwen原生Sparse迁移验收.md`。
+
 ## 变更结论
 
 目标阿里云服务器没有 GPU，因此当前生产检索不再使用本地 BGE-M3。Dense 改为在线
@@ -19,7 +23,7 @@
 | Dense 维度 | 每条 1024 维 |
 | 数值质量 | 全部有限值，客户端 L2 归一化 |
 | 语义烟雾 | 两条半导体相关文本余弦相似度约 0.414786 |
-| Sparse | Provider 不返回；由 `lexical-hash-v1` 本地生成 |
+| Sparse | 当时请求未指定 `output_type=dense&sparse`，响应未带 Sparse；过渡期由 `lexical-hash-v1` 本地生成 |
 
 词法 Sparse 使用稳定 SHA-256 哈希索引、log-TF 权重和 L2 归一化，覆盖英文/数字术语及中文
 一元、二元片段。它不是机器学习模型，不依赖 Torch、GPU 或模型文件。

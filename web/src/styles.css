@@ -178,6 +178,8 @@ td small { margin-top: 4px; color: #87918c; font-size: 9px; overflow-wrap: anywh
 .protected { display: inline-flex; align-items: center; gap: 3px; color: var(--amber); }
 .trace-bottom-grid { margin-top: 14px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .detail-band { padding: 13px; border: 1px solid var(--line); background: #fff; }
+.detail-band dl > div { grid-template-columns: minmax(115px, 0.55fr) minmax(0, 1fr); }
+.detail-band dt { min-width: 0; overflow-wrap: anywhere; }
 .detail-band h3, .event-timeline h4, .baseline-section h3, .section-toolbar h3 { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; color: #344a3f; }
 .warning-band { margin-top: 12px; display: flex; gap: 9px; align-items: flex-start; padding: 10px; border-left: 3px solid var(--amber); background: var(--amber-soft); color: #71501e; font-size: 11px; }
 .warning-band svg { flex: 0 0 17px; }

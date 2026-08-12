@@ -8,11 +8,25 @@ from fastapi.testclient import TestClient
 
 from semikb.api.main import _enqueue_ingestion, app
 from semikb.bootstrap import get_container
-from semikb.config import Settings
+from semikb.config import Settings, get_settings
 from semikb.contracts.models import IngestionStatus
 from semikb.rag_ingestion.service import IngestionService
 from semikb.rag_retrieval.encoders import DeterministicHybridEncoder
 from semikb.storage.memory import DemoStore
+
+
+@pytest.fixture(autouse=True)
+def isolate_demo_api_from_local_environment(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """API unit tests must not inherit production mode from the developer's .env."""
+
+    monkeypatch.setenv("DEMO_MODE", "true")
+    get_settings.cache_clear()
+    get_container.cache_clear()
+    yield
+    get_container.cache_clear()
+    get_settings.cache_clear()
 
 
 def test_api_can_create_continuous_thread_and_expose_owned_trace() -> None:

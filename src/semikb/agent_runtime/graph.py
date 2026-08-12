@@ -522,7 +522,17 @@ class ConversationGraph:
         def strings(value: Any) -> list[str]:
             if isinstance(value, str):
                 return [value]
-            return [str(item) for item in value] if isinstance(value, list) else []
+            if not isinstance(value, list):
+                return []
+            normalized: list[str] = []
+            for item in value:
+                if isinstance(item, str):
+                    normalized.append(item)
+                elif isinstance(item, dict):
+                    text = item.get("text") or item.get("content") or item.get("claim")
+                    if text:
+                        normalized.append(str(text))
+            return normalized
 
         confidence = str(payload.get("confidence", "low")).lower()
         if confidence not in {"low", "medium", "high"}:

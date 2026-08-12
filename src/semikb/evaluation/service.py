@@ -274,6 +274,7 @@ class EvaluationService:
                 else "deterministic-demo"
             ),
             "embedding_dim": str(self.settings.embedding_dim),
+            "embedding_output_type": self.settings.embedding_output_type,
             "sparse_encoder": (
                 self.settings.sparse_encoder_version
                 if not self.settings.demo_mode
