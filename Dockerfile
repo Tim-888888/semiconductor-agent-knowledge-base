@@ -2,12 +2,13 @@ FROM python:3.12.11-slim-bookworm AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONPATH=/app/src
 
 WORKDIR /app
-COPY pyproject.toml README.md ./
+COPY requirements.lock ./
+RUN pip install --require-hashes -r requirements.lock
 COPY src ./src
-RUN pip install --upgrade pip && pip install .
 COPY data ./data
 
 RUN addgroup --system --gid 10001 semikb \

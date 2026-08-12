@@ -82,6 +82,19 @@ def test_production_compose_is_single_node_hardened_and_exposes_only_web() -> No
     assert "MINIO_PUBLIC_BASE_URL: /objects" in compose
 
 
+def test_production_python_image_uses_hashed_dependency_lock() -> None:
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    lock = (ROOT / "requirements.lock").read_text(encoding="utf-8")
+
+    assert "COPY requirements.lock ./" in dockerfile
+    assert "pip install --require-hashes -r requirements.lock" in dockerfile
+    assert "pip install ." not in dockerfile
+    assert "PYTHONPATH=/app/src" in dockerfile
+    assert "--hash=sha256:" in lock
+    assert "langgraph==" in lock
+    assert "pymilvus==" in lock
+
+
 def test_deployment_scripts_keep_restore_and_stage_guards() -> None:
     deploy = (ROOT / "scripts/deployment/deploy.sh").read_text(encoding="utf-8")
     restore = (ROOT / "scripts/deployment/restore_cold.sh").read_text(encoding="utf-8")
