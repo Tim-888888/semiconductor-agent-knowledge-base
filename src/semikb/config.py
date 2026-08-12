@@ -81,6 +81,7 @@ class Settings(BaseSettings):
     web_allowed_domains: str = ""
     agent_max_clarification_rounds: int = Field(default=2, ge=1, le=3)
     agent_answer_max_output_tokens: int = Field(default=1400, ge=256, le=4096)
+    agent_stream_heartbeat_seconds: int = Field(default=10, ge=1, le=60)
 
     embedding_dim: int = Field(default=1024, ge=1)
     embedding_batch_size: int = Field(default=10, ge=1, le=256)

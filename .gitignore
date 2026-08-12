@@ -14,6 +14,7 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+uv.lock
 
 node_modules/
 web/dist/

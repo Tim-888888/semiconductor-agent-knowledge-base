@@ -19,6 +19,8 @@ export type Citation = {
 
 export type Message = {
   message_id: string;
+  request_id?: string | null;
+  run_id?: string | null;
   role: "user" | "assistant";
   content: string;
   citations: Citation[];
@@ -89,6 +91,58 @@ export type AgentResponse = {
   evidence_ledger?: EvidenceLedgerEntry[];
   model_metadata?: Record<string, unknown>;
   verification_warnings?: string[];
+};
+
+export type AgentStreamStage =
+  | "analyzing_request"
+  | "awaiting_clarification"
+  | "retrieving_evidence"
+  | "searching_external"
+  | "reranking_evidence"
+  | "generating_answer"
+  | "verifying_answer"
+  | "persisting_result";
+
+export type AgentStreamEvent = {
+  event_id: string;
+  request_id: string;
+  thread_id: string;
+  sequence: number;
+  emitted_at: string;
+  event: "accepted" | "stage" | "evidence" | "answer_delta" | "heartbeat" | "completed" | "error";
+  data: Record<string, unknown> & {
+    message_id?: string;
+    run_id?: string;
+    attempt?: number;
+    replayed?: boolean;
+    stage?: AgentStreamStage;
+    message?: string;
+    trace_id?: string | null;
+    evidence_ids?: string[];
+    image_asset_ids?: string[];
+    internal_count?: number;
+    external_count?: number;
+    delta?: string;
+    provider?: string | null;
+    model?: string | null;
+    elapsed_ms?: number;
+    result?: AgentResponse;
+    code?: string;
+    retryable?: boolean;
+  };
+};
+
+export type StreamUiState = {
+  requestId: string;
+  content: string;
+  status: "running" | "stopped" | "error";
+  stage?: AgentStreamStage;
+  stageMessage: string;
+  partialAnswer: string;
+  internalEvidenceCount: number;
+  externalEvidenceCount: number;
+  elapsedMs: number;
+  retryable: boolean;
 };
 
 export type IngestionEvent = {

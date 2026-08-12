@@ -187,6 +187,13 @@ AgentStreamEvent = Annotated[
 agent_stream_event_adapter = TypeAdapter(AgentStreamEvent)
 
 
+def encode_sse_event(event: AgentStreamEvent) -> bytes:
+    """Serialize one complete event so proxies and clients can flush it immediately."""
+
+    payload = event.model_dump_json()
+    return f"id: {event.event_id}\nevent: {event.event}\ndata: {payload}\n\n".encode()
+
+
 def validate_stream_event_sequence(events: list[AgentStreamEvent]) -> None:
     """Reject a stream that cannot be replayed deterministically by a client."""
 

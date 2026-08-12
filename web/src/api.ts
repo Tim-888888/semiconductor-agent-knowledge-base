@@ -1,5 +1,6 @@
 import type {
   AgentResponse,
+  AgentStreamEvent,
   AssetAccess,
   EvaluationDataset,
   EvaluationRun,
@@ -16,6 +17,17 @@ export class ApiError extends Error {
   constructor(message: string, readonly status: number) {
     super(message);
     this.name = "ApiError";
+  }
+}
+
+export class AgentStreamError extends Error {
+  constructor(
+    message: string,
+    readonly code: string,
+    readonly retryable: boolean
+  ) {
+    super(message);
+    this.name = "AgentStreamError";
   }
 }
 
@@ -66,6 +78,89 @@ export const sendMessage = (threadId: string, content: string) =>
     method: "POST",
     body: JSON.stringify({ content })
   });
+
+export async function sendMessageStream(
+  threadId: string,
+  content: string,
+  requestId: string,
+  onEvent: (event: AgentStreamEvent) => void,
+  signal?: AbortSignal
+): Promise<AgentResponse> {
+  const headers = new Headers({
+    Accept: "text/event-stream",
+    "Content-Type": "application/json"
+  });
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const response = await fetch(`${apiBase}/threads/${threadId}/messages/stream`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ content, request_id: requestId }),
+    signal
+  });
+  if (!response.ok) {
+    const payload = await response.text();
+    let detail = payload;
+    try {
+      const parsed = JSON.parse(payload) as { detail?: string };
+      detail = parsed.detail ?? payload;
+    } catch (error) {
+      if (!(error instanceof SyntaxError)) throw error;
+    }
+    throw new ApiError(detail || `HTTP ${response.status}`, response.status);
+  }
+  if (!response.body) throw new AgentStreamError("浏览器未收到响应流。", "empty_stream", true);
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let completed: AgentResponse | undefined;
+  let terminalSeen = false;
+
+  function consumeBlock(block: string) {
+    const data = block
+      .split("\n")
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.slice(5).trimStart())
+      .join("\n");
+    if (!data) return;
+    const event = JSON.parse(data) as AgentStreamEvent;
+    onEvent(event);
+    if (event.event === "completed") {
+      completed = event.data.result;
+      terminalSeen = true;
+    }
+    if (event.event === "error") {
+      terminalSeen = true;
+      throw new AgentStreamError(
+        event.data.message ?? "流式请求失败。",
+        event.data.code ?? "stream_error",
+        Boolean(event.data.retryable)
+      );
+    }
+  }
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      buffer += decoder.decode(value, { stream: !done }).replace(/\r\n/g, "\n");
+      let boundary = buffer.indexOf("\n\n");
+      while (boundary >= 0) {
+        consumeBlock(buffer.slice(0, boundary));
+        buffer = buffer.slice(boundary + 2);
+        boundary = buffer.indexOf("\n\n");
+      }
+      if (done) break;
+    }
+    if (buffer.trim()) consumeBlock(buffer);
+  } finally {
+    reader.releaseLock();
+  }
+
+  if (!terminalSeen || !completed) {
+    throw new AgentStreamError("连接提前结束，最终结果未确认保存。", "incomplete_stream", true);
+  }
+  return completed;
+}
 
 export const listJobs = () => request<IngestionJob[]>("/ingestion-jobs");
 export const getJob = (jobId: string) => request<IngestionJob>(`/ingestion-jobs/${jobId}`);

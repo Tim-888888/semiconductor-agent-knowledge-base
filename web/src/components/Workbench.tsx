@@ -1,4 +1,4 @@
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowUp,
@@ -8,10 +8,13 @@ import {
   FlaskConical,
   Image as ImageIcon,
   ListChecks,
+  LoaderCircle,
   Plus,
-  SearchCheck
+  RotateCcw,
+  SearchCheck,
+  Square
 } from "lucide-react";
-import type { AgentResponse, AssetAccess, EvidenceLedgerEntry, Thread } from "../types";
+import type { AgentResponse, AssetAccess, EvidenceLedgerEntry, StreamUiState, Thread } from "../types";
 import { StatusPill } from "./Common";
 
 type Props = {
@@ -21,12 +24,15 @@ type Props = {
   query: string;
   loading: boolean;
   asset: AssetAccess | null;
+  streamState: StreamUiState | null;
   onQueryChange: (value: string) => void;
   onSubmit: (event: FormEvent) => void;
   onSelectThread: (threadId: string) => void;
   onNewThread: () => void;
   onOpenImage: (imageId: string) => void;
   onOpenTrace: (traceId?: string | null) => void;
+  onStopStream: () => void;
+  onRetryStream: () => void;
 };
 
 export function Workbench({
@@ -36,16 +42,20 @@ export function Workbench({
   query,
   loading,
   asset,
+  streamState,
   onQueryChange,
   onSubmit,
   onSelectThread,
   onNewThread,
   onOpenImage,
-  onOpenTrace
+  onOpenTrace,
+  onStopStream,
+  onRetryStream
 }: Props) {
   const ledger = result?.evidence_ledger ?? [];
   const [selectedEvidenceId, setSelectedEvidenceId] = useState<string>("");
   const selectedEvidence = ledger.find((item) => item.evidence_id === selectedEvidenceId) ?? ledger[0];
+  const messageListRef = useRef<HTMLDivElement>(null);
   const imageIds = useMemo(() => {
     const fromResult = result?.image_asset_ids ?? [];
     const fromLedger = ledger.flatMap((item) => item.image_ids ?? []);
@@ -54,6 +64,11 @@ export function Workbench({
     ) ?? [];
     return [...new Set([...fromResult, ...fromLedger, ...fromMessages])];
   }, [ledger, result, thread]);
+
+  useEffect(() => {
+    const list = messageListRef.current;
+    if (list) list.scrollTop = list.scrollHeight;
+  }, [streamState?.partialAnswer, thread?.messages.length]);
 
   return <section className="workbench-grid">
     <div className="conversation-panel">
@@ -68,10 +83,11 @@ export function Workbench({
             data-testid="thread-select"
             value={thread?.thread_id ?? ""}
             onChange={(event) => onSelectThread(event.target.value)}
+            disabled={streamState?.status === "running"}
           >
             {threads.map((item) => <option key={item.thread_id} value={item.thread_id}>{item.title}</option>)}
           </select>
-          <button className="icon-button" type="button" title="新建调查线程" onClick={onNewThread}>
+          <button className="icon-button" type="button" title="新建调查线程" onClick={onNewThread} disabled={streamState?.status === "running"}>
             <Plus size={18} />
           </button>
         </div>
@@ -82,7 +98,7 @@ export function Workbench({
         <div><strong>等待补充信息 · 第 {thread.clarification_round} 轮</strong><span>{thread.pending_fields.join(" / ")}</span></div>
       </div>}
 
-      <div className="message-list" data-testid="message-list">
+      <div className="message-list" data-testid="message-list" ref={messageListRef}>
         {thread?.messages.length ? thread.messages.map((message) => <article className={`message ${message.role}`} key={message.message_id}>
           <div className="message-avatar">{message.role === "assistant" ? <Bot size={17} /> : "E"}</div>
           <div className="message-body">
@@ -103,7 +119,13 @@ export function Workbench({
           </div>
         </article>) : <div className="empty-conversation">当前线程尚无消息</div>}
 
-        {result?.answer && !result.clarification_required && <StructuredAnswer result={result} onOpenTrace={onOpenTrace} />}
+        {streamState && <StreamMessage
+          stream={streamState}
+          onStop={onStopStream}
+          onRetry={onRetryStream}
+        />}
+
+        {!streamState && result?.answer && !result.clarification_required && <StructuredAnswer result={result} onOpenTrace={onOpenTrace} />}
       </div>
 
       <form className="query-box" onSubmit={onSubmit}>
@@ -153,6 +175,52 @@ export function Workbench({
       {selectedEvidence && <EvidenceDetail evidence={selectedEvidence} />}
     </aside>
   </section>;
+}
+
+function StreamMessage({
+  stream,
+  onStop,
+  onRetry
+}: {
+  stream: StreamUiState;
+  onStop: () => void;
+  onRetry: () => void;
+}) {
+  const running = stream.status === "running";
+  return <article className={`message assistant stream-message stream-${stream.status}`} data-testid="streaming-message">
+    <div className="message-avatar">{running ? <LoaderCircle className="spin" size={17} /> : <Bot size={17} />}</div>
+    <div className="message-body">
+      <div className="stream-heading">
+        <div>
+          <div className="message-role">SEMIKB · LIVE</div>
+          <strong data-testid="stream-stage">{stream.stageMessage}</strong>
+        </div>
+        {running
+          ? <button className="icon-button stream-control" type="button" title="停止生成" aria-label="停止生成" onClick={onStop}><Square size={14} /></button>
+          : stream.retryable && <button className="text-command stream-retry" type="button" onClick={onRetry}><RotateCcw size={14} />重试</button>}
+      </div>
+      {(stream.internalEvidenceCount > 0 || stream.externalEvidenceCount > 0) && <div className="stream-evidence-count" data-testid="stream-evidence-count">
+        受控证据 {stream.internalEvidenceCount} · 外部证据 {stream.externalEvidenceCount}
+      </div>}
+      <p className={`stream-answer ${stream.partialAnswer ? "has-content" : ""}`} data-testid="streaming-answer">
+        {stream.partialAnswer || (running ? stageLabel(stream.stage) : "本次未保存不完整回答。")}
+      </p>
+      {stream.elapsedMs >= 1000 && <small className="stream-elapsed">已等待 {Math.floor(stream.elapsedMs / 1000)} 秒</small>}
+    </div>
+  </article>;
+}
+
+function stageLabel(stage?: StreamUiState["stage"]): string {
+  return ({
+    analyzing_request: "正在理解问题与当前会话…",
+    awaiting_clarification: "正在判断还需要哪些关键信息…",
+    retrieving_evidence: "正在检索受控知识库…",
+    searching_external: "正在查询允许的外部资料…",
+    reranking_evidence: "正在重排并选择证据…",
+    generating_answer: "证据已就绪，正在生成回答…",
+    verifying_answer: "正在校验引用和结论边界…",
+    persisting_result: "正在保存最终结果…"
+  } as Record<string, string>)[stage ?? ""] ?? "请求处理中…";
 }
 
 function StructuredAnswer({ result, onOpenTrace }: { result: AgentResponse; onOpenTrace: (traceId?: string | null) => void }) {

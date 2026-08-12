@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -24,6 +25,7 @@ class LLMProviderError(RuntimeError):
         super().__init__(f"LLM provider '{provider}' failed: {message}")
         self.provider = provider
         self.status_code = status_code
+        self.content_started = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -182,6 +184,43 @@ class OpenAICompatibleLLMGateway:
             raise LLMProviderError(config.provider, "stream request timed out") from exc
         except httpx.HTTPError as exc:
             raise LLMProviderError(config.provider, "stream network error") from exc
+
+    async def stream_complete(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        on_content_delta: Callable[[str, str, str], None],
+        max_output_tokens: int = 1024,
+        allow_fallback: bool = True,
+    ) -> LLMCompletion:
+        """Consume a production stream and expose only visible content deltas."""
+
+        if not messages:
+            raise ValueError("messages must not be empty")
+        if max_output_tokens < 1:
+            raise ValueError("max_output_tokens must be positive")
+
+        attempted: list[str] = []
+        last_error: Exception | None = None
+        for index, provider_name in enumerate(self._provider_names(allow_fallback)):
+            attempted.append(provider_name.strip().lower())
+            try:
+                config = resolve_provider_config(self.settings, provider_name)
+                return await self._stream_complete_with_provider(
+                    config,
+                    messages,
+                    on_content_delta=on_content_delta,
+                    max_output_tokens=max_output_tokens,
+                    fallback_used=index > 0,
+                    attempted_providers=tuple(attempted),
+                )
+            except (LLMConfigurationError, LLMProviderError, httpx.HTTPError) as exc:
+                last_error = exc
+                if isinstance(exc, LLMProviderError) and getattr(exc, "content_started", False):
+                    raise
+
+        attempted_text = ", ".join(attempted)
+        raise LLMProviderError(attempted_text, "all configured providers were unavailable") from last_error
 
     def complete_sync(
         self,
@@ -398,6 +437,119 @@ class OpenAICompatibleLLMGateway:
             finish_reason=finish_reason,
             done_received=done_received,
             termination="done_marker" if done_received else "finish_reason_eof",
+            usage=usage,
+        )
+
+    async def _stream_complete_with_provider(
+        self,
+        config: LLMProviderConfig,
+        messages: list[dict[str, Any]],
+        *,
+        on_content_delta: Callable[[str, str, str], None],
+        max_output_tokens: int,
+        fallback_used: bool,
+        attempted_providers: tuple[str, ...],
+    ) -> LLMCompletion:
+        payload = self._build_payload(
+            config,
+            messages,
+            response_json=False,
+            max_output_tokens=max_output_tokens,
+            stream=True,
+        )
+        endpoint = f"{config.base_url.rstrip('/')}/chat/completions"
+        headers = {
+            "Accept": "text/event-stream",
+            "Authorization": f"Bearer {config.api_key}",
+            "Content-Type": "application/json",
+        }
+        content_chunks: list[str] = []
+        reported_model = config.model
+        finish_reason: str | None = None
+        done_received = False
+        usage: dict[str, Any] = {}
+        pending_data: list[str] = []
+
+        def provider_error(message: str, *, status_code: int | None = None) -> LLMProviderError:
+            error = LLMProviderError(config.provider, message, status_code=status_code)
+            error.content_started = bool(content_chunks)
+            return error
+
+        def consume_event(raw_data: str) -> None:
+            nonlocal reported_model, finish_reason, done_received, usage
+            if raw_data.strip() == "[DONE]":
+                done_received = True
+                return
+            try:
+                body = json.loads(raw_data)
+            except (TypeError, ValueError) as exc:
+                raise provider_error("invalid streaming JSON event") from exc
+            if not isinstance(body, dict):
+                raise provider_error("invalid streaming event shape")
+            if body.get("model"):
+                reported_model = str(body["model"])
+            raw_usage = body.get("usage")
+            if isinstance(raw_usage, dict):
+                usage = raw_usage
+            choices = body.get("choices")
+            if not isinstance(choices, list) or not choices:
+                return
+            choice = choices[0]
+            if not isinstance(choice, dict):
+                return
+            if choice.get("finish_reason") is not None:
+                finish_reason = str(choice["finish_reason"])
+            delta = choice.get("delta")
+            if not isinstance(delta, dict):
+                return
+            content = delta.get("content")
+            if isinstance(content, str) and content:
+                content_chunks.append(content)
+                on_content_delta(content, config.provider, reported_model)
+
+        try:
+            async with httpx.AsyncClient(
+                timeout=self.settings.llm_timeout_seconds,
+                transport=self.transport,
+            ) as client:
+                async with client.stream("POST", endpoint, headers=headers, json=payload) as response:
+                    if response.is_error:
+                        raise provider_error(
+                            f"HTTP {response.status_code}",
+                            status_code=response.status_code,
+                        )
+                    content_type = response.headers.get("content-type", "").lower()
+                    if "text/event-stream" not in content_type:
+                        raise provider_error("invalid streaming content type")
+                    async for line in response.aiter_lines():
+                        if line == "":
+                            if pending_data:
+                                consume_event("\n".join(pending_data))
+                                pending_data.clear()
+                            continue
+                        if line.startswith(":"):
+                            continue
+                        if line.startswith("data:"):
+                            pending_data.append(line[5:].lstrip())
+                    if pending_data:
+                        consume_event("\n".join(pending_data))
+        except httpx.TimeoutException as exc:
+            raise provider_error("stream request timed out") from exc
+        except httpx.HTTPError as exc:
+            raise provider_error("stream network error") from exc
+
+        content = "".join(content_chunks)
+        if not done_received and finish_reason is None:
+            raise provider_error("stream ended before a terminal signal")
+        if not content.strip():
+            raise provider_error("stream contained no visible content delta")
+        return LLMCompletion(
+            content=content,
+            provider=config.provider,
+            requested_model=config.model,
+            reported_model=reported_model,
+            fallback_used=fallback_used,
+            attempted_providers=attempted_providers,
             usage=usage,
         )
 

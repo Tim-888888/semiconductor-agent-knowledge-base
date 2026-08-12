@@ -11,6 +11,7 @@ from semikb.contracts.models import (
     ActorScope,
     ApprovalStatus,
     AuditEvent,
+    ChatMessage,
     Chunk,
     DocumentLifecycle,
     DocumentRevision,
@@ -25,7 +26,16 @@ from semikb.contracts.models import (
     RetrievalTrace,
     ThreadRecord,
 )
+from semikb.contracts.streaming import (
+    AgentMessageRequestRecord,
+    AgentMessageRequestStatus,
+    AgentStreamErrorCode,
+)
 from semikb.rag_retrieval.encoders import HybridEmbedding
+from semikb.storage.conversations import (
+    MessageRequestConflictError,
+    MessageRequestInProgressError,
+)
 
 
 class DemoStore:
@@ -40,6 +50,7 @@ class DemoStore:
         self.job_keys: dict[str, str] = {}
         self.traces: dict[str, RetrievalTrace] = {}
         self.threads: dict[str, ThreadRecord] = {}
+        self.message_requests: dict[tuple[str, str, str], AgentMessageRequestRecord] = {}
         self.evaluation_datasets: dict[str, EvaluationDataset] = {}
         self.evaluation_runs: dict[str, EvaluationRun] = {}
         self.index_releases: dict[str, dict[str, str]] = {}
@@ -361,6 +372,139 @@ class DemoStore:
         thread.updated_at = datetime.now(UTC)
         self.threads[thread.thread_id] = thread
         return thread
+
+    def prepare_message_request(
+        self,
+        record: AgentMessageRequestRecord,
+    ) -> tuple[AgentMessageRequestRecord, bool]:
+        key = (record.thread_id, record.actor_user_id, record.request_id)
+        with self._lock:
+            existing = self.message_requests.get(key)
+            if existing is None:
+                self.message_requests[key] = record
+                return record, False
+            if existing.content_sha256 != record.content_sha256:
+                raise MessageRequestConflictError(record.request_id)
+            if existing.status is AgentMessageRequestStatus.COMPLETED:
+                return existing, True
+            if existing.status in {
+                AgentMessageRequestStatus.ACCEPTED,
+                AgentMessageRequestStatus.RUNNING,
+            }:
+                raise MessageRequestInProgressError(record.request_id)
+            existing.status = AgentMessageRequestStatus.ACCEPTED
+            existing.attempt += 1
+            existing.run_id = record.run_id
+            existing.assistant_message_id = None
+            existing.trace_id = None
+            existing.result_payload = {}
+            existing.error_code = None
+            existing.updated_at = datetime.now(UTC)
+            existing.finished_at = None
+            return existing, False
+
+    def get_message_request(
+        self,
+        thread_id: str,
+        actor_user_id: str,
+        request_id: str,
+    ) -> AgentMessageRequestRecord | None:
+        return self.message_requests.get((thread_id, actor_user_id, request_id))
+
+    def append_message_once(self, thread_id: str, message: ChatMessage) -> ThreadRecord:
+        with self._lock:
+            thread = self.threads.get(thread_id)
+            if thread is None:
+                raise KeyError(thread_id)
+            duplicate = message.request_id and any(
+                item.request_id == message.request_id and item.role == message.role
+                for item in thread.messages
+            )
+            if not duplicate:
+                thread.messages.append(message)
+                thread.updated_at = datetime.now(UTC)
+            return thread
+
+    def finalize_stream_response(
+        self,
+        thread_id: str,
+        message: ChatMessage,
+        *,
+        status: str,
+        summary: str,
+        pending_fields: list[str],
+        clarification_round: int,
+    ) -> ThreadRecord:
+        with self._lock:
+            thread = self.threads.get(thread_id)
+            if thread is None:
+                raise KeyError(thread_id)
+            if not any(
+                item.request_id == message.request_id and item.role == "assistant"
+                for item in thread.messages
+            ):
+                thread.messages.append(message)
+            thread.status = status
+            thread.summary = summary
+            thread.pending_fields = pending_fields
+            thread.clarification_round = clarification_round
+            thread.updated_at = datetime.now(UTC)
+            return thread
+
+    def mark_message_request_running(
+        self,
+        record: AgentMessageRequestRecord,
+    ) -> AgentMessageRequestRecord:
+        with self._lock:
+            current = self.get_message_request(
+                record.thread_id,
+                record.actor_user_id,
+                record.request_id,
+            )
+            if current is None or current.status is not AgentMessageRequestStatus.ACCEPTED:
+                raise MessageRequestInProgressError(record.request_id)
+            current.status = AgentMessageRequestStatus.RUNNING
+            current.updated_at = datetime.now(UTC)
+            return current
+
+    def mark_message_request_terminal(
+        self,
+        record: AgentMessageRequestRecord,
+        status: AgentMessageRequestStatus,
+        *,
+        result_payload: dict[str, object] | None = None,
+        assistant_message_id: str | None = None,
+        trace_id: str | None = None,
+        error_code: AgentStreamErrorCode | None = None,
+    ) -> AgentMessageRequestRecord:
+        if status not in {
+            AgentMessageRequestStatus.COMPLETED,
+            AgentMessageRequestStatus.FAILED,
+            AgentMessageRequestStatus.CANCELLED,
+        }:
+            raise ValueError("terminal request status required")
+        with self._lock:
+            current = self.get_message_request(
+                record.thread_id,
+                record.actor_user_id,
+                record.request_id,
+            )
+            if current is None:
+                raise KeyError(record.request_id)
+            if current.status not in {
+                AgentMessageRequestStatus.ACCEPTED,
+                AgentMessageRequestStatus.RUNNING,
+                status,
+            }:
+                raise RuntimeError("message request terminal transition was not acknowledged")
+            current.status = status
+            current.result_payload = result_payload or {}
+            current.assistant_message_id = assistant_message_id
+            current.trace_id = trace_id
+            current.error_code = error_code
+            current.updated_at = datetime.now(UTC)
+            current.finished_at = current.updated_at
+            return current
 
     def append_audit(self, event: AuditEvent) -> AuditEvent:
         self.audit_events.setdefault(event.event_id, event)

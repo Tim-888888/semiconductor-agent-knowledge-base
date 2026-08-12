@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
+import time
+from collections.abc import AsyncIterator
+from dataclasses import dataclass
 from typing import Any
 
 from langgraph.checkpoint.memory import InMemorySaver
@@ -9,13 +14,49 @@ from langgraph.store.memory import InMemoryStore
 from langgraph.types import Command
 
 from semikb.agent_runtime.graph import ConversationGraph
-from semikb.agent_runtime.llm_gateway import OpenAICompatibleLLMGateway
+from semikb.agent_runtime.llm_gateway import LLMProviderError, OpenAICompatibleLLMGateway
 from semikb.agent_runtime.memory import MemoryService
 from semikb.agent_runtime.tools import ManufacturingToolbox
 from semikb.agent_runtime.web_search import AliyunWebSearchGateway
 from semikb.config import Settings
-from semikb.contracts.models import ActorScope, ChatMessage, ThreadRecord, new_id
+from semikb.contracts.models import (
+    ActorScope,
+    AgentAnswer,
+    ChatMessage,
+    SendMessageResponse,
+    ThreadRecord,
+    new_id,
+)
+from semikb.contracts.streaming import (
+    AgentMessageRequestRecord,
+    AgentMessageRequestStatus,
+    AgentStreamErrorCode,
+    AgentStreamEvent,
+    AgentStreamStage,
+    StreamAcceptedData,
+    StreamAcceptedEvent,
+    StreamAnswerDeltaData,
+    StreamAnswerDeltaEvent,
+    StreamCompletedData,
+    StreamCompletedEvent,
+    StreamErrorData,
+    StreamErrorEvent,
+    StreamEvidenceData,
+    StreamEvidenceEvent,
+    StreamHeartbeatData,
+    StreamHeartbeatEvent,
+    StreamStageData,
+    StreamStageEvent,
+)
 from semikb.storage.conversations import ConversationRepository
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedStreamMessage:
+    content: str
+    record: AgentMessageRequestRecord
+    replayed: bool
+    resume_checkpoint: bool
 
 
 class ConversationService:
@@ -70,72 +111,391 @@ class ConversationService:
         content: str,
         actor_scope: ActorScope | None = None,
     ) -> dict[str, Any]:
+        """Retain the original non-streaming route for compatibility."""
+
         thread = self.get_thread(thread_id, actor_scope)
         if thread is None:
             raise KeyError(thread_id)
         thread.messages.append(ChatMessage(role="user", content=content))
         self.repository.save_thread(thread)
 
-        config = {"configurable": {"thread_id": thread.thread_id}}
-        if thread.status == "waiting_for_clarification":
-            result = await self.graph.compiled.ainvoke(Command(resume=content), config=config)
-        else:
-            result = await self.graph.compiled.ainvoke(
-                {
-                    "request": content,
-                    "thread_id": thread.thread_id,
-                    "run_id": new_id("run"),
-                    "user_scope": thread.actor_scope.model_dump(mode="json"),
-                    "clarification_round": 0,
-                },
-                config=config,
+        result = await self._invoke_graph(thread, content)
+        response_model, assistant, thread_state = self._build_response(thread, result)
+        thread.messages.append(assistant)
+        thread.status = thread_state["status"]
+        thread.pending_fields = thread_state["pending_fields"]
+        thread.clarification_round = thread_state["clarification_round"]
+        thread.summary = self._summarize(thread)
+        self.repository.save_thread(thread)
+        response_model.thread = thread
+        return response_model.model_dump(mode="python")
+
+    async def prepare_stream_message(
+        self,
+        thread_id: str,
+        content: str,
+        request_id: str,
+        actor_scope: ActorScope,
+    ) -> PreparedStreamMessage:
+        """Reserve idempotency and persist the user message before SSE headers are sent."""
+
+        thread = self.get_thread(thread_id, actor_scope)
+        if thread is None:
+            raise KeyError(thread_id)
+        record = AgentMessageRequestRecord(
+            request_id=request_id,
+            thread_id=thread_id,
+            actor_user_id=actor_scope.user_id,
+            content_sha256=hashlib.sha256(content.encode("utf-8")).hexdigest(),
+            user_message_id=new_id("msg"),
+            run_id=new_id("run"),
+        )
+        prepared, replayed = await asyncio.to_thread(
+            self.repository.prepare_message_request,
+            record,
+        )
+        if not replayed:
+            user_message = ChatMessage(
+                message_id=prepared.user_message_id,
+                request_id=prepared.request_id,
+                run_id=prepared.run_id,
+                role="user",
+                content=content,
+            )
+            await asyncio.to_thread(
+                self.repository.append_message_once,
+                thread_id,
+                user_message,
+            )
+        return PreparedStreamMessage(
+            content=content,
+            record=prepared,
+            replayed=replayed,
+            resume_checkpoint=thread.status == "waiting_for_clarification",
+        )
+
+    async def stream_message(
+        self,
+        prepared: PreparedStreamMessage,
+    ) -> AsyncIterator[AgentStreamEvent]:
+        """Run one prepared message and emit ordered, replayable domain events."""
+
+        record = prepared.record
+        sequence = 0
+        started = time.perf_counter()
+
+        def envelope(event_type: type[AgentStreamEvent], data: Any) -> AgentStreamEvent:
+            nonlocal sequence
+            sequence += 1
+            return event_type(
+                request_id=record.request_id,
+                thread_id=record.thread_id,
+                sequence=sequence,
+                data=data,
             )
 
+        yield envelope(
+            StreamAcceptedEvent,
+            StreamAcceptedData(
+                message_id=record.user_message_id,
+                run_id=record.run_id,
+                attempt=record.attempt,
+                replayed=prepared.replayed,
+            ),
+        )
+
+        if prepared.replayed:
+            result = self._replayed_response(record)
+            yield envelope(
+                StreamCompletedEvent,
+                StreamCompletedData(run_id=record.run_id, result=result),
+            )
+            return
+
+        try:
+            record = await asyncio.to_thread(self.repository.mark_message_request_running, record)
+            final_state: dict[str, Any] = {}
+            streamed_answer = ""
+            graph_input: dict[str, Any] | Command
+            if prepared.resume_checkpoint:
+                graph_input = Command(resume=prepared.content)
+            else:
+                thread = self.repository.get_thread(record.thread_id)
+                if thread is None:
+                    raise KeyError(record.thread_id)
+                graph_input = {
+                    "request": prepared.content,
+                    "thread_id": record.thread_id,
+                    "run_id": record.run_id,
+                    "user_scope": thread.actor_scope.model_dump(mode="json"),
+                    "clarification_round": 0,
+                }
+
+            config = {"configurable": {"thread_id": record.thread_id}}
+            graph_stream = self.graph.compiled.astream(
+                graph_input,
+                config=config,
+                stream_mode=["custom", "values"],
+            )
+            iterator = graph_stream.__aiter__()
+            next_item = asyncio.create_task(anext(iterator))
+            try:
+                while True:
+                    done, _ = await asyncio.wait(
+                        {next_item},
+                        timeout=self.settings.agent_stream_heartbeat_seconds,
+                    )
+                    if not done:
+                        elapsed_ms = int((time.perf_counter() - started) * 1000)
+                        yield envelope(
+                            StreamHeartbeatEvent,
+                            StreamHeartbeatData(elapsed_ms=elapsed_ms),
+                        )
+                        continue
+                    try:
+                        mode, payload = next_item.result()
+                    except StopAsyncIteration:
+                        break
+                    if mode == "values" and isinstance(payload, dict):
+                        final_state = payload
+                    elif mode == "custom" and isinstance(payload, dict):
+                        event = self._custom_stream_event(record, sequence + 1, payload)
+                        if event is not None:
+                            sequence += 1
+                            if isinstance(event, StreamAnswerDeltaEvent):
+                                streamed_answer += event.data.delta
+                            yield event
+                    next_item = asyncio.create_task(anext(iterator))
+            finally:
+                if not next_item.done():
+                    next_item.cancel()
+                await graph_stream.aclose()
+
+            thread = self.repository.get_thread(record.thread_id)
+            if thread is None:
+                raise KeyError(record.thread_id)
+            response_model, assistant, thread_state = self._build_response(
+                thread,
+                final_state,
+                request_id=record.request_id,
+                run_id=record.run_id,
+            )
+            if streamed_answer != response_model.response:
+                if response_model.response.startswith(streamed_answer):
+                    suffix = response_model.response[len(streamed_answer) :]
+                    if suffix:
+                        yield envelope(
+                            StreamAnswerDeltaEvent,
+                            StreamAnswerDeltaData(delta=suffix),
+                        )
+                else:
+                    raise ValueError("verified answer differs from streamed answer")
+
+            yield envelope(
+                StreamStageEvent,
+                StreamStageData(
+                    stage=AgentStreamStage.PERSISTING_RESULT,
+                    message="正在保存最终回答与会话状态",
+                ),
+            )
+            summary_thread = thread.model_copy(deep=True)
+            summary_thread.messages.append(assistant)
+            persisted_thread = await asyncio.to_thread(
+                self.repository.finalize_stream_response,
+                record.thread_id,
+                assistant,
+                status=thread_state["status"],
+                summary=self._summarize(summary_thread),
+                pending_fields=thread_state["pending_fields"],
+                clarification_round=thread_state["clarification_round"],
+            )
+            response_model.thread = persisted_thread
+            result_payload = response_model.model_dump(mode="python", exclude={"thread"})
+            record = await asyncio.to_thread(
+                self.repository.mark_message_request_terminal,
+                record,
+                AgentMessageRequestStatus.COMPLETED,
+                result_payload=result_payload,
+                assistant_message_id=assistant.message_id,
+                trace_id=response_model.trace_id,
+            )
+            yield envelope(
+                StreamCompletedEvent,
+                StreamCompletedData(run_id=record.run_id, result=response_model),
+            )
+        except (asyncio.CancelledError, GeneratorExit):
+            await self._mark_failed(record, AgentMessageRequestStatus.CANCELLED, AgentStreamErrorCode.CANCELLED)
+            raise
+        except Exception as exc:
+            code, message, retryable = self._safe_stream_error(exc)
+            await self._mark_failed(record, AgentMessageRequestStatus.FAILED, code)
+            yield envelope(
+                StreamErrorEvent,
+                StreamErrorData(
+                    code=code,
+                    message=message,
+                    retryable=retryable,
+                    trace_id=record.trace_id,
+                ),
+            )
+
+    async def _invoke_graph(self, thread: ThreadRecord, content: str) -> dict[str, Any]:
+        config = {"configurable": {"thread_id": thread.thread_id}}
+        if thread.status == "waiting_for_clarification":
+            return await self.graph.compiled.ainvoke(Command(resume=content), config=config)
+        return await self.graph.compiled.ainvoke(
+            {
+                "request": content,
+                "thread_id": thread.thread_id,
+                "run_id": new_id("run"),
+                "user_scope": thread.actor_scope.model_dump(mode="json"),
+                "clarification_round": 0,
+            },
+            config=config,
+        )
+
+    def _build_response(
+        self,
+        thread: ThreadRecord,
+        result: dict[str, Any],
+        *,
+        request_id: str | None = None,
+        run_id: str | None = None,
+    ) -> tuple[SendMessageResponse, ChatMessage, dict[str, Any]]:
         interrupt_payload = self._interrupt_payload(result)
         if interrupt_payload is not None:
             questions = [str(question) for question in interrupt_payload.get("questions", [])]
             response = "为避免猜测 Tool、Product 或时间范围，请补充：\n" + "\n".join(
                 f"- {question}" for question in questions
             )
-            thread.messages.append(ChatMessage(role="assistant", content=response))
-            thread.status = "waiting_for_clarification"
-            thread.pending_fields = [
-                str(field) for field in interrupt_payload.get("missing_fields", [])
-            ]
-            thread.clarification_round = int(interrupt_payload.get("round", 1))
-            thread.summary = self._summarize(thread)
-            self.repository.save_thread(thread)
-            return {
-                "thread": thread,
-                "response": response,
-                "clarification_required": True,
-                "missing_fields": thread.pending_fields,
-                "clarification_round": thread.clarification_round,
+            pending_fields = [str(field) for field in interrupt_payload.get("missing_fields", [])]
+            clarification_round = int(interrupt_payload.get("round", 1))
+            assistant = ChatMessage(
+                request_id=request_id,
+                run_id=run_id,
+                role="assistant",
+                content=response,
+            )
+            model = SendMessageResponse(
+                thread=thread,
+                response=response,
+                clarification_required=True,
+                missing_fields=pending_fields,
+                clarification_round=clarification_round,
+            )
+            return model, assistant, {
+                "status": "waiting_for_clarification",
+                "pending_fields": pending_fields,
+                "clarification_round": clarification_round,
             }
 
         response = str(result.get("answer_text") or "系统未生成可验证答复。")
         citations = list(result.get("citations", []))
-        thread.messages.append(ChatMessage(role="assistant", content=response, citations=citations))
-        thread.summary = self._summarize(thread)
-        thread.pending_fields = []
-        thread.clarification_round = 0
-        thread.status = "active"
-        self.repository.save_thread(thread)
-        return {
-            "thread": thread,
-            "response": response,
-            "clarification_required": False,
-            "status": result.get("status", "completed"),
-            "answer": result.get("answer", {}),
-            "citations": citations,
-            "trace_id": result.get("trace_id"),
-            "image_asset_ids": result.get("image_evidence", []),
-            "tool_facts": result.get("live_data_refs", []),
-            "external_evidence": result.get("external_evidence", []),
-            "evidence_ledger": result.get("evidence_ledger", []),
-            "model_metadata": result.get("model_metadata", {}),
-            "verification_warnings": result.get("verification_warnings", []),
+        assistant = ChatMessage(
+            request_id=request_id,
+            run_id=run_id,
+            role="assistant",
+            content=response,
+            citations=citations,
+        )
+        answer_payload = result.get("answer")
+        model = SendMessageResponse(
+            thread=thread,
+            response=response,
+            clarification_required=False,
+            status=str(result.get("status", "completed")),
+            answer=AgentAnswer.model_validate(answer_payload) if answer_payload else None,
+            citations=citations,
+            trace_id=result.get("trace_id"),
+            image_asset_ids=list(result.get("image_evidence", [])),
+            tool_facts=list(result.get("live_data_refs", [])),
+            external_evidence=list(result.get("external_evidence", [])),
+            evidence_ledger=list(result.get("evidence_ledger", [])),
+            model_metadata=dict(result.get("model_metadata", {})),
+            verification_warnings=list(result.get("verification_warnings", [])),
+        )
+        return model, assistant, {
+            "status": "active",
+            "pending_fields": [],
+            "clarification_round": 0,
         }
+
+    def _replayed_response(self, record: AgentMessageRequestRecord) -> SendMessageResponse:
+        thread = self.repository.get_thread(record.thread_id)
+        if thread is None:
+            raise KeyError(record.thread_id)
+        return SendMessageResponse.model_validate({"thread": thread, **record.result_payload})
+
+    @staticmethod
+    def _custom_stream_event(
+        record: AgentMessageRequestRecord,
+        sequence: int,
+        payload: dict[str, Any],
+    ) -> AgentStreamEvent | None:
+        common = {
+            "request_id": record.request_id,
+            "thread_id": record.thread_id,
+            "sequence": sequence,
+        }
+        kind = payload.get("kind")
+        if kind == "stage":
+            return StreamStageEvent(
+                **common,
+                data=StreamStageData(
+                    stage=AgentStreamStage(str(payload["stage"])),
+                    message=str(payload["message"]),
+                ),
+            )
+        if kind == "evidence":
+            return StreamEvidenceEvent(
+                **common,
+                data=StreamEvidenceData(
+                    trace_id=payload.get("trace_id"),
+                    evidence_ids=[str(item) for item in payload.get("evidence_ids", [])],
+                    image_asset_ids=[str(item) for item in payload.get("image_asset_ids", [])],
+                    internal_count=int(payload.get("internal_count", 0)),
+                    external_count=int(payload.get("external_count", 0)),
+                ),
+            )
+        if kind == "answer_delta" and payload.get("delta"):
+            return StreamAnswerDeltaEvent(
+                **common,
+                data=StreamAnswerDeltaData(
+                    delta=str(payload["delta"]),
+                    provider=payload.get("provider"),
+                    model=payload.get("model"),
+                ),
+            )
+        return None
+
+    async def _mark_failed(
+        self,
+        record: AgentMessageRequestRecord,
+        status: AgentMessageRequestStatus,
+        code: AgentStreamErrorCode,
+    ) -> None:
+        try:
+            await asyncio.to_thread(
+                self.repository.mark_message_request_terminal,
+                record,
+                status,
+                error_code=code,
+                trace_id=record.trace_id,
+            )
+        except Exception:
+            return
+
+    @staticmethod
+    def _safe_stream_error(exc: Exception) -> tuple[AgentStreamErrorCode, str, bool]:
+        if isinstance(exc, LLMProviderError):
+            if exc.status_code == 429:
+                return AgentStreamErrorCode.PROVIDER_RATE_LIMITED, "模型服务繁忙，请稍后重试。", True
+            if "timed out" in str(exc):
+                return AgentStreamErrorCode.PROVIDER_TIMEOUT, "模型响应超时，请重试。", True
+            return AgentStreamErrorCode.PROVIDER_UNAVAILABLE, "模型服务暂时不可用，请稍后重试。", True
+        if isinstance(exc, ValueError):
+            return AgentStreamErrorCode.VERIFICATION_FAILED, "回答校验失败，未保存不完整结果。", True
+        return AgentStreamErrorCode.INTERNAL_ERROR, "请求处理失败，未保存不完整结果。", False
 
     @staticmethod
     def _interrupt_payload(result: dict[str, Any]) -> dict[str, Any] | None:

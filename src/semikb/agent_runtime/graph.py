@@ -8,11 +8,13 @@ import json
 import re
 from typing import Any, Literal, TypedDict
 
+from langgraph.config import get_stream_writer
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 
 from semikb.agent_runtime.llm_gateway import OpenAICompatibleLLMGateway
 from semikb.agent_runtime.memory import MemoryService
+from semikb.agent_runtime.streaming_answer import StreamingAnswerAssembler, format_answer
 from semikb.agent_runtime.tools import ManufacturingToolbox
 from semikb.agent_runtime.web_search import AliyunWebSearchGateway
 from semikb.config import Settings
@@ -118,6 +120,11 @@ class ConversationGraph:
         self.compiled = workflow.compile(checkpointer=checkpointer, store=memory_service.store)
 
     async def _ingest_request(self, state: CaseState) -> CaseState:
+        self._emit_stream(
+            "stage",
+            stage="analyzing_request",
+            message="正在分析问题与会话上下文",
+        )
         preferences = await asyncio.to_thread(
             self.memory_service.approved_preferences,
             state["user_scope"]["user_id"],
@@ -309,6 +316,11 @@ class ConversationGraph:
 
     @staticmethod
     def _clarify_missing_fields(state: CaseState) -> CaseState:
+        ConversationGraph._emit_stream(
+            "stage",
+            stage="awaiting_clarification",
+            message="关键信息不足，正在生成澄清问题",
+        )
         payload = {
             "kind": "clarification",
             "round": state.get("clarification_round", 0) + 1,
@@ -324,6 +336,11 @@ class ConversationGraph:
         }
 
     async def _retrieve_evidence(self, state: CaseState) -> CaseState:
+        self._emit_stream(
+            "stage",
+            stage="retrieving_evidence",
+            message="正在执行权限过滤与混合召回",
+        )
         actor_scope = ActorScope.model_validate(state["user_scope"])
         constraints = self._retrieval_constraints(state.get("constraints", {}))
         retrieval_task = asyncio.to_thread(
@@ -336,6 +353,11 @@ class ConversationGraph:
         )
         web_task = None
         if self.web_search.should_search(state["retrieval_query"]):
+            self._emit_stream(
+                "stage",
+                stage="searching_external",
+                message="内部证据不足，正在查询受控外部来源",
+            )
             web_task = asyncio.create_task(self.web_search.search(state["retrieval_query"]))
 
         evidence, trace = await retrieval_task
@@ -353,6 +375,11 @@ class ConversationGraph:
                 ]
         trace.external_evidence = external
         self.retrieval.save_trace(trace)
+        self._emit_stream(
+            "stage",
+            stage="reranking_evidence",
+            message="召回完成，正在整理重排后的证据",
+        )
         live_data = self.toolbox.query_for_case(state["request"], state.get("constraints", {}))
         return {
             "retrieval_routes": trace.routes,
@@ -434,9 +461,22 @@ class ConversationGraph:
                     external_url=str(item.get("url", "")),
                 )
             )
+        self._emit_stream(
+            "evidence",
+            trace_id=state.get("trace_id"),
+            evidence_ids=[item.evidence_id for item in ledger],
+            image_asset_ids=state.get("image_evidence", []),
+            internal_count=sum(item.source_type != "external" for item in ledger),
+            external_count=sum(item.source_type == "external" for item in ledger),
+        )
         return {"evidence_ledger": [item.model_dump(mode="json") for item in ledger]}
 
     async def _generate_answer(self, state: CaseState) -> CaseState:
+        self._emit_stream(
+            "stage",
+            stage="generating_answer",
+            message="正在依据证据生成回答",
+        )
         ledger = [EvidenceLedgerEntry.model_validate(item) for item in state.get("evidence_ledger", [])]
         if not ledger:
             answer = AgentAnswer(
@@ -449,17 +489,37 @@ class ConversationGraph:
         answer: AgentAnswer | None = None
         metadata = dict(state.get("model_metadata", {}))
         if not self.settings.demo_mode:
+            provider_details: dict[str, str | None] = {"provider": None, "model": None}
+
+            def emit_verified_delta(delta: str) -> None:
+                self._emit_stream(
+                    "answer_delta",
+                    delta=delta,
+                    provider=provider_details["provider"],
+                    model=provider_details["model"],
+                )
+
+            assembler = StreamingAnswerAssembler(ledger, emit_verified_delta)
+
+            def consume_model_delta(delta: str, provider: str, model: str) -> None:
+                provider_details["provider"] = provider
+                provider_details["model"] = model
+                assembler.feed(delta)
+
             try:
-                completion = await self.llm.complete(
+                completion = await self.llm.stream_complete(
                     [
                         {
                             "role": "system",
                             "content": (
                                 "You are a semiconductor investigation assistant. Use only the supplied evidence ledger. "
                                 "Internal controlled evidence outranks external evidence. Simulated live data must remain "
-                                "labeled simulated. Do not declare a root cause; hypotheses must be testable. Return JSON "
-                                "with facts, hypotheses (each has text and citation_ids), unknowns, next_actions, confidence. "
-                                "Every fact must cite one or more exact evidence_id values."
+                                "labeled simulated. Do not declare a root cause; hypotheses must be testable. Stream compact "
+                                "JSON objects, one object per line, with no array, prose, or markdown fence. Emit zero or more "
+                                "objects in this exact type order: fact, hypothesis, unknown, next_action, then exactly one "
+                                "confidence object. Claim objects use {type,text,citation_ids}; unknown and next_action use "
+                                "{type,text}; confidence uses {type,value}. Every fact must cite one or more exact evidence_id "
+                                "values. Confidence value must be low, medium, or high."
                             ),
                         },
                         {
@@ -475,20 +535,25 @@ class ConversationGraph:
                             ),
                         },
                     ],
-                    response_json=True,
+                    on_content_delta=consume_model_delta,
                     max_output_tokens=self.settings.agent_answer_max_output_tokens,
                 )
-                answer = self._parse_answer(json.loads(completion.content))
+                answer = assembler.finish()
                 metadata.update(
                     {
                         "answer_provider": completion.provider,
                         "answer_model": completion.reported_model,
                         "answer_fallback_used": completion.fallback_used,
+                        "answer_streamed": True,
                     }
                 )
-            except (ValueError, json.JSONDecodeError, RuntimeError) as exc:
-                metadata["answer_warning"] = type(exc).__name__
-        answer = answer or self._deterministic_answer(ledger)
+                if assembler.warnings:
+                    metadata["answer_stream_warnings"] = assembler.warnings
+            except (ValueError, json.JSONDecodeError):
+                raise
+        if answer is None:
+            answer = self._deterministic_answer(ledger)
+            self._emit_stream("answer_delta", delta=format_answer(answer))
         return {"answer": answer.model_dump(mode="json"), "model_metadata": metadata}
 
     @staticmethod
@@ -571,6 +636,11 @@ class ConversationGraph:
 
     @staticmethod
     def _verify_answer(state: CaseState) -> CaseState:
+        ConversationGraph._emit_stream(
+            "stage",
+            stage="verifying_answer",
+            message="正在校验引用、权限和结论边界",
+        )
         ledger = [EvidenceLedgerEntry.model_validate(item) for item in state.get("evidence_ledger", [])]
         valid_ids = {item.evidence_id for item in ledger}
         citation_aliases = {
@@ -641,26 +711,7 @@ class ConversationGraph:
 
     @staticmethod
     def _format_answer(answer: AgentAnswer) -> str:
-        lines = ["基于当前有效且有权限访问的受控证据："]
-        if answer.facts:
-            lines.append("\n已知事实")
-            lines.extend(
-                f"- {claim.text} [{', '.join(claim.citation_ids)}]" for claim in answer.facts
-            )
-        if answer.hypotheses:
-            lines.append("\n待验证假设")
-            lines.extend(
-                f"- {claim.text} [{', '.join(claim.citation_ids)}]"
-                for claim in answer.hypotheses
-            )
-        if answer.unknowns:
-            lines.append("\n仍不确定")
-            lines.extend(f"- {item}" for item in answer.unknowns)
-        if answer.next_actions:
-            lines.append("\n建议下一步")
-            lines.extend(f"- {item}" for item in answer.next_actions)
-        lines.append(f"\n置信度：{answer.confidence}")
-        return "\n".join(lines)
+        return format_answer(answer)
 
     @staticmethod
     def _insufficient_information(state: CaseState) -> CaseState:
@@ -715,3 +766,13 @@ class ConversationGraph:
         )
         self.repository.append_audit(event)
         return {}
+
+    @staticmethod
+    def _emit_stream(kind: str, **payload: Any) -> None:
+        """Publish safe UI events when the graph is running in custom stream mode."""
+
+        try:
+            writer = get_stream_writer()
+        except RuntimeError:
+            return
+        writer({"kind": kind, **payload})

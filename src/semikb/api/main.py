@@ -14,13 +14,14 @@ from fastapi import (
     Form,
     Header,
     HTTPException,
+    Request,
     Response,
     UploadFile,
     status,
 )
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 
 from semikb.api.auth import create_demo_token, get_actor_scope
 from semikb.bootstrap import ApplicationContainer, get_container
@@ -37,7 +38,12 @@ from semikb.contracts.models import (
     SearchRequest,
     SendMessageRequest,
 )
+from semikb.contracts.streaming import StreamMessageRequest, encode_sse_event
 from semikb.rag_retrieval.milvus_schema import schema_contract
+from semikb.storage.conversations import (
+    MessageRequestConflictError,
+    MessageRequestInProgressError,
+)
 from semikb.storage.external import health_payload
 
 
@@ -164,6 +170,80 @@ async def send_message(
         return await container.conversations.send_message(thread_id, request.content, actor_scope)
     except KeyError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found.") from exc
+
+
+@app.post("/api/v1/threads/{thread_id}/messages/stream")
+async def stream_message(
+    thread_id: str,
+    stream_request: StreamMessageRequest,
+    http_request: Request,
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> StreamingResponse:
+    """Stream safe Agent progress and verified answer deltas over SSE."""
+
+    try:
+        prepared = await container.conversations.prepare_stream_message(
+            thread_id,
+            stream_request.content,
+            stream_request.request_id,
+            actor_scope,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found.") from exc
+    except MessageRequestConflictError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="request_id was already used with different content.",
+        ) from exc
+    except MessageRequestInProgressError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="request_id is already being processed.",
+        ) from exc
+
+    async def event_stream():
+        stream = container.conversations.stream_message(prepared)
+        try:
+            async for event in stream:
+                if await http_request.is_disconnected():
+                    break
+                yield encode_sse_event(event)
+        finally:
+            await stream.aclose()
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.get("/api/v1/threads/{thread_id}/message-requests/{request_id}")
+async def get_message_request(
+    thread_id: str,
+    request_id: str,
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> dict[str, object]:
+    if container.conversations.get_thread(thread_id, actor_scope) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found.")
+    record = await run_in_threadpool(
+        container.conversation_store.get_message_request,
+        thread_id,
+        actor_scope.user_id,
+        request_id,
+    )
+    if record is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found.")
+    return record.model_dump(
+        mode="json",
+        exclude={"content_sha256", "result_payload"},
+    )
 
 
 @app.post("/api/v1/memories", status_code=status.HTTP_201_CREATED)

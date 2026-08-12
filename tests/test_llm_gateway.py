@@ -269,3 +269,38 @@ async def test_stream_probe_redacts_network_failures() -> None:
 
     assert "closeai-secret" not in str(raised.value)
     assert "closeai.invalid" not in str(raised.value)
+
+
+@pytest.mark.asyncio
+async def test_production_stream_forwards_visible_deltas_and_metadata() -> None:
+    body = (
+        'data: {"model":"gpt-stream","choices":[{"delta":{"reasoning_content":"hidden"}}]}\n\n'
+        'data: {"choices":[{"delta":{"content":"{\\"type\\":\\"unknown\\","}}]}\n\n'
+        'data: {"choices":[{"delta":{"content":"\\"text\\":\\"待确认\\"}"},"finish_reason":"stop"}]}\n\n'
+        'data: [DONE]\n\n'
+    ).encode()
+
+    async def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            stream=ChunkedAsyncStream([body[:73], body[73:]]),
+        )
+
+    deltas: list[tuple[str, str, str]] = []
+    gateway = OpenAICompatibleLLMGateway(
+        llm_settings(),
+        transport=httpx.MockTransport(handler),
+    )
+    result = await gateway.stream_complete(
+        [{"role": "user", "content": "stream"}],
+        on_content_delta=lambda delta, provider, model: deltas.append(
+            (delta, provider, model)
+        ),
+        allow_fallback=False,
+    )
+
+    assert "".join(item[0] for item in deltas) == '{"type":"unknown","text":"待确认"}'
+    assert all(item[1] == "closeai" for item in deltas)
+    assert result.reported_model == "gpt-stream"
+    assert "hidden" not in result.content

@@ -71,6 +71,16 @@ MONGO_INDEX_SPECS: dict[str, tuple[MongoIndexSpec, ...]] = {
         _index("thread_id", "thread_id", unique=True),
         _index("actor_user_id_updated_at", "actor_scope.user_id", "updated_at"),
     ),
+    "agent_message_requests": (
+        _index(
+            "actor_thread_request",
+            "actor_user_id",
+            "thread_id",
+            "request_id",
+            unique=True,
+        ),
+        _index("status_updated_at", "status", "updated_at"),
+    ),
     "checkpoints": (
         _checkpoint_index("thread_checkpoint_namespace_id"),
     ),

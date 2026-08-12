@@ -158,3 +158,13 @@ def test_frontend_does_not_mix_jwt_with_minio_query_authentication() -> None:
     api_source = (ROOT / "web/src/api.ts").read_text(encoding="utf-8")
 
     assert 'token && !access.url.startsWith("/objects/")' in api_source
+
+
+def test_nginx_disables_buffering_for_agent_sse() -> None:
+    nginx = (ROOT / "web/nginx.conf").read_text(encoding="utf-8")
+
+    assert "messages/stream$" in nginx
+    assert "proxy_buffering off;" in nginx
+    assert "proxy_cache off;" in nginx
+    assert "gzip off;" in nginx
+    assert 'add_header X-Accel-Buffering "no" always;' in nginx

@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   ClipboardCheck,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import {
   ApiError,
+  AgentStreamError,
   bootstrapToken,
   createThread,
   getEvaluation,
@@ -28,7 +29,7 @@ import {
   retryEvaluation,
   retryJob,
   runEvaluation,
-  sendMessage,
+  sendMessageStream,
   uploadDocument
 } from "./api";
 import { EvaluationPanel } from "./components/EvaluationPanel";
@@ -42,6 +43,7 @@ import type {
   EvaluationRun,
   IngestionJob,
   RetrievalTrace,
+  StreamUiState,
   Thread,
   UploadMetadata
 } from "./types";
@@ -71,6 +73,8 @@ function App() {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [streamState, setStreamState] = useState<StreamUiState | null>(null);
+  const streamAbortRef = useRef<AbortController | null>(null);
 
   const traceOptions = useMemo(() => {
     if (!selectedTrace || traces.some((item) => item.trace_id === selectedTrace.trace_id)) return traces;
@@ -153,6 +157,8 @@ function App() {
     if (asset?.local_object_url) URL.revokeObjectURL(asset.url);
   }, [asset]);
 
+  useEffect(() => () => streamAbortRef.current?.abort(), []);
+
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     setNotice("");
@@ -186,15 +192,118 @@ function App() {
   async function submitQuestion(event: FormEvent) {
     event.preventDefault();
     if (!thread || !query.trim()) return;
-    await runAction(async () => {
-      const response = await sendMessage(thread.thread_id, query.trim());
+    await runStream(query.trim(), `web_${crypto.randomUUID()}`, true);
+  }
+
+  async function runStream(content: string, requestId: string, optimistic: boolean) {
+    if (!thread || streamAbortRef.current) return;
+    const threadId = thread.thread_id;
+    const controller = new AbortController();
+    streamAbortRef.current = controller;
+    setActionLoading(true);
+    setError("");
+    setNotice("");
+    setStreamState({
+      requestId,
+      content,
+      status: "running",
+      stage: "analyzing_request",
+      stageMessage: "请求已提交，等待服务端接受",
+      partialAnswer: "",
+      internalEvidenceCount: 0,
+      externalEvidenceCount: 0,
+      elapsedMs: 0,
+      retryable: false
+    });
+    if (optimistic) {
+      setThread({
+        ...thread,
+        messages: [...thread.messages, {
+          message_id: `optimistic_${requestId}`,
+          request_id: requestId,
+          role: "user",
+          content,
+          citations: [],
+          created_at: new Date().toISOString()
+        }]
+      });
+      setQuery("");
+    }
+
+    try {
+      const response = await sendMessageStream(
+        threadId,
+        content,
+        requestId,
+        (streamEvent) => {
+          setStreamState((current) => {
+            if (!current || current.requestId !== requestId) return current;
+            if (streamEvent.event === "stage") {
+              return {
+                ...current,
+                stage: streamEvent.data.stage,
+                stageMessage: streamEvent.data.message ?? current.stageMessage
+              };
+            }
+            if (streamEvent.event === "evidence") {
+              return {
+                ...current,
+                internalEvidenceCount: streamEvent.data.internal_count ?? 0,
+                externalEvidenceCount: streamEvent.data.external_count ?? 0
+              };
+            }
+            if (streamEvent.event === "answer_delta") {
+              return {
+                ...current,
+                partialAnswer: current.partialAnswer + (streamEvent.data.delta ?? "")
+              };
+            }
+            if (streamEvent.event === "heartbeat") {
+              return { ...current, elapsedMs: streamEvent.data.elapsed_ms ?? current.elapsedMs };
+            }
+            return current;
+          });
+        },
+        controller.signal
+      );
       setThread(response.thread);
       setThreads((current) => [response.thread, ...current.filter((item) => item.thread_id !== response.thread.thread_id)]);
       setAgentResult(response);
-      setQuery("");
       if (response.trace_id) await refreshTraces(response.trace_id);
       setNotice(response.clarification_required ? "线程已暂停，等待补充信息" : "调查结果已写入线程");
-    }, "问题发送失败。");
+      setStreamState(null);
+    } catch (caught) {
+      const stopped = caught instanceof DOMException && caught.name === "AbortError";
+      try {
+        const refreshed = await getThread(threadId);
+        setThread(refreshed);
+        setThreads((current) => [refreshed, ...current.filter((item) => item.thread_id !== threadId)]);
+      } catch {
+        // Keep the local conversation visible if reconciliation is temporarily unavailable.
+      }
+      setStreamState((current) => current ? {
+        ...current,
+        status: stopped ? "stopped" : "error",
+        stageMessage: stopped
+          ? "已停止，未完成内容没有写入会话"
+          : messageFrom(caught, "流式请求失败。"),
+        retryable: stopped || (caught instanceof AgentStreamError && caught.retryable)
+      } : current);
+      if (stopped) setNotice("生成已停止，可使用同一请求重试");
+      else setError(messageFrom(caught, "问题发送失败。"));
+    } finally {
+      streamAbortRef.current = null;
+      setActionLoading(false);
+    }
+  }
+
+  function stopStream() {
+    streamAbortRef.current?.abort();
+  }
+
+  async function retryStream() {
+    if (!streamState || streamState.status === "running") return;
+    await runStream(streamState.content, streamState.requestId, false);
   }
 
   async function selectThread(threadId: string) {
@@ -202,6 +311,7 @@ function App() {
       setThread(await getThread(threadId));
       setAgentResult(null);
       setAsset(null);
+      setStreamState(null);
     }, "线程恢复失败。");
   }
 
@@ -211,6 +321,7 @@ function App() {
       setThreads((current) => [created, ...current]);
       setThread(created);
       setAgentResult(null);
+      setStreamState(null);
       setQuery("");
     }, "线程创建失败。");
   }
@@ -339,12 +450,15 @@ function App() {
         query={query}
         loading={actionLoading}
         asset={asset}
+        streamState={streamState}
         onQueryChange={setQuery}
         onSubmit={submitQuestion}
         onSelectThread={(threadId) => void selectThread(threadId)}
         onNewThread={() => void addThread()}
         onOpenImage={(imageId) => void openImage(imageId)}
         onOpenTrace={(traceId) => void openTrace(traceId)}
+        onStopStream={stopStream}
+        onRetryStream={() => void retryStream()}
       />}
       {view === "trace" && <TracePanel traces={traceOptions} trace={selectedTrace} onSelect={(traceId) => void selectTrace(traceId)} onOpenImage={(imageId) => void openImage(imageId)} />}
       {view === "ingestion" && <IngestionPanel jobs={jobs} selectedJob={selectedJob} loading={actionLoading} onSelect={(jobId) => void selectIngestionJob(jobId)} onUpload={upload} onRetry={retryIngestion} onRefresh={() => refreshJobs()} />}
