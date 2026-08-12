@@ -15,7 +15,8 @@ fi
 ./scripts/deployment/host_preflight.sh .env
 ./scripts/deployment/prepare_data_dirs.sh .env
 docker compose --env-file .env -f docker-compose.prod.yml config --quiet
-docker compose --env-file .env -f docker-compose.prod.yml pull etcd milvus-minio milvus mongodb minio redis
+docker compose --env-file .env -f docker-compose.prod.yml pull --policy missing \
+  etcd milvus-minio milvus mongodb minio redis
 docker compose --env-file .env -f docker-compose.prod.yml build api worker web milvus-init
 docker compose --env-file .env -f docker-compose.prod.yml up -d etcd milvus-minio milvus mongodb minio redis
 docker compose --env-file .env -f docker-compose.prod.yml up -d milvus-init

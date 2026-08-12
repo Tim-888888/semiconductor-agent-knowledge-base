@@ -87,6 +87,7 @@ def test_deployment_scripts_keep_restore_and_stage_guards() -> None:
     preflight = (ROOT / "scripts/deployment/host_preflight.sh").read_text(encoding="utf-8")
 
     assert "host_preflight.sh" in deploy
+    assert "pull --policy missing" in deploy
     assert "semikb.storage.provisioning" in deploy
     assert 'docker wait "$milvus_init_id"' in deploy
     assert "--seed-demo" in deploy
