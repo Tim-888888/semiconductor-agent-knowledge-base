@@ -10,6 +10,7 @@ from threading import RLock
 from semikb.contracts.models import (
     ActiveConversationContext,
     ActorScope,
+    AffectSignals,
     ApprovalStatus,
     AuditEvent,
     ChatMessage,
@@ -421,6 +422,19 @@ class DemoStore:
             existing.assistant_message_id = None
             existing.trace_id = None
             existing.result_payload = {}
+            existing.interaction_mode = None
+            existing.route_decision = None
+            existing.route_confidence = None
+            existing.task_items = []
+            existing.task_decisions = []
+            existing.context_message_ids = []
+            existing.standalone_query = ""
+            existing.retrieval_skipped_reason = None
+            existing.slot_operations = []
+            existing.inherited_slots = {}
+            existing.invalidated_context_refs = []
+            existing.cancel_scope = None
+            existing.affect = AffectSignals()
             existing.error_code = None
             existing.updated_at = datetime.now(UTC)
             existing.finished_at = None
@@ -538,6 +552,19 @@ class DemoStore:
             current.assistant_message_id = assistant_message_id
             current.assistant_turn_seq = record.assistant_turn_seq
             current.trace_id = trace_id
+            current.interaction_mode = record.interaction_mode
+            current.route_decision = record.route_decision
+            current.route_confidence = record.route_confidence
+            current.task_items = list(record.task_items)
+            current.task_decisions = list(record.task_decisions)
+            current.context_message_ids = list(record.context_message_ids)
+            current.standalone_query = record.standalone_query
+            current.retrieval_skipped_reason = record.retrieval_skipped_reason
+            current.slot_operations = list(record.slot_operations)
+            current.inherited_slots = dict(record.inherited_slots)
+            current.invalidated_context_refs = list(record.invalidated_context_refs)
+            current.cancel_scope = record.cancel_scope
+            current.affect = record.affect.model_copy(deep=True)
             current.error_code = error_code
             current.updated_at = datetime.now(UTC)
             current.finished_at = current.updated_at

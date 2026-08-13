@@ -70,6 +70,33 @@ export type AgentAnswer = {
   confidence: "low" | "medium" | "high";
 };
 
+export type AgentRoute =
+  | "history_direct"
+  | "chat_direct"
+  | "reuse_evidence"
+  | "internal_rag"
+  | "tool_only"
+  | "rag_and_tool"
+  | "rag_and_web"
+  | "clarify"
+  | "refuse";
+
+export type IntentTaskItem = {
+  task_id: string;
+  primary_intent: string;
+  target_type: string;
+  action: string;
+  depends_on: string[];
+  execution_policy: "execute" | "clarify" | "refuse" | "defer";
+};
+
+export type RouteTaskDecision = {
+  task_id: string;
+  decision: "execute" | "clarify" | "refuse" | "defer";
+  route?: AgentRoute | null;
+  reason_code: string;
+};
+
 export type EvidenceLedgerEntry = {
   evidence_id: string;
   source_type: string;
@@ -108,10 +135,17 @@ export type AgentResponse = {
   evidence_ledger?: EvidenceLedgerEntry[];
   model_metadata?: Record<string, unknown>;
   verification_warnings?: string[];
+  interaction_mode?: string | null;
+  route_decision?: AgentRoute | null;
+  route_confidence?: number | null;
+  task_items?: IntentTaskItem[];
+  task_decisions?: RouteTaskDecision[];
+  retrieval_skipped_reason?: string | null;
 };
 
 export type AgentStreamStage =
   | "analyzing_request"
+  | "routing_request"
   | "awaiting_clarification"
   | "retrieving_evidence"
   | "searching_external"

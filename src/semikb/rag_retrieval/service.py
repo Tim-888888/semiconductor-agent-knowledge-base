@@ -146,6 +146,40 @@ class RetrievalService:
     ) -> RetrievalTrace | None:
         return self.store.get_trace(trace_id, actor_scope)
 
+    def reuse_trace_evidence(
+        self,
+        trace_id: str,
+        actor_scope: ActorScope,
+        *,
+        constraints: RetrievalConstraints | None = None,
+    ) -> tuple[list[Chunk], RetrievalTrace] | None:
+        trace = self.store.get_trace(trace_id, actor_scope)
+        if trace is None or not trace.final_evidence_ids:
+            return None
+        accessible = {
+            chunk.chunk_id: chunk for chunk in self.store.list_published_chunks(actor_scope)
+        }
+        selected = []
+        for chunk_id in trace.final_evidence_ids:
+            chunk = accessible.get(chunk_id)
+            if chunk is None:
+                return None
+            if constraints and any(
+                getattr(constraints, field) and getattr(chunk, field) != getattr(constraints, field)
+                for field in (
+                    "fab",
+                    "product",
+                    "process_layer",
+                    "tool_id",
+                    "chamber",
+                    "recipe_id",
+                    "recipe_version",
+                )
+            ):
+                return None
+            selected.append(chunk)
+        return selected, trace
+
     def list_traces(self, actor_scope: ActorScope | None = None) -> list[RetrievalTrace]:
         return self.store.list_traces(actor_scope)
 

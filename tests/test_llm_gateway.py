@@ -120,6 +120,46 @@ async def test_closeai_uses_luna_compatible_parameters() -> None:
 
 
 @pytest.mark.asyncio
+async def test_structured_completion_sends_strict_schema_and_zero_temperature() -> None:
+    captured: dict[str, object] = {}
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={
+                "model": "structured-model",
+                "choices": [{"message": {"content": '{"route":"chat_direct"}'}}],
+            },
+        )
+
+    schema = {
+        "type": "object",
+        "properties": {"route": {"type": "string", "enum": ["chat_direct"]}},
+        "required": ["route"],
+        "additionalProperties": False,
+    }
+    gateway = OpenAICompatibleLLMGateway(
+        llm_settings(),
+        transport=httpx.MockTransport(handler),
+    )
+
+    await gateway.complete(
+        [{"role": "user", "content": "route"}],
+        response_schema=schema,
+        schema_name="route_schema",
+        temperature=0,
+        allow_fallback=False,
+    )
+
+    assert captured["temperature"] == 0
+    assert captured["response_format"] == {
+        "type": "json_schema",
+        "json_schema": {"name": "route_schema", "strict": True, "schema": schema},
+    }
+
+
+@pytest.mark.asyncio
 async def test_primary_failure_falls_back_with_qwen_parameter_shape() -> None:
     payloads: list[tuple[str, dict[str, object]]] = []
 

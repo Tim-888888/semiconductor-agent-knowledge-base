@@ -7,7 +7,7 @@ from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 def utc_now() -> datetime:
@@ -302,6 +302,154 @@ class AssembledConversationContext(BaseModel):
     current_message_id: str | None = None
 
 
+class InteractionMode(StrEnum):
+    TASK = "task"
+    CONVERSATION = "conversation"
+    FEEDBACK = "feedback"
+    CONTROL = "control"
+    CLARIFICATION_ANSWER = "clarification_answer"
+    MIXED = "mixed"
+
+
+class PrimaryIntent(StrEnum):
+    CONVERSATION = "conversation"
+    KNOWLEDGE_QUERY = "knowledge_query"
+    INVESTIGATION = "investigation"
+    DATA_QUERY = "data_query"
+    ACTION_REQUEST = "action_request"
+    CONTENT_TASK = "content_task"
+
+
+class IntentTarget(StrEnum):
+    PREVIOUS_USER_MESSAGE = "previous_user_message"
+    PREVIOUS_ANSWER = "previous_answer"
+    SOP = "sop"
+    RECIPE = "recipe"
+    FDC = "fdc"
+    SPC = "spc"
+    WAFER_MAP = "wafer_map"
+    LOT = "lot"
+    CASE = "case"
+    ALARM = "alarm"
+    REPORT = "report"
+    GENERAL = "general"
+
+
+class IntentTaskAction(StrEnum):
+    RECALL = "recall"
+    SUMMARIZE = "summarize"
+    SIMPLIFY = "simplify"
+    TRANSLATE = "translate"
+    LOOKUP = "lookup"
+    COMPARE = "compare"
+    DIAGNOSE = "diagnose"
+    EXPLAIN = "explain"
+    EXECUTE = "execute"
+    GENERATE = "generate"
+
+
+class TaskExecutionDecision(StrEnum):
+    EXECUTE = "execute"
+    CLARIFY = "clarify"
+    REFUSE = "refuse"
+    DEFER = "defer"
+
+
+class SlotOperationKind(StrEnum):
+    SET = "set"
+    INHERIT = "inherit"
+    CORRECT = "correct"
+    CLEAR = "clear"
+
+
+class CancelScope(StrEnum):
+    CURRENT_GENERATION = "current_generation"
+    CURRENT_TASK = "current_task"
+    TASK_ITEM = "task_item"
+    CLARIFICATION = "clarification"
+
+
+class AgentRoute(StrEnum):
+    HISTORY_DIRECT = "history_direct"
+    CHAT_DIRECT = "chat_direct"
+    REUSE_EVIDENCE = "reuse_evidence"
+    INTERNAL_RAG = "internal_rag"
+    TOOL_ONLY = "tool_only"
+    RAG_AND_TOOL = "rag_and_tool"
+    RAG_AND_WEB = "rag_and_web"
+    CLARIFY = "clarify"
+    REFUSE = "refuse"
+
+
+class AffectSignals(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sentiment: str = Field(default="neutral", pattern="^(neutral|positive|negative)$")
+    urgency: str = Field(default="normal", pattern="^(normal|urgent)$")
+    complaint_signal: bool = False
+
+
+class IntentTaskItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    task_id: str = Field(pattern=r"^task_[1-3]$")
+    primary_intent: PrimaryIntent
+    target_type: IntentTarget
+    action: IntentTaskAction
+    depends_on: list[str] = Field(default_factory=list, max_length=2)
+    execution_policy: TaskExecutionDecision = TaskExecutionDecision.EXECUTE
+
+
+class SlotOperation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: SlotOperationKind
+    slot_name: str = Field(min_length=1, max_length=64)
+    value: str | None = Field(default=None, max_length=256)
+    source_message_id: str | None = None
+
+
+class ConversationUnderstanding(BaseModel):
+    """Validated semantic interpretation; it is not an executable tool plan."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "semikb-understanding-v1"
+    classifier_source: str = Field(pattern="^(l0|llm|deterministic_fallback)$")
+    interaction_mode: InteractionMode
+    primary_intent: PrimaryIntent
+    task_items: list[IntentTaskItem] = Field(default_factory=list, max_length=3)
+    affect: AffectSignals = Field(default_factory=AffectSignals)
+    slot_operations: list[SlotOperation] = Field(default_factory=list, max_length=12)
+    explicit_slots: dict[str, str] = Field(default_factory=dict)
+    inherited_slots: dict[str, str] = Field(default_factory=dict)
+    missing_slots: list[str] = Field(default_factory=list, max_length=3)
+    context_message_ids: list[str] = Field(default_factory=list, max_length=8)
+    standalone_query: str = Field(default="", max_length=8000)
+    cancel_scope: CancelScope | None = None
+    suggested_route: AgentRoute
+    confidence: float = Field(ge=0, le=1)
+
+
+class RouteTaskDecision(BaseModel):
+    task_id: str
+    decision: TaskExecutionDecision
+    route: AgentRoute | None = None
+    reason_code: str
+
+
+class RoutePlan(BaseModel):
+    """Deterministic policy output persisted for audit and later controlled execution."""
+
+    route: AgentRoute
+    confidence: float = Field(ge=0, le=1)
+    reason_codes: list[str] = Field(default_factory=list)
+    task_decisions: list[RouteTaskDecision] = Field(default_factory=list, max_length=3)
+    missing_slots: list[str] = Field(default_factory=list, max_length=3)
+    retrieval_skipped_reason: str | None = None
+    invalidated_context_refs: list[str] = Field(default_factory=list)
+
+
 class ThreadRecord(BaseModel):
     thread_id: str = Field(default_factory=lambda: new_id("thread"))
     title: str = "New investigation"
@@ -375,6 +523,12 @@ class SendMessageResponse(BaseModel):
     evidence_ledger: list[dict[str, Any]] = Field(default_factory=list)
     model_metadata: dict[str, Any] = Field(default_factory=dict)
     verification_warnings: list[str] = Field(default_factory=list)
+    interaction_mode: InteractionMode | None = None
+    route_decision: AgentRoute | None = None
+    route_confidence: float | None = Field(default=None, ge=0, le=1)
+    task_items: list[IntentTaskItem] = Field(default_factory=list, max_length=3)
+    task_decisions: list[RouteTaskDecision] = Field(default_factory=list, max_length=3)
+    retrieval_skipped_reason: str | None = None
 
 
 class MemoryRecord(BaseModel):

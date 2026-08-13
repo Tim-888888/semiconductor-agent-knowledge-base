@@ -8,7 +8,18 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, TypeAdapter
 
-from semikb.contracts.models import SendMessageResponse, new_id, utc_now
+from semikb.contracts.models import (
+    AffectSignals,
+    AgentRoute,
+    CancelScope,
+    IntentTaskItem,
+    InteractionMode,
+    RouteTaskDecision,
+    SendMessageResponse,
+    SlotOperation,
+    new_id,
+    utc_now,
+)
 
 REQUEST_ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$"
 
@@ -25,6 +36,7 @@ class AgentStreamEventType(StrEnum):
 
 class AgentStreamStage(StrEnum):
     ANALYZING_REQUEST = "analyzing_request"
+    ROUTING_REQUEST = "routing_request"
     AWAITING_CLARIFICATION = "awaiting_clarification"
     RETRIEVING_EVIDENCE = "retrieving_evidence"
     SEARCHING_EXTERNAL = "searching_external"
@@ -83,6 +95,19 @@ class AgentMessageRequestRecord(BaseModel):
     assistant_message_id: str | None = None
     trace_id: str | None = None
     result_payload: dict[str, Any] = Field(default_factory=dict)
+    interaction_mode: InteractionMode | None = None
+    route_decision: AgentRoute | None = None
+    route_confidence: float | None = Field(default=None, ge=0, le=1)
+    task_items: list[IntentTaskItem] = Field(default_factory=list, max_length=3)
+    task_decisions: list[RouteTaskDecision] = Field(default_factory=list, max_length=3)
+    context_message_ids: list[str] = Field(default_factory=list, max_length=8)
+    standalone_query: str = Field(default="", max_length=8000)
+    retrieval_skipped_reason: str | None = None
+    slot_operations: list[SlotOperation] = Field(default_factory=list, max_length=12)
+    inherited_slots: dict[str, str] = Field(default_factory=dict)
+    invalidated_context_refs: list[str] = Field(default_factory=list)
+    cancel_scope: CancelScope | None = None
+    affect: AffectSignals = Field(default_factory=AffectSignals)
     error_code: AgentStreamErrorCode | None = None
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)

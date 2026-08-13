@@ -129,6 +129,9 @@ class OpenAICompatibleLLMGateway:
         messages: list[dict[str, Any]],
         *,
         response_json: bool = False,
+        response_schema: dict[str, Any] | None = None,
+        schema_name: str = "structured_response",
+        temperature: float | None = None,
         max_output_tokens: int = 1024,
         allow_fallback: bool = True,
     ) -> LLMCompletion:
@@ -148,6 +151,9 @@ class OpenAICompatibleLLMGateway:
                     config,
                     messages,
                     response_json=response_json,
+                    response_schema=response_schema,
+                    schema_name=schema_name,
+                    temperature=temperature,
                     max_output_tokens=max_output_tokens,
                     fallback_used=index > 0,
                     attempted_providers=tuple(attempted),
@@ -227,6 +233,9 @@ class OpenAICompatibleLLMGateway:
         messages: list[dict[str, Any]],
         *,
         response_json: bool = False,
+        response_schema: dict[str, Any] | None = None,
+        schema_name: str = "structured_response",
+        temperature: float | None = None,
         max_output_tokens: int = 1024,
         allow_fallback: bool = True,
     ) -> LLMCompletion:
@@ -247,6 +256,9 @@ class OpenAICompatibleLLMGateway:
                     config,
                     messages,
                     response_json=response_json,
+                    response_schema=response_schema,
+                    schema_name=schema_name,
+                    temperature=temperature,
                     max_output_tokens=max_output_tokens,
                     fallback_used=index > 0,
                     attempted_providers=tuple(attempted),
@@ -270,6 +282,9 @@ class OpenAICompatibleLLMGateway:
         messages: list[dict[str, Any]],
         *,
         response_json: bool,
+        response_schema: dict[str, Any] | None,
+        schema_name: str,
+        temperature: float | None,
         max_output_tokens: int,
         fallback_used: bool,
         attempted_providers: tuple[str, ...],
@@ -278,6 +293,9 @@ class OpenAICompatibleLLMGateway:
             config,
             messages,
             response_json=response_json,
+            response_schema=response_schema,
+            schema_name=schema_name,
+            temperature=temperature,
             max_output_tokens=max_output_tokens,
         )
 
@@ -559,6 +577,9 @@ class OpenAICompatibleLLMGateway:
         messages: list[dict[str, Any]],
         *,
         response_json: bool,
+        response_schema: dict[str, Any] | None,
+        schema_name: str,
+        temperature: float | None,
         max_output_tokens: int,
         fallback_used: bool,
         attempted_providers: tuple[str, ...],
@@ -567,6 +588,9 @@ class OpenAICompatibleLLMGateway:
             config,
             messages,
             response_json=response_json,
+            response_schema=response_schema,
+            schema_name=schema_name,
+            temperature=temperature,
             max_output_tokens=max_output_tokens,
         )
         endpoint = f"{config.base_url.rstrip('/')}/chat/completions"
@@ -592,6 +616,9 @@ class OpenAICompatibleLLMGateway:
         messages: list[dict[str, Any]],
         *,
         response_json: bool,
+        response_schema: dict[str, Any] | None = None,
+        schema_name: str = "structured_response",
+        temperature: float | None = None,
         max_output_tokens: int,
         stream: bool = False,
     ) -> dict[str, Any]:
@@ -600,8 +627,19 @@ class OpenAICompatibleLLMGateway:
             "messages": messages,
             config.max_tokens_field: max_output_tokens,
         }
-        if response_json:
+        if response_schema is not None:
+            payload["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": schema_name,
+                    "strict": True,
+                    "schema": response_schema,
+                },
+            }
+        elif response_json:
             payload["response_format"] = {"type": "json_object"}
+        if temperature is not None:
+            payload["temperature"] = temperature
         if stream:
             payload["stream"] = True
         if config.reasoning_effort:

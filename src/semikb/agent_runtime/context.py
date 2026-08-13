@@ -13,6 +13,8 @@ from semikb.contracts.models import (
     ContextEvidenceRef,
     ContextSlot,
     ConversationContextMessage,
+    SlotOperation,
+    SlotOperationKind,
     ThreadRecord,
     utc_now,
 )
@@ -116,7 +118,23 @@ class ContextAssembler:
         if not isinstance(constraints, dict):
             constraints = {}
 
-        changed: set[str] = set()
+        raw_operations = result.get("slot_operations", [])
+        operations = []
+        if isinstance(raw_operations, list):
+            for item in raw_operations:
+                try:
+                    operations.append(SlotOperation.model_validate(item))
+                except ValueError:
+                    continue
+        if str(result.get("route_decision", "")) == "refuse":
+            constraints = {}
+            operations = []
+
+        changed: set[str] = {
+            item.slot_name
+            for item in operations
+            if item.operation in {SlotOperationKind.CORRECT, SlotOperationKind.CLEAR}
+        }
         for name in CONTEXT_SLOT_NAMES:
             raw = constraints.get(name)
             if raw in (None, ""):
@@ -129,15 +147,41 @@ class ContextAssembler:
         if changed:
             self._invalidate_dependents(context, changed, source_message_id, now)
 
+        for operation in operations:
+            if operation.operation is not SlotOperationKind.CLEAR:
+                continue
+            existing = context.slots.get(operation.slot_name)
+            if existing is None:
+                continue
+            existing.valid = False
+            existing.invalidated_by_message_id = source_message_id
+            existing.invalidation_reason = "user_cleared"
+            existing.updated_at = now
+
         for name in CONTEXT_SLOT_NAMES:
             raw = constraints.get(name)
             if raw in (None, ""):
                 continue
             value = str(raw)
+            inherited = next(
+                (
+                    item
+                    for item in operations
+                    if item.slot_name == name and item.operation is SlotOperationKind.INHERIT
+                ),
+                None,
+            )
+            existing = context.slots.get(name)
+            if inherited is not None and existing is not None and existing.valid:
+                continue
             context.slots[name] = ContextSlot(
                 value=value,
-                source_message_id=self._find_source_message(thread, value, source_message_id),
-                source_kind="explicit",
+                source_message_id=(
+                    inherited.source_message_id
+                    if inherited is not None and inherited.source_message_id
+                    else self._find_source_message(thread, value, source_message_id)
+                ),
+                source_kind="inherited" if inherited is not None else "explicit",
                 depends_on=list(SLOT_DEPENDENCIES.get(name, ())),
                 updated_at=now,
             )

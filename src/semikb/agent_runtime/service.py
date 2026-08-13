@@ -22,9 +22,15 @@ from semikb.agent_runtime.web_search import AliyunWebSearchGateway
 from semikb.config import Settings
 from semikb.contracts.models import (
     ActorScope,
+    AffectSignals,
     AgentAnswer,
+    AgentRoute,
     ChatMessage,
+    IntentTaskItem,
+    InteractionMode,
+    RouteTaskDecision,
     SendMessageResponse,
+    SlotOperation,
     ThreadRecord,
     new_id,
 )
@@ -338,6 +344,7 @@ class ConversationService:
             thread = self.repository.get_thread(record.thread_id)
             if thread is None:
                 raise KeyError(record.thread_id)
+            self._apply_route_metadata(record, final_state)
             response_model, assistant, thread_state = self._build_response(
                 thread,
                 final_state,
@@ -522,6 +529,7 @@ class ConversationService:
                 clarification_required=True,
                 missing_fields=pending_fields,
                 clarification_round=clarification_round,
+                **self._response_route_metadata(result),
             )
             return model, assistant, {
                 "status": "waiting_for_clarification",
@@ -553,12 +561,60 @@ class ConversationService:
             evidence_ledger=list(result.get("evidence_ledger", [])),
             model_metadata=dict(result.get("model_metadata", {})),
             verification_warnings=list(result.get("verification_warnings", [])),
+            **self._response_route_metadata(result),
         )
         return model, assistant, {
             "status": "active",
             "pending_fields": [],
             "clarification_round": 0,
         }
+
+    @staticmethod
+    def _response_route_metadata(result: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "interaction_mode": result.get("interaction_mode"),
+            "route_decision": result.get("route_decision"),
+            "route_confidence": result.get("route_confidence"),
+            "task_items": result.get("task_items", []),
+            "task_decisions": result.get("route_plan", {}).get("task_decisions", []),
+            "retrieval_skipped_reason": result.get("retrieval_skipped_reason"),
+        }
+
+    @staticmethod
+    def _apply_route_metadata(
+        record: AgentMessageRequestRecord,
+        result: dict[str, Any],
+    ) -> None:
+        if result.get("interaction_mode"):
+            record.interaction_mode = InteractionMode(str(result["interaction_mode"]))
+        if result.get("route_decision"):
+            record.route_decision = AgentRoute(str(result["route_decision"]))
+        if result.get("route_confidence") is not None:
+            record.route_confidence = float(result["route_confidence"])
+        record.task_items = [
+            IntentTaskItem.model_validate(item) for item in result.get("task_items", [])
+        ]
+        route_plan = result.get("route_plan", {})
+        record.task_decisions = [
+            RouteTaskDecision.model_validate(item)
+            for item in route_plan.get("task_decisions", [])
+        ]
+        record.context_message_ids = [str(item) for item in result.get("context_message_ids", [])]
+        record.standalone_query = str(result.get("standalone_query", ""))
+        record.retrieval_skipped_reason = result.get("retrieval_skipped_reason")
+        record.slot_operations = [
+            SlotOperation.model_validate(item) for item in result.get("slot_operations", [])
+        ]
+        record.inherited_slots = {
+            str(key): str(value) for key, value in result.get("inherited_slots", {}).items()
+        }
+        record.invalidated_context_refs = [
+            str(item) for item in result.get("invalidated_context_refs", [])
+        ]
+        record.cancel_scope = result.get("cancel_scope")
+        understanding = result.get("understanding", {})
+        if isinstance(understanding, dict) and understanding.get("affect"):
+            record.affect = AffectSignals.model_validate(understanding["affect"])
 
     def _replayed_response(self, record: AgentMessageRequestRecord) -> SendMessageResponse:
         thread = self.repository.get_thread(record.thread_id)

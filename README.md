@@ -14,7 +14,7 @@ manufacturing data.
 | --- | --- | --- |
 | Ingestion | Markdown/fixture ingestion, SHA-256 idempotency, quality gate, semantic chunks | Celery Worker, MinerU adapter, online Qwen embedding and MinIO/Mongo/Milvus production repositories are implemented and live acceptance has passed |
 | Retrieval | Version/ACL-aware Dense + Sparse + RRF + deterministic rerank and cutoff | Online qwen3.7-text-embedding native Dense/Sparse + Milvus + conditional Luna HyDE + qwen3-rerank passed the synthetic acceptance gate |
-| Conversation | LangGraph `interrupt/resume`, two clarification rounds, evidence ledger and explicit memory | MongoDB Checkpointer/Store plus Luna primary/Qwen fallback answer generation passed restart acceptance |
+| Conversation | LangGraph `interrupt/resume`, exact history, controlled intent and on-demand routing, evidence ledger and explicit memory | MongoDB Checkpointer/Store plus structured Luna/Qwen understanding and deterministic RoutePolicy passed ECS acceptance |
 | Operations | Trace, golden-set evaluation, task-centre UI | Real API/Worker-backed Trace, ingestion, evaluation and responsive browser workflows passed T8 acceptance; production observability remains T9 scope |
 
 ## Local development
@@ -51,9 +51,14 @@ The live T7 evaluation acceptance is
 `python scripts/verify_t7_evaluation.py --timeout 900 --replace-acceptance-runs`.
 The T8 browser click and screenshot record is
 `docs/T8浏览器验收.md`.
+The T9-4.3.2 deterministic and live intent gates are
+`python scripts/verify_t9432_intent_routing.py --mode deterministic` and
+`python scripts/verify_t9432_intent_routing.py --mode live`. The real route-boundary acceptance is
+`python scripts/verify_t9432_agent_routes.py`.
 
 The hardened single-node deployment artifacts are documented in
-`docs/T9-2生产部署产物加固验收.md`. They are locally validated but not yet accepted on the
-target ECS; T9 remains incomplete until the live deployment and end-to-end recovery tests pass.
+`docs/T9-2生产部署产物加固验收.md`. T9-3, streaming, context, and controlled routing have passed
+on the target ECS; T9 remains incomplete until the remaining combined execution, browser,
+resilience, capacity, recovery, security, and final demonstration gates pass.
 
 See `docs/` for storage, API, security, testing, and deployment decisions.

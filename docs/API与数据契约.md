@@ -24,8 +24,9 @@ LangGraph `InMemorySaver`；真实模式使用官方 `MongoDBSaver` 写入 `chec
 持久化暂停；下一条同线程消息使用 `Command(resume=...)` 恢复。最多追问两轮，仍缺少关键字段时
 返回 `insufficient_information`，不调用检索或制造工具。
 
-这里已实现的是澄清中断/恢复契约。通用历史装配、指代消解和“无需检索时跳过 RAG”属于
-T9-4.3 新增契约，当前仅完成设计，不得据此宣称已经实现完整连续对话。
+除澄清中断/恢复外，T9-4.3.1 已实现通用历史装配，T9-4.3.2 已实现精确历史直答、受控意图和
+“无需检索时跳过 RAG”。预定义组合执行、路由专用答案校验和前端路由标识仍属于 T9-4.3.3，不能把
+当前能力描述为全部业务闭环已经完成。
 
 ### T9-4.1 流式消息契约
 
@@ -55,9 +56,10 @@ data: {"event":"stage","event_id":"sse_<id>","request_id":"req_<id>","thread_id"
 未完成的助手 Delta 不写入 `agent_threads`。客户端重新读取线程和请求台账进行对账，不能把本地半截文本
 当作最终答案。
 
-### T9-4.3 计划中的会话理解与按需路由契约
+### T9-4.3.2 会话理解与按需路由契约
 
-本节中 T9-4.3.1 上下文基础已经实现；T9-4.3.2 及后续意图/路由契约仍是已确认但尚未开发。现有消息 URL 和 SSE 事件信封保持兼容，内部计划新增
+T9-4.3.1 上下文基础和 T9-4.3.2 意图/路由契约已经实现。现有消息 URL 和 SSE 事件信封保持兼容，
+内部使用
 `ConversationUnderstanding`：
 
 ```json
@@ -67,8 +69,9 @@ data: {"event":"stage","event_id":"sse_<id>","request_id":"req_<id>","thread_id"
   "task_items": [
     {
       "task_id": "task_1",
+      "primary_intent": "conversation",
       "target_type": "previous_user_message",
-      "task": "recall",
+      "action": "recall",
       "depends_on": [],
       "execution_policy": "execute"
     }
@@ -89,7 +92,7 @@ data: {"event":"stage","event_id":"sse_<id>","request_id":"req_<id>","thread_id"
 `interaction_mode` 固定为 `task`、`conversation`、`feedback`、`control`、
 `clarification_answer` 和 `mixed`。一级意图固定为 `conversation`、`knowledge_query`、
 `investigation`、`data_query`、`action_request` 和 `content_task`。二级语义由最多 3 个
-`task_item` 的 `target_type + task` 表达，避免创建不可维护的意图笛卡尔积；任务依赖只允许映射到
+`task_item` 的 `target_type + action` 表达，避免创建不可维护的意图笛卡尔积；任务依赖只允许映射到
 预定义执行组合，不接受任意 DAG。
 
 槽位必须区分本轮显式值和历史继承值，使用 `set/inherit/correct/clear` 操作并记录来源
@@ -109,9 +112,11 @@ data: {"event":"stage","event_id":"sse_<id>","request_id":"req_<id>","thread_id"
 评估集和路由风险校准，不写死通用 `0.8/0.6/0.4`；语义低置信度进入澄清，Provider 熔断只由超时、
 429、5xx 或无效响应触发。
 
-计划在 `SendMessageResponse` 和 SSE `completed.data` 中以可选、向后兼容的 `route_metadata` 返回
-最终路由、用户可见标签、是否执行检索/工具、`retrieval_skipped_reason` 和逐个 `task_id` 的
-执行/澄清/拒绝/延后状态。`stage` 只报告实际执行的上下文、检索或工具步骤，不输出隐藏推理。详细规则见
+`SendMessageResponse` 和 SSE `completed.data.result` 已以可选、向后兼容字段返回
+`interaction_mode`、`route_decision`、`route_confidence`、`task_items`、`task_decisions` 和
+`retrieval_skipped_reason`。`agent_message_requests` 保存同一组路由审计信息，以及上下文消息 ID、
+独立查询、槽位操作、继承值、失效引用、取消范围和有限情绪枚举。`stage` 只报告实际执行的上下文、
+检索或工具步骤，不输出隐藏推理。前端用户可见路由标签和逐任务最终结果属于 T9-4.3.3。详细规则见
 `docs/T9-4.3通用会话记忆与按需路由设计.md`。
 
 ## 长期记忆

@@ -271,6 +271,30 @@ class ProductionRetrievalService:
     ) -> RetrievalTrace | None:
         return self.repository.get_trace(trace_id, actor_scope)
 
+    def reuse_trace_evidence(
+        self,
+        trace_id: str,
+        actor_scope: ActorScope,
+        *,
+        constraints: RetrievalConstraints | None = None,
+    ) -> tuple[list[Chunk], RetrievalTrace] | None:
+        """Reload prior evidence only after current ACL, lifecycle, and version checks."""
+
+        trace = self.repository.get_trace(trace_id, actor_scope)
+        if trace is None or not trace.final_evidence_ids:
+            return None
+        chunks = self.repository.get_chunks(trace.final_evidence_ids)
+        current = datetime.now(UTC)
+        selected = [
+            chunks[chunk_id]
+            for chunk_id in trace.final_evidence_ids
+            if chunk_id in chunks
+            and self.repository.is_accessible(chunks[chunk_id], actor_scope, current, constraints)
+        ]
+        if len(selected) != len(trace.final_evidence_ids):
+            return None
+        return selected, trace
+
     def list_traces(self, actor_scope: ActorScope | None = None) -> list[RetrievalTrace]:
         return self.repository.list_traces(actor_scope)
 

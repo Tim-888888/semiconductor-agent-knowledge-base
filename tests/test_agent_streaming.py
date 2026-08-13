@@ -12,7 +12,7 @@ from semikb.agent_runtime.service import ConversationService
 from semikb.api.main import app
 from semikb.bootstrap import get_container
 from semikb.config import Settings, get_settings
-from semikb.contracts.models import ActorScope
+from semikb.contracts.models import ActorScope, AffectSignals
 from semikb.contracts.streaming import (
     AgentMessageRequestStatus,
     AgentStreamEventType,
@@ -216,6 +216,7 @@ async def test_explicit_cancel_interrupts_active_graph_and_allows_retry(seeded_s
     stream = conversation.stream_message(prepared)
     await anext(stream)
     await anext(stream)
+    prepared.record.affect = AffectSignals(sentiment="negative", complaint_signal=True)
 
     cancelled = await conversation.cancel_stream_message(thread.thread_id, request_id, scope)
     assert cancelled.status is AgentMessageRequestStatus.CANCELLED
@@ -229,6 +230,7 @@ async def test_explicit_cancel_interrupts_active_graph_and_allows_retry(seeded_s
     )
 
     assert retry.record.attempt == 2
+    assert retry.record.affect == AffectSignals()
     persisted = store.get_thread(thread.thread_id)
     assert persisted is not None
     assert [message.role for message in persisted.messages] == ["user"]
