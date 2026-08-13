@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import json
 
 import pytest
@@ -218,7 +217,7 @@ async def test_explicit_cancel_interrupts_active_graph_and_allows_retry(seeded_s
 
     cancelled = await conversation.cancel_stream_message(thread.thread_id, request_id, scope)
     assert cancelled.status is AgentMessageRequestStatus.CANCELLED
-    with pytest.raises(asyncio.CancelledError):
+    with pytest.raises(StopAsyncIteration):
         await anext(stream)
     retry = await conversation.prepare_stream_message(
         thread.thread_id,

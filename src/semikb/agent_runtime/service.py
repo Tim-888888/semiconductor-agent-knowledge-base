@@ -352,7 +352,12 @@ class ConversationService:
                 StreamCompletedEvent,
                 StreamCompletedData(run_id=record.run_id, result=response_model),
             )
-        except (asyncio.CancelledError, GeneratorExit):
+        except asyncio.CancelledError:
+            await self._mark_failed(record, AgentMessageRequestStatus.CANCELLED, AgentStreamErrorCode.CANCELLED)
+            if control.cancelled.is_set():
+                return
+            raise
+        except GeneratorExit:
             await self._mark_failed(record, AgentMessageRequestStatus.CANCELLED, AgentStreamErrorCode.CANCELLED)
             raise
         except Exception as exc:
