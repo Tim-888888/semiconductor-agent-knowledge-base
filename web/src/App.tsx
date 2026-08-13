@@ -76,6 +76,7 @@ function App() {
   const [notice, setNotice] = useState("");
   const [streamState, setStreamState] = useState<StreamUiState | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
+  const streamStopRequestedRef = useRef(false);
 
   const traceOptions = useMemo(() => {
     if (!selectedTrace || traces.some((item) => item.trace_id === selectedTrace.trace_id)) return traces;
@@ -201,6 +202,7 @@ function App() {
     const threadId = thread.thread_id;
     const controller = new AbortController();
     streamAbortRef.current = controller;
+    streamStopRequestedRef.current = false;
     setActionLoading(true);
     setError("");
     setNotice("");
@@ -274,7 +276,8 @@ function App() {
       setNotice(response.clarification_required ? "线程已暂停，等待补充信息" : "调查结果已写入线程");
       setStreamState(null);
     } catch (caught) {
-      const stopped = caught instanceof DOMException && caught.name === "AbortError";
+      const stopped = streamStopRequestedRef.current
+        || (caught instanceof DOMException && caught.name === "AbortError");
       try {
         const refreshed = await getThread(threadId);
         setThread(refreshed);
@@ -301,6 +304,7 @@ function App() {
   async function stopStream() {
     const controller = streamAbortRef.current;
     if (!controller || !thread || !streamState) return;
+    streamStopRequestedRef.current = true;
     setStreamState((current) => current ? {
       ...current,
       stageMessage: "正在停止生成并同步服务端状态"
