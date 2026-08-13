@@ -62,31 +62,56 @@ data: {"event":"stage","event_id":"sse_<id>","request_id":"req_<id>","thread_id"
 
 ```json
 {
+  "interaction_mode": "conversation",
   "primary_intent": "conversation",
-  "target_type": "previous_user_message",
-  "task": "recall",
-  "slots": {},
+  "task_items": [
+    {
+      "task_id": "task_1",
+      "target_type": "previous_user_message",
+      "task": "recall",
+      "depends_on": [],
+      "execution_policy": "execute"
+    }
+  ],
+  "affect": {"sentiment": "neutral", "urgency": "normal", "complaint_signal": false},
+  "slot_operations": [],
+  "explicit_slots": {},
   "inherited_slots": {},
   "missing_slots": [],
   "context_message_ids": ["msg_xxx"],
   "standalone_query": "",
+  "cancel_scope": null,
   "suggested_route": "history_direct",
   "confidence": 0.99
 }
 ```
 
-一级意图固定为 `conversation`、`knowledge_query`、`investigation`、`data_query`、
-`action_request` 和 `content_task`。二级语义由 `target_type + task` 组合表达，避免创建不可维护的
-意图笛卡尔积。槽位必须区分本轮显式值和从历史继承的值，并记录来源 `message_id`。
+`interaction_mode` 固定为 `task`、`conversation`、`feedback`、`control`、
+`clarification_answer` 和 `mixed`。一级意图固定为 `conversation`、`knowledge_query`、
+`investigation`、`data_query`、`action_request` 和 `content_task`。二级语义由最多 3 个
+`task_item` 的 `target_type + task` 表达，避免创建不可维护的意图笛卡尔积；任务依赖只允许映射到
+预定义执行组合，不接受任意 DAG。
+
+槽位必须区分本轮显式值和历史继承值，使用 `set/inherit/correct/clear` 操作并记录来源
+`message_id`。纠正 Tool 等上游槽位时返回需要失效的旧 Chamber、Recipe 和证据引用；取消操作必须
+携带当前生成、当前任务、指定任务或待补充澄清等明确范围。情绪字段只影响表达和审计，不直接决定路由。
+
+复杂输入仍只允许一次结构化 LLM 理解。使用 Provider 支持的 JSON Schema/工具调用约束和
+`temperature=0`，再经 Pydantic 校验；最多一次结构化修复，失败后确定性降级。服务端不能把 Schema
+约束视为权限、过滤表达式或工具参数校验的替代品。
 
 可用路由为 `history_direct`、`chat_direct`、`reuse_evidence`、`internal_rag`、`tool_only`、
 `rag_and_tool`、`rag_and_web`、`clarify` 和 `refuse`。LLM 只返回 `suggested_route`；服务端
 `RoutePolicy` 根据权限、风险、槽位、上下文和证据有效性作最终决定。历史回顾和普通聊天不调用 T5；
 查询最新版本或实时状态不得直接复用旧证据。
 
+一期不新增向量意图路由、不增加第二次意图 LLM 调用、不引入自由任务 DAG。置信度阈值按半导体意图
+评估集和路由风险校准，不写死通用 `0.8/0.6/0.4`；语义低置信度进入澄清，Provider 熔断只由超时、
+429、5xx 或无效响应触发。
+
 计划在 `SendMessageResponse` 和 SSE `completed.data` 中以可选、向后兼容的 `route_metadata` 返回
-最终路由、用户可见标签、是否执行检索/工具和 `retrieval_skipped_reason`。`stage` 只报告实际执行的
-上下文、检索或工具步骤，不输出隐藏推理。详细规则见
+最终路由、用户可见标签、是否执行检索/工具、`retrieval_skipped_reason` 和逐个 `task_id` 的
+执行/澄清/拒绝/延后状态。`stage` 只报告实际执行的上下文、检索或工具步骤，不输出隐藏推理。详细规则见
 `docs/T9-4.3通用会话记忆与按需路由设计.md`。
 
 ## 长期记忆
