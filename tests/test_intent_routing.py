@@ -153,6 +153,47 @@ class UnsafeMixedLLM:
         )
 
 
+class MisleadingHistoryLLM:
+    async def complete(self, *args, **kwargs):
+        payload = {
+            "interaction_mode": "task",
+            "primary_intent": "knowledge_query",
+            "task_items": [
+                {
+                    "task_id": "task_1",
+                    "primary_intent": "knowledge_query",
+                    "target_type": "previous_user_message",
+                    "action": "recall",
+                    "depends_on": [],
+                    "execution_policy": "execute",
+                }
+            ],
+            "affect": {
+                "sentiment": "neutral",
+                "urgency": "normal",
+                "complaint_signal": False,
+            },
+            "slot_operations": [],
+            "explicit_slots": [],
+            "inherited_slot_names": [],
+            "missing_slots": [],
+            "context_message_ids": ["msg_meta"],
+            "standalone_query": "复述最近一条用户输入",
+            "cancel_scope": None,
+            "suggested_route": "internal_rag",
+            "confidence": 0.96,
+        }
+        return LLMCompletion(
+            content=json.dumps(payload, ensure_ascii=False),
+            provider="test",
+            requested_model="test",
+            reported_model="test",
+            fallback_used=False,
+            attempted_providers=("test",),
+            usage={},
+        )
+
+
 def _service(seeded_services):
     store, _, retrieval, _, _ = seeded_services
     counting_retrieval = CountingRetrieval(retrieval)
@@ -186,6 +227,33 @@ async def test_history_recall_uses_exact_message_and_skips_all_downstream(seeded
     assert first_question in result["response"]
     assert result["citations"] == []
     assert result["retrieval_skipped_reason"] == "answer_available_without_external_retrieval"
+    assert retrieval.search_calls == search_calls
+    assert toolbox.query_calls == tool_calls
+    assert web.search_calls == 0
+
+
+@pytest.mark.asyncio
+async def test_repeated_history_recall_skips_meta_question_and_returns_business_question(
+    seeded_services,
+) -> None:
+    _, service, retrieval, toolbox, web = _service(seeded_services)
+    scope = ActorScope()
+    thread = service.create_thread("repeated-history", scope)
+    first_question = "ETCH-03 Chamber B 清腔后首片异常，当前 SOP 怎么要求？"
+
+    await service.send_message(thread.thread_id, first_question, scope)
+    search_calls = retrieval.search_calls
+    tool_calls = toolbox.query_calls
+    first_recall = await service.send_message(thread.thread_id, "我刚刚说什么?", scope)
+    second_recall = await service.send_message(thread.thread_id, "我刚刚说了什么?", scope)
+
+    for result in (first_recall, second_recall):
+        assert result["route_decision"] is AgentRoute.HISTORY_DIRECT
+        assert result["interaction_mode"] is InteractionMode.CONVERSATION
+        assert first_question in result["response"]
+        assert "我刚刚说什么" not in result["response"]
+        assert result["citations"] == []
+        assert result["retrieval_skipped_reason"] == "answer_available_without_external_retrieval"
     assert retrieval.search_calls == search_calls
     assert toolbox.query_calls == tool_calls
     assert web.search_calls == 0
@@ -344,7 +412,17 @@ async def test_out_of_scope_tool_is_refused_before_downstream(seeded_services) -
 
 
 @pytest.mark.asyncio
-async def test_l0_history_rule_never_calls_llm() -> None:
+@pytest.mark.parametrize(
+    "utterance",
+    [
+        "我刚才问什么了",
+        "我刚刚说什么?",
+        "我刚刚说了什么?",
+        "我刚在说什么?",
+        "上一个问题是什么？",
+    ],
+)
+async def test_l0_history_rule_never_calls_llm(utterance: str) -> None:
     service = ConversationUnderstandingService(
         Settings(_env_file=None, demo_mode=False),
         ForbiddenLLM(),
@@ -356,11 +434,37 @@ async def test_l0_history_rule_never_calls_llm() -> None:
         ]
     }
 
-    result = await service.understand("我刚才问什么了", context)
+    result = await service.understand(utterance, context)
 
     assert result.understanding.classifier_source == "l0"
     assert result.understanding.suggested_route is AgentRoute.HISTORY_DIRECT
     assert result.metadata["understanding_calls"] == 0
+
+
+@pytest.mark.asyncio
+async def test_semantic_history_task_overrides_model_route_and_meta_context() -> None:
+    request = "复述最近一条用户输入"
+    context = {
+        "recent_messages": [
+            {"message_id": "msg_business", "role": "user", "content": "当前 SOP 怎么要求？"},
+            {"message_id": "msg_answer", "role": "assistant", "content": "回答"},
+            {"message_id": "msg_meta", "role": "user", "content": "我刚刚说什么?"},
+            {"message_id": "msg_meta_answer", "role": "assistant", "content": "上一条用户问题是……"},
+        ]
+    }
+    service = ConversationUnderstandingService(
+        Settings(_env_file=None, demo_mode=False),
+        MisleadingHistoryLLM(),
+    )
+
+    result = await service.understand(request, context)
+    plan = RoutePolicy().decide(result.understanding, ActorScope(), context, request)
+
+    assert result.understanding.primary_intent.value == "conversation"
+    assert result.understanding.interaction_mode is InteractionMode.CONVERSATION
+    assert result.understanding.context_message_ids == ["msg_business"]
+    assert result.understanding.suggested_route is AgentRoute.HISTORY_DIRECT
+    assert plan.route is AgentRoute.HISTORY_DIRECT
 
 
 @pytest.mark.asyncio

@@ -1,7 +1,8 @@
-"""Regenerate the reviewed synthetic semikb-intent-v1 routing dataset."""
+"""Regenerate a reviewed synthetic semikb intent-routing dataset."""
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -19,6 +20,7 @@ def case(
     refused: int = 0,
     context: dict | None = None,
     slot_operation: str | None = None,
+    context_message_ids: list[str] | None = None,
     tags: list[str] | None = None,
     actor_scope: dict | None = None,
 ) -> dict:
@@ -32,6 +34,7 @@ def case(
         "expected_task_count": task_count,
         "expected_refused_task_count": refused,
         "expected_slot_operation": slot_operation,
+        "expected_context_message_ids": context_message_ids or [],
         "tags": tags or [],
     }
     if actor_scope:
@@ -71,7 +74,29 @@ def history_context() -> dict:
     }
 
 
+def repeated_history_context() -> dict:
+    context = history_context()
+    context["recent_messages"].extend(
+        [
+            {"message_id": "msg_meta", "role": "user", "content": "我刚刚说什么?"},
+            {
+                "message_id": "msg_meta_answer",
+                "role": "assistant",
+                "content": "上一条用户问题是：ETCH-03 当前 SOP 怎么要求？",
+            },
+        ]
+    )
+    return context
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--version",
+        choices=("semikb-intent-v1", "semikb-intent-v2"),
+        default="semikb-intent-v2",
+    )
+    args = parser.parse_args()
     cases: list[dict] = []
     history_phrases = [
         "我刚才问什么了？",
@@ -231,15 +256,57 @@ def main() -> None:
     for index, (text, route) in enumerate(reuse_cases, start=1):
         cases.append(case(f"reuse-{index:02d}", text, "task", "knowledge_query", route, context=history_context(), tags=["evidence_reuse", route]))
 
+    if args.version == "semikb-intent-v2":
+        cases.extend(
+            [
+                case(
+                    "history-regression-01",
+                    "我刚刚说什么?",
+                    "conversation",
+                    "conversation",
+                    "history_direct",
+                    context=history_context(),
+                    context_message_ids=["msg_prev_q"],
+                    tags=["history", "production_regression", "no_retrieval"],
+                ),
+                case(
+                    "history-regression-02",
+                    "我刚在说什么?",
+                    "conversation",
+                    "conversation",
+                    "history_direct",
+                    context=history_context(),
+                    context_message_ids=["msg_prev_q"],
+                    tags=["history", "production_regression", "no_retrieval"],
+                ),
+                case(
+                    "history-regression-03",
+                    "我刚刚说了什么?",
+                    "conversation",
+                    "conversation",
+                    "history_direct",
+                    context=repeated_history_context(),
+                    context_message_ids=["msg_prev_q"],
+                    tags=["history", "production_regression", "skip_meta_history", "no_retrieval"],
+                ),
+            ]
+        )
+
+    expected_count = 96 if args.version == "semikb-intent-v1" else 99
     payload = {
-        "dataset_version": "semikb-intent-v1",
+        "dataset_version": args.version,
         "source_kind": "synthetic_review_required",
-        "description": "半导体 Agent 受控意图与按需路由的初版人工审阅合成集；不代表生产准确率。",
+        "description": (
+            "半导体 Agent 受控意图与按需路由的初版人工审阅合成集；不代表生产准确率。"
+            if args.version == "semikb-intent-v1"
+            else "在 v1 基础上增加线上历史回忆表达与重复回忆目标选择回归；不代表生产准确率。"
+        ),
         "cases": cases,
     }
-    if len(cases) != 96:
-        raise RuntimeError(f"expected 96 cases, got {len(cases)}")
-    target = Path(__file__).resolve().parents[1] / "data" / "intent_sets" / "semikb_intent_v1.json"
+    if len(cases) != expected_count:
+        raise RuntimeError(f"expected {expected_count} cases, got {len(cases)}")
+    filename = args.version.replace("-", "_") + ".json"
+    target = Path(__file__).resolve().parents[1] / "data" / "intent_sets" / filename
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {len(cases)} cases to {target}")

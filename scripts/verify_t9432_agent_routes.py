@@ -84,18 +84,25 @@ async def verify() -> dict[str, Any]:
 
     try:
         history_thread = create("T9-4.3.2 history")
-        first_question = "当前 ETCH-03 Chamber B 清腔后首片异常 SOP 怎么要求？"
+        first_question = "ETCH-03 Chamber B 清腔后首片异常，当前 SOP 怎么要求？"
         await container.conversations.send_message(history_thread.thread_id, first_question, actor)
         before = _counts(retrieval, toolbox, web)
-        history = await container.conversations.send_message(
+        first_history = await container.conversations.send_message(
             history_thread.thread_id,
-            "我刚才问什么了？",
+            "我刚刚说什么?",
             actor,
         )
-        checks["history_direct_exact"] = (
-            history["route_decision"] == AgentRoute.HISTORY_DIRECT
-            and first_question in history["response"]
-            and not history["citations"]
+        second_history = await container.conversations.send_message(
+            history_thread.thread_id,
+            "我刚刚说了什么?",
+            actor,
+        )
+        checks["history_direct_exact"] = all(
+            result["route_decision"] == AgentRoute.HISTORY_DIRECT
+            and first_question in result["response"]
+            and "我刚刚说什么" not in result["response"]
+            and not result["citations"]
+            for result in (first_history, second_history)
         )
         checks["history_skips_downstream"] = _counts(retrieval, toolbox, web) == before
 
@@ -178,7 +185,7 @@ async def verify() -> dict[str, Any]:
         request_docs = container.conversation_store.database["agent_message_requests"].count_documents(
             {"thread_id": {"$in": thread_ids}, "route_decision": {"$ne": None}}
         )
-        checks["route_audit_persisted"] = request_docs >= 8
+        checks["route_audit_persisted"] = request_docs >= 9
         if not all(checks.values()):
             failed = [name for name, passed in checks.items() if not passed]
             raise AssertionError(f"T9-4.3.2 route verification failed: {failed}")

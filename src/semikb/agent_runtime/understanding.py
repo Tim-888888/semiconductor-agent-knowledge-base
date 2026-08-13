@@ -58,7 +58,13 @@ CORRECTION_PATTERN = re.compile(
     r"不是\s*([A-Z]+-\d+[A-Z]?)\s*[，,、]?\s*(?:是|改成|换成)\s*([A-Z]+-\d+[A-Z]?)",
     re.IGNORECASE,
 )
-HISTORY_RECALL_PATTERN = re.compile(r"(?:我)?(?:刚才|上一轮|上一个).{0,8}(?:问|说).{0,5}(?:什么|啥)")
+HISTORY_RECALL_PATTERN = re.compile(
+    r"^\s*(?:请)?(?:告诉我|帮我回忆一下|复述一下)?\s*(?:我)?"
+    r"(?:刚才|刚刚|刚刚在|刚在|方才|上一轮|上一个|前面|之前)"
+    r".{0,10}(?:问|说|输入|提到).{0,8}(?:什么|啥|哪一句|哪句话|哪个问题)"
+    r"(?:问题|内容|话)?"
+    r"(?:了|呢|吗)?[？?。！!\s]*$"
+)
 PREVIOUS_ANSWER_PATTERN = re.compile(
     r"(?:把|将)?(?:刚才|上一轮|上面|之前).{0,5}(?:回答|答案).{0,8}(?:简单|简化|总结|翻译|改写)"
 )
@@ -324,16 +330,35 @@ class ConversationUnderstandingService:
         context_ids = [item for item in raw.context_message_ids if item in valid_message_ids]
         primary = self._normalize_primary_intent(raw.primary_intent, request)
         tasks = self._normalize_tasks(raw.task_items)
+        history_recall_task = next(
+            (
+                item
+                for item in tasks
+                if item.target_type is IntentTarget.PREVIOUS_USER_MESSAGE
+                and item.action is IntentTaskAction.RECALL
+            ),
+            None,
+        )
+        history_recall_only = history_recall_task is not None and len(tasks) == 1
+        if history_recall_only:
+            primary = PrimaryIntent.CONVERSATION
+            tasks = [history_recall_task.model_copy(update={"primary_intent": primary})]
+            previous_user = self._last_substantive_user_message_id(context)
+            context_ids = [previous_user] if previous_user else []
         has_protected_task = any(term in request.lower() for term in MUTATION_TERMS) or any(
             term in request.lower() for term in ("生成报告", "写报告", "整理报告")
         )
-        if not tasks or primary is not raw.primary_intent or has_protected_task:
+        if not history_recall_only and (
+            not tasks or primary is not raw.primary_intent or has_protected_task
+        ):
             tasks = self._infer_tasks(request, primary)
         query = self._standalone_query(raw.standalone_query or request, request, inherited)
         return ConversationUnderstanding(
             classifier_source="llm",
             interaction_mode=self._normalize_interaction_mode(
-                raw.interaction_mode,
+                InteractionMode.CONVERSATION
+                if history_recall_only
+                else raw.interaction_mode,
                 primary,
                 request,
                 clarification_pending,
@@ -348,7 +373,11 @@ class ConversationUnderstandingService:
             context_message_ids=context_ids,
             standalone_query=query,
             cancel_scope=raw.cancel_scope,
-            suggested_route=raw.suggested_route,
+            suggested_route=(
+                AgentRoute.HISTORY_DIRECT
+                if history_recall_only
+                else raw.suggested_route
+            ),
             confidence=raw.confidence,
         )
 
@@ -358,6 +387,8 @@ class ConversationUnderstandingService:
         request: str,
     ) -> PrimaryIntent:
         lowered = request.lower()
+        if ConversationUnderstandingService._is_history_recall_request(request):
+            return PrimaryIntent.CONVERSATION
         if any(term in lowered for term in MUTATION_TERMS):
             return PrimaryIntent.ACTION_REQUEST
         if any(term in lowered for term in ("简化", "总结", "翻译", "改写")) and any(
@@ -430,7 +461,7 @@ class ConversationUnderstandingService:
     ) -> ConversationUnderstanding | None:
         content = request.strip()
         normalized = re.sub(r"\s+", "", content).lower()
-        previous_user = self._last_message_id(context, "user")
+        previous_user = self._last_substantive_user_message_id(context)
         previous_answer = self._last_message_id(context, "assistant")
 
         if HISTORY_RECALL_PATTERN.search(content):
@@ -893,6 +924,20 @@ class ConversationUnderstandingService:
         for item in reversed(context.get("recent_messages", [])):
             if isinstance(item, dict) and item.get("role") == role and item.get("message_id"):
                 return str(item["message_id"])
+        return None
+
+    @staticmethod
+    def _is_history_recall_request(content: str) -> bool:
+        return HISTORY_RECALL_PATTERN.fullmatch(content.strip()) is not None
+
+    @classmethod
+    def _last_substantive_user_message_id(cls, context: dict[str, Any]) -> str | None:
+        for item in reversed(context.get("recent_messages", [])):
+            if not isinstance(item, dict) or item.get("role") != "user" or not item.get("message_id"):
+                continue
+            if cls._is_history_recall_request(str(item.get("content", ""))):
+                continue
+            return str(item["message_id"])
         return None
 
     @staticmethod

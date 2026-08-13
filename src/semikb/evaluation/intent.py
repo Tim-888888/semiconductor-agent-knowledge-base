@@ -36,6 +36,7 @@ class IntentEvaluationCase(BaseModel):
     expected_task_count: int = Field(ge=1, le=3)
     expected_refused_task_count: int = Field(default=0, ge=0, le=3)
     expected_slot_operation: SlotOperationKind | None = None
+    expected_context_message_ids: list[str] = Field(default_factory=list, max_length=8)
     tags: list[str] = Field(default_factory=list)
 
 
@@ -49,8 +50,14 @@ class IntentEvaluationDataset(BaseModel):
 
     @property
     def dataset_hash(self) -> str:
+        serialized_cases = []
+        for case in self.cases:
+            item = case.model_dump(mode="json")
+            if not item["expected_context_message_ids"]:
+                item.pop("expected_context_message_ids")
+            serialized_cases.append(item)
         payload = json.dumps(
-            [case.model_dump(mode="json") for case in self.cases],
+            serialized_cases,
             ensure_ascii=False,
             sort_keys=True,
             separators=(",", ":"),
@@ -106,6 +113,8 @@ class IntentEvaluationRunner:
         correction_cases = 0
         dangerous_failures = 0
         dangerous_cases = 0
+        context_reference_failures = 0
+        context_reference_cases = 0
         failures: list[dict[str, Any]] = []
         sources: Counter[str] = Counter()
         retrieval_routes = {
@@ -132,11 +141,18 @@ class IntentEvaluationRunner:
             mode_ok = interpreted.interaction_mode is case.expected_interaction_mode
             intent_ok = interpreted.primary_intent is case.expected_primary_intent
             route_ok = plan.route is case.expected_route
+            context_reference_ok = (
+                not case.expected_context_message_ids
+                or interpreted.context_message_ids == case.expected_context_message_ids
+            )
             correct_mode += int(mode_ok)
             correct_intent += int(intent_ok)
             expected_routes[case.expected_route] += 1
             actual_routes[plan.route] += 1
             true_routes[case.expected_route] += int(route_ok)
+            if case.expected_context_message_ids:
+                context_reference_cases += 1
+                context_reference_failures += int(not context_reference_ok)
 
             expected_tasks += case.expected_task_count
             missed_tasks += max(case.expected_task_count - len(interpreted.task_items), 0)
@@ -171,7 +187,10 @@ class IntentEvaluationRunner:
                 )
                 dangerous_failures += int(actual_refused < case.expected_refused_task_count)
 
-            if not (mode_ok and intent_ok and route_ok) or len(interpreted.task_items) < case.expected_task_count:
+            if (
+                not (mode_ok and intent_ok and route_ok and context_reference_ok)
+                or len(interpreted.task_items) < case.expected_task_count
+            ):
                 failures.append(
                     {
                         "case_id": case.case_id,
@@ -180,12 +199,14 @@ class IntentEvaluationRunner:
                             "primary_intent": case.expected_primary_intent,
                             "route": case.expected_route,
                             "task_count": case.expected_task_count,
+                            "context_message_ids": case.expected_context_message_ids,
                         },
                         "actual": {
                             "interaction_mode": interpreted.interaction_mode,
                             "primary_intent": interpreted.primary_intent,
                             "route": plan.route,
                             "task_count": len(interpreted.task_items),
+                            "context_message_ids": interpreted.context_message_ids,
                             "reason_codes": plan.reason_codes,
                         },
                     }
@@ -214,6 +235,11 @@ class IntentEvaluationRunner:
             "wrong_clarification_rate": wrong_clarify / max(non_clarify_expected, 1),
             "slot_correction_failure_rate": correction_failures / max(correction_cases, 1),
             "dangerous_execution_miss_rate": dangerous_failures / max(dangerous_cases, 1),
+            "context_reference_accuracy": (
+                1.0
+                if context_reference_cases == 0
+                else 1 - context_reference_failures / context_reference_cases
+            ),
         }
         return IntentEvaluationResult(
             dataset_version=dataset.dataset_version,

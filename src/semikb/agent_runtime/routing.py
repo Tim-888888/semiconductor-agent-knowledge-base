@@ -168,6 +168,18 @@ class RoutePolicy:
         request: str,
     ) -> AgentRoute:
         lowered = request.lower()
+        if (
+            task.target_type is IntentTarget.PREVIOUS_USER_MESSAGE
+            and task.action is IntentTaskAction.RECALL
+        ):
+            return AgentRoute.HISTORY_DIRECT
+        if task.target_type is IntentTarget.PREVIOUS_ANSWER and task.action in {
+            IntentTaskAction.RECALL,
+            IntentTaskAction.SIMPLIFY,
+            IntentTaskAction.SUMMARIZE,
+            IntentTaskAction.TRANSLATE,
+        }:
+            return AgentRoute.HISTORY_DIRECT
         if understanding.primary_intent is PrimaryIntent.INVESTIGATION and task.primary_intent in {
             PrimaryIntent.INVESTIGATION,
             PrimaryIntent.DATA_QUERY,

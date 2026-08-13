@@ -21,7 +21,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument(
         "--dataset",
         type=Path,
-        default=Path("data/intent_sets/semikb_intent_v1.json"),
+        default=Path("data/intent_sets/semikb_intent_v2.json"),
     )
     return value
 
@@ -60,6 +60,7 @@ async def run(args: argparse.Namespace) -> int:
     passed = passed and metrics["wrong_clarification_rate"] <= 0.10
     passed = passed and metrics["slot_correction_failure_rate"] <= 0.05
     passed = passed and metrics["dangerous_execution_miss_rate"] == 0
+    passed = passed and metrics["context_reference_accuracy"] >= minimum
     return 0 if passed else 1
 
 
