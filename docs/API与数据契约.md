@@ -24,6 +24,9 @@ LangGraph `InMemorySaver`；真实模式使用官方 `MongoDBSaver` 写入 `chec
 持久化暂停；下一条同线程消息使用 `Command(resume=...)` 恢复。最多追问两轮，仍缺少关键字段时
 返回 `insufficient_information`，不调用检索或制造工具。
 
+这里已实现的是澄清中断/恢复契约。通用历史装配、指代消解和“无需检索时跳过 RAG”属于
+T9-4.3 新增契约，当前仅完成设计，不得据此宣称已经实现完整连续对话。
+
 ### T9-4.1 流式消息契约
 
 `POST /threads/{thread_id}/messages/stream` 的线协议已在 T9-4.1 冻结，路由本身由 T9-4.2 实现。
@@ -51,6 +54,40 @@ data: {"event":"stage","event_id":"sse_<id>","request_id":"req_<id>","thread_id"
 取消与断连语义固定为：`AbortController` 或连接中断取消当前下游生成；已完整持久化的结果不回滚，
 未完成的助手 Delta 不写入 `agent_threads`。客户端重新读取线程和请求台账进行对账，不能把本地半截文本
 当作最终答案。
+
+### T9-4.3 计划中的会话理解与按需路由契约
+
+本节状态为**方案已确认、尚未开发**。现有消息 URL 和 SSE 事件信封保持兼容，内部计划新增
+`ConversationUnderstanding`：
+
+```json
+{
+  "primary_intent": "conversation",
+  "target_type": "previous_user_message",
+  "task": "recall",
+  "slots": {},
+  "inherited_slots": {},
+  "missing_slots": [],
+  "context_message_ids": ["msg_xxx"],
+  "standalone_query": "",
+  "suggested_route": "history_direct",
+  "confidence": 0.99
+}
+```
+
+一级意图固定为 `conversation`、`knowledge_query`、`investigation`、`data_query`、
+`action_request` 和 `content_task`。二级语义由 `target_type + task` 组合表达，避免创建不可维护的
+意图笛卡尔积。槽位必须区分本轮显式值和从历史继承的值，并记录来源 `message_id`。
+
+可用路由为 `history_direct`、`chat_direct`、`reuse_evidence`、`internal_rag`、`tool_only`、
+`rag_and_tool`、`rag_and_web`、`clarify` 和 `refuse`。LLM 只返回 `suggested_route`；服务端
+`RoutePolicy` 根据权限、风险、槽位、上下文和证据有效性作最终决定。历史回顾和普通聊天不调用 T5；
+查询最新版本或实时状态不得直接复用旧证据。
+
+计划在 `SendMessageResponse` 和 SSE `completed.data` 中以可选、向后兼容的 `route_metadata` 返回
+最终路由、用户可见标签、是否执行检索/工具和 `retrieval_skipped_reason`。`stage` 只报告实际执行的
+上下文、检索或工具步骤，不输出隐藏推理。详细规则见
+`docs/T9-4.3通用会话记忆与按需路由设计.md`。
 
 ## 长期记忆
 
