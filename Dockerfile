@@ -12,6 +12,7 @@ COPY requirements.lock ./
 RUN pip install --require-hashes -r requirements.lock
 COPY src ./src
 COPY data ./data
+COPY scripts ./scripts
 
 RUN addgroup --system --gid 10001 semikb \
     && adduser --system --uid 10001 --ingroup semikb --home /app semikb \

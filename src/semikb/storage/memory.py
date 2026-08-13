@@ -8,6 +8,7 @@ from pathlib import Path
 from threading import RLock
 
 from semikb.contracts.models import (
+    ActiveConversationContext,
     ActorScope,
     ApprovalStatus,
     AuditEvent,
@@ -35,6 +36,7 @@ from semikb.rag_retrieval.encoders import HybridEmbedding
 from semikb.storage.conversations import (
     MessageRequestConflictError,
     MessageRequestInProgressError,
+    ThreadBusyError,
 )
 
 
@@ -369,9 +371,13 @@ class DemoStore:
         )
 
     def save_thread(self, thread: ThreadRecord) -> ThreadRecord:
-        thread.updated_at = datetime.now(UTC)
-        self.threads[thread.thread_id] = thread
-        return thread
+        with self._lock:
+            current = self.threads.get(thread.thread_id)
+            if current is not None and current.active_request_id is not None:
+                raise ThreadBusyError(thread.thread_id)
+            thread.updated_at = datetime.now(UTC)
+            self.threads[thread.thread_id] = thread
+            return thread
 
     def prepare_message_request(
         self,
@@ -381,6 +387,16 @@ class DemoStore:
         with self._lock:
             existing = self.message_requests.get(key)
             if existing is None:
+                thread = self.threads.get(record.thread_id)
+                if thread is None or thread.actor_scope.user_id != record.actor_user_id:
+                    raise KeyError(record.thread_id)
+                if thread.active_request_id is not None:
+                    raise ThreadBusyError(record.thread_id)
+                record.user_turn_seq = thread.next_turn_seq
+                thread.last_turn_seq = thread.next_turn_seq
+                thread.next_turn_seq += 1
+                thread.active_request_id = record.request_id
+                thread.active_request_started_at = datetime.now(UTC)
                 self.message_requests[key] = record
                 return record, False
             if existing.content_sha256 != record.content_sha256:
@@ -392,6 +408,13 @@ class DemoStore:
                 AgentMessageRequestStatus.RUNNING,
             }:
                 raise MessageRequestInProgressError(record.request_id)
+            thread = self.threads.get(record.thread_id)
+            if thread is None or thread.actor_scope.user_id != record.actor_user_id:
+                raise KeyError(record.thread_id)
+            if thread.active_request_id is not None:
+                raise ThreadBusyError(record.thread_id)
+            thread.active_request_id = record.request_id
+            thread.active_request_started_at = datetime.now(UTC)
             existing.status = AgentMessageRequestStatus.ACCEPTED
             existing.attempt += 1
             existing.run_id = record.run_id
@@ -416,6 +439,8 @@ class DemoStore:
             thread = self.threads.get(thread_id)
             if thread is None:
                 raise KeyError(thread_id)
+            if message.request_id and thread.active_request_id != message.request_id:
+                raise ThreadBusyError(thread_id)
             duplicate = message.request_id and any(
                 item.request_id == message.request_id and item.role == message.role
                 for item in thread.messages
@@ -432,6 +457,9 @@ class DemoStore:
         *,
         status: str,
         summary: str,
+        summary_upto_message_id: str | None,
+        active_context: ActiveConversationContext,
+        context_version: int,
         pending_fields: list[str],
         clarification_round: int,
     ) -> ThreadRecord:
@@ -443,9 +471,17 @@ class DemoStore:
                 item.request_id == message.request_id and item.role == "assistant"
                 for item in thread.messages
             ):
+                if thread.active_request_id != message.request_id:
+                    raise ThreadBusyError(thread_id)
+                message.turn_seq = thread.next_turn_seq
+                thread.last_turn_seq = thread.next_turn_seq
+                thread.next_turn_seq += 1
                 thread.messages.append(message)
             thread.status = status
             thread.summary = summary
+            thread.summary_upto_message_id = summary_upto_message_id
+            thread.active_context = active_context
+            thread.context_version = context_version
             thread.pending_fields = pending_fields
             thread.clarification_round = clarification_round
             thread.updated_at = datetime.now(UTC)
@@ -500,10 +536,15 @@ class DemoStore:
             current.status = status
             current.result_payload = result_payload or {}
             current.assistant_message_id = assistant_message_id
+            current.assistant_turn_seq = record.assistant_turn_seq
             current.trace_id = trace_id
             current.error_code = error_code
             current.updated_at = datetime.now(UTC)
             current.finished_at = current.updated_at
+            thread = self.threads.get(record.thread_id)
+            if thread is not None and thread.active_request_id == record.request_id:
+                thread.active_request_id = None
+                thread.active_request_started_at = None
             return current
 
     def append_audit(self, event: AuditEvent) -> AuditEvent:

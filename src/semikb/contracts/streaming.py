@@ -76,6 +76,8 @@ class AgentMessageRequestRecord(BaseModel):
     content_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     user_message_id: str
     run_id: str
+    user_turn_seq: int | None = Field(default=None, ge=1)
+    assistant_turn_seq: int | None = Field(default=None, ge=1)
     status: AgentMessageRequestStatus = AgentMessageRequestStatus.ACCEPTED
     attempt: int = Field(default=1, ge=1)
     assistant_message_id: str | None = None

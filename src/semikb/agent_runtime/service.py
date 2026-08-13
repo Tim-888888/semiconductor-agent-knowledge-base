@@ -13,6 +13,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.store.memory import InMemoryStore
 from langgraph.types import Command
 
+from semikb.agent_runtime.context import ContextAssembler
 from semikb.agent_runtime.graph import ConversationGraph
 from semikb.agent_runtime.llm_gateway import LLMProviderError, OpenAICompatibleLLMGateway
 from semikb.agent_runtime.memory import MemoryService
@@ -86,6 +87,7 @@ class ConversationService:
         self.checkpointer = checkpointer or InMemorySaver()
         self.long_term_store = long_term_store or InMemoryStore()
         self.memory = MemoryService(self.long_term_store)
+        self.context = ContextAssembler(settings)
         self._active_streams: dict[tuple[str, str, str], ActiveStreamControl] = {}
         self.graph = ConversationGraph(
             settings=settings,
@@ -118,24 +120,31 @@ class ConversationService:
         content: str,
         actor_scope: ActorScope | None = None,
     ) -> dict[str, Any]:
-        """Retain the original non-streaming route for compatibility."""
+        """Retain the non-streaming route while sharing ordering and persistence semantics."""
 
         thread = self.get_thread(thread_id, actor_scope)
         if thread is None:
             raise KeyError(thread_id)
-        thread.messages.append(ChatMessage(role="user", content=content))
-        self.repository.save_thread(thread)
-
-        result = await self._invoke_graph(thread, content)
-        response_model, assistant, thread_state = self._build_response(thread, result)
-        thread.messages.append(assistant)
-        thread.status = thread_state["status"]
-        thread.pending_fields = thread_state["pending_fields"]
-        thread.clarification_round = thread_state["clarification_round"]
-        thread.summary = self._summarize(thread)
-        self.repository.save_thread(thread)
-        response_model.thread = thread
-        return response_model.model_dump(mode="python")
+        scope = actor_scope or thread.actor_scope
+        prepared = await self.prepare_stream_message(
+            thread_id,
+            content,
+            new_id("req"),
+            scope,
+        )
+        stream = self.stream_message(prepared)
+        completed: dict[str, Any] | None = None
+        try:
+            async for event in stream:
+                if isinstance(event, StreamCompletedEvent):
+                    completed = event.data.result.model_dump(mode="python")
+                elif isinstance(event, StreamErrorEvent):
+                    raise RuntimeError(event.data.message)
+        finally:
+            await stream.aclose()
+        if completed is not None:
+            return completed
+        raise RuntimeError("non-streaming message ended without a terminal event")
 
     async def prepare_stream_message(
         self,
@@ -166,14 +175,23 @@ class ConversationService:
                 message_id=prepared.user_message_id,
                 request_id=prepared.request_id,
                 run_id=prepared.run_id,
+                turn_seq=prepared.user_turn_seq,
                 role="user",
                 content=content,
             )
-            await asyncio.to_thread(
-                self.repository.append_message_once,
-                thread_id,
-                user_message,
-            )
+            try:
+                await asyncio.to_thread(
+                    self.repository.append_message_once,
+                    thread_id,
+                    user_message,
+                )
+            except Exception:
+                await self._mark_failed(
+                    prepared,
+                    AgentMessageRequestStatus.FAILED,
+                    AgentStreamErrorCode.INTERNAL_ERROR,
+                )
+                raise
         return PreparedStreamMessage(
             content=content,
             record=prepared,
@@ -229,18 +247,35 @@ class ConversationService:
             final_state: dict[str, Any] = {}
             streamed_answer = ""
             graph_input: dict[str, Any] | Command
+            thread = self.repository.get_thread(record.thread_id)
+            if thread is None:
+                raise KeyError(record.thread_id)
+            preferences = await asyncio.to_thread(
+                self.memory.approved_preferences,
+                record.actor_user_id,
+            )
+            conversation_context = self.context.assemble(
+                thread,
+                current_message_id=record.user_message_id,
+                approved_preferences=preferences,
+            ).model_dump(mode="json")
             if prepared.resume_checkpoint:
-                graph_input = Command(resume=prepared.content)
+                graph_input = Command(
+                    resume=prepared.content,
+                    update={
+                        "conversation_context": conversation_context,
+                        "approved_preferences": preferences,
+                    },
+                )
             else:
-                thread = self.repository.get_thread(record.thread_id)
-                if thread is None:
-                    raise KeyError(record.thread_id)
                 graph_input = {
                     "request": prepared.content,
                     "thread_id": record.thread_id,
                     "run_id": record.run_id,
                     "user_scope": thread.actor_scope.model_dump(mode="json"),
                     "clarification_round": 0,
+                    "conversation_context": conversation_context,
+                    "approved_preferences": preferences,
                 }
 
             config = {"configurable": {"thread_id": record.thread_id}}
@@ -329,16 +364,26 @@ class ConversationService:
             )
             summary_thread = thread.model_copy(deep=True)
             summary_thread.messages.append(assistant)
+            compaction = self.context.compact_thread(summary_thread)
+            active_context = self.context.update_active_context(
+                summary_thread,
+                final_state,
+                source_message_id=record.user_message_id,
+            )
             persisted_thread = await asyncio.to_thread(
                 self.repository.finalize_stream_response,
                 record.thread_id,
                 assistant,
                 status=thread_state["status"],
-                summary=self._summarize(summary_thread),
+                summary=compaction.summary,
+                summary_upto_message_id=compaction.summary_upto_message_id,
+                active_context=active_context,
+                context_version=max(thread.context_version, 1),
                 pending_fields=thread_state["pending_fields"],
                 clarification_round=thread_state["clarification_round"],
             )
             response_model.thread = persisted_thread
+            record.assistant_turn_seq = assistant.turn_seq
             result_payload = response_model.model_dump(mode="python", exclude={"thread"})
             record = await asyncio.to_thread(
                 self.repository.mark_message_request_terminal,
@@ -420,8 +465,22 @@ class ConversationService:
 
     async def _invoke_graph(self, thread: ThreadRecord, content: str) -> dict[str, Any]:
         config = {"configurable": {"thread_id": thread.thread_id}}
+        preferences = await asyncio.to_thread(
+            self.memory.approved_preferences,
+            thread.actor_scope.user_id,
+        )
+        context = self.context.assemble(
+            thread,
+            approved_preferences=preferences,
+        ).model_dump(mode="json")
         if thread.status == "waiting_for_clarification":
-            return await self.graph.compiled.ainvoke(Command(resume=content), config=config)
+            return await self.graph.compiled.ainvoke(
+                Command(
+                    resume=content,
+                    update={"conversation_context": context, "approved_preferences": preferences},
+                ),
+                config=config,
+            )
         return await self.graph.compiled.ainvoke(
             {
                 "request": content,
@@ -429,6 +488,8 @@ class ConversationService:
                 "run_id": new_id("run"),
                 "user_scope": thread.actor_scope.model_dump(mode="json"),
                 "clarification_round": 0,
+                "conversation_context": context,
+                "approved_preferences": preferences,
             },
             config=config,
         )
@@ -584,7 +645,5 @@ class ConversationService:
         payload = getattr(values[0], "value", values[0])
         return payload if isinstance(payload, dict) else {"questions": [str(payload)]}
 
-    @staticmethod
-    def _summarize(thread: ThreadRecord) -> str:
-        user_messages = [message.content for message in thread.messages if message.role == "user"]
-        return user_messages[-1][:240] if user_messages else ""
+    def _summarize(self, thread: ThreadRecord) -> str:
+        return self.context.compact_thread(thread).summary

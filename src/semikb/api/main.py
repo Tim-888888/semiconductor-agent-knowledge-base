@@ -44,6 +44,7 @@ from semikb.rag_retrieval.milvus_schema import schema_contract
 from semikb.storage.conversations import (
     MessageRequestConflictError,
     MessageRequestInProgressError,
+    ThreadBusyError,
 )
 from semikb.storage.external import health_payload
 
@@ -171,6 +172,11 @@ async def send_message(
         return await container.conversations.send_message(thread_id, request.content, actor_scope)
     except KeyError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found.") from exc
+    except ThreadBusyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Another request is already running in this thread.",
+        ) from exc
 
 
 @app.post("/api/v1/threads/{thread_id}/messages/stream")
@@ -196,6 +202,11 @@ async def stream_message(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="request_id was already used with different content.",
+        ) from exc
+    except ThreadBusyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Another request is already running in this thread.",
         ) from exc
     except MessageRequestInProgressError as exc:
         raise HTTPException(

@@ -21,6 +21,7 @@ export type Message = {
   message_id: string;
   request_id?: string | null;
   run_id?: string | null;
+  turn_seq?: number | null;
   role: "user" | "assistant";
   content: string;
   citations: Citation[];
@@ -33,6 +34,22 @@ export type Thread = {
   actor_scope: ActorScope;
   status: string;
   summary: string;
+  summary_upto_message_id?: string | null;
+  context_version: number;
+  active_context: {
+    topic?: string | null;
+    slots: Record<string, {
+      value: string;
+      source_message_id: string;
+      source_kind: string;
+      depends_on: string[];
+      valid: boolean;
+    }>;
+    evidence_refs: Array<Record<string, unknown>>;
+    trace_id?: string | null;
+  };
+  next_turn_seq: number;
+  last_turn_seq: number;
   clarification_round: number;
   messages: Message[];
   pending_fields: string[];

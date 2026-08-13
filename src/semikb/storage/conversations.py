@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
 from pymongo import MongoClient, ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
 from semikb.config import Settings
-from semikb.contracts.models import AuditEvent, ChatMessage, ThreadRecord
+from semikb.contracts.models import (
+    ActiveConversationContext,
+    AuditEvent,
+    ChatMessage,
+    ThreadRecord,
+)
 from semikb.contracts.streaming import (
     AgentMessageRequestRecord,
     AgentMessageRequestStatus,
@@ -23,6 +28,10 @@ class MessageRequestConflictError(ValueError):
 
 class MessageRequestInProgressError(RuntimeError):
     """The same idempotent request is already accepted or running."""
+
+
+class ThreadBusyError(MessageRequestInProgressError):
+    """Another request currently owns the thread write lease."""
 
 
 class ConversationRepository(Protocol):
@@ -55,6 +64,9 @@ class ConversationRepository(Protocol):
         *,
         status: str,
         summary: str,
+        summary_upto_message_id: str | None,
+        active_context: ActiveConversationContext,
+        context_version: int,
         pending_fields: list[str],
         clarification_round: int,
     ) -> ThreadRecord: ...
@@ -93,6 +105,7 @@ class MongoConversationRepository:
         self.threads = self.database["agent_threads"]
         self.message_requests = self.database["agent_message_requests"]
         self.audit_events = self.database["audit_events"]
+        self.thread_lease_seconds = settings.agent_thread_lease_seconds
 
     def create_thread(self, thread: ThreadRecord) -> ThreadRecord:
         self.threads.insert_one(thread.model_dump(mode="python"))
@@ -110,13 +123,25 @@ class MongoConversationRepository:
         return [ThreadRecord.model_validate(document) for document in cursor]
 
     def save_thread(self, thread: ThreadRecord) -> ThreadRecord:
+        """Compatibility-only whole-document save; reject writes over an active request."""
+
+        if thread.active_request_id is not None:
+            raise ThreadBusyError(thread.thread_id)
         thread.updated_at = datetime.now(UTC)
         result = self.threads.replace_one(
-            {"thread_id": thread.thread_id},
+            {
+                "thread_id": thread.thread_id,
+                "$or": [
+                    {"active_request_id": {"$exists": False}},
+                    {"active_request_id": None},
+                ],
+            },
             thread.model_dump(mode="python"),
             upsert=False,
         )
         if result.matched_count != 1:
+            if self.threads.count_documents({"thread_id": thread.thread_id}, limit=1):
+                raise ThreadBusyError(thread.thread_id)
             raise KeyError(thread.thread_id)
         return thread
 
@@ -124,39 +149,67 @@ class MongoConversationRepository:
         self,
         record: AgentMessageRequestRecord,
     ) -> tuple[AgentMessageRequestRecord, bool]:
-        key = self._request_key(record)
+        existing = self.get_message_request(
+            record.thread_id,
+            record.actor_user_id,
+            record.request_id,
+        )
+        if existing is not None:
+            return self._prepare_existing_request(existing, record)
+
+        turn_seq = self._claim_thread(record, allocate_user_turn=True)
+        record.user_turn_seq = turn_seq
         try:
             self.message_requests.insert_one(record.model_dump(mode="python"))
             return record, False
         except DuplicateKeyError:
+            self._release_thread(record)
             existing = self.get_message_request(
                 record.thread_id,
                 record.actor_user_id,
                 record.request_id,
             )
+        except Exception:
+            self._release_thread(record)
+            raise
         if existing is None:
             raise RuntimeError("message request disappeared after duplicate-key conflict")
+        return self._prepare_existing_request(existing, record)
+
+    def _prepare_existing_request(
+        self,
+        existing: AgentMessageRequestRecord,
+        record: AgentMessageRequestRecord,
+    ) -> tuple[AgentMessageRequestRecord, bool]:
+        key = self._request_key(existing)
         if existing.content_sha256 != record.content_sha256:
             raise MessageRequestConflictError(record.request_id)
         if existing.status is AgentMessageRequestStatus.COMPLETED:
             return existing, True
+        retry_statuses = [
+            AgentMessageRequestStatus.FAILED,
+            AgentMessageRequestStatus.CANCELLED,
+        ]
+        request_filter: dict[str, object] = {}
         if existing.status in {
             AgentMessageRequestStatus.ACCEPTED,
             AgentMessageRequestStatus.RUNNING,
         }:
-            raise MessageRequestInProgressError(record.request_id)
+            stale_cutoff = datetime.now(UTC) - timedelta(seconds=self.thread_lease_seconds)
+            retry_statuses = [
+                AgentMessageRequestStatus.ACCEPTED,
+                AgentMessageRequestStatus.RUNNING,
+            ]
+            request_filter = {"updated_at": {"$lt": stale_cutoff}}
 
+        self._claim_thread(existing, allocate_user_turn=False)
         now = datetime.now(UTC)
         document = self.message_requests.find_one_and_update(
             {
                 **key,
                 "content_sha256": record.content_sha256,
-                "status": {
-                    "$in": [
-                        AgentMessageRequestStatus.FAILED,
-                        AgentMessageRequestStatus.CANCELLED,
-                    ]
-                },
+                "status": {"$in": retry_statuses},
+                **request_filter,
             },
             {
                 "$set": {
@@ -175,8 +228,62 @@ class MongoConversationRepository:
             return_document=ReturnDocument.AFTER,
         )
         if document is None:
+            self._release_thread(existing)
             raise MessageRequestInProgressError(record.request_id)
         return AgentMessageRequestRecord.model_validate(document), False
+
+    def _claim_thread(
+        self,
+        record: AgentMessageRequestRecord,
+        *,
+        allocate_user_turn: bool,
+    ) -> int | None:
+        now = datetime.now(UTC)
+        stale_cutoff = now - timedelta(seconds=self.thread_lease_seconds)
+        base_seq = {"$ifNull": ["$next_turn_seq", {"$add": [{"$size": {"$ifNull": ["$messages", []]}}, 1]}]}
+        assignments: dict[str, object] = {
+            "active_request_id": record.request_id,
+            "active_request_started_at": now,
+            "updated_at": now,
+        }
+        if allocate_user_turn:
+            assignments.update(
+                {
+                    "last_turn_seq": base_seq,
+                    "next_turn_seq": {"$add": [base_seq, 1]},
+                }
+            )
+        document = self.threads.find_one_and_update(
+            {
+                "thread_id": record.thread_id,
+                "actor_scope.user_id": record.actor_user_id,
+                "$or": [
+                    {"active_request_id": {"$exists": False}},
+                    {"active_request_id": None},
+                    {
+                        "active_request_id": record.request_id,
+                        "active_request_started_at": {"$lt": stale_cutoff},
+                    },
+                ],
+            },
+            [{"$set": assignments}],
+            projection={"_id": 0, "last_turn_seq": 1},
+            return_document=ReturnDocument.AFTER,
+        )
+        if document is None:
+            if self.threads.count_documents({"thread_id": record.thread_id}, limit=1) == 0:
+                raise KeyError(record.thread_id)
+            raise ThreadBusyError(record.thread_id)
+        return int(document["last_turn_seq"]) if allocate_user_turn else None
+
+    def _release_thread(self, record: AgentMessageRequestRecord) -> None:
+        self.threads.update_one(
+            {"thread_id": record.thread_id, "active_request_id": record.request_id},
+            {
+                "$set": {"updated_at": datetime.now(UTC)},
+                "$unset": {"active_request_id": "", "active_request_started_at": ""},
+            },
+        )
 
     def get_message_request(
         self,
@@ -206,6 +313,8 @@ class MongoConversationRepository:
                     }
                 }
             }
+        if message.request_id:
+            request_filter["active_request_id"] = message.request_id
         result = self.threads.update_one(
             request_filter,
             {"$push": {"messages": message.model_dump(mode="python")}, "$set": {"updated_at": now}},
@@ -232,13 +341,24 @@ class MongoConversationRepository:
         *,
         status: str,
         summary: str,
+        summary_upto_message_id: str | None,
+        active_context: ActiveConversationContext,
+        context_version: int,
         pending_fields: list[str],
         clarification_round: int,
     ) -> ThreadRecord:
         now = datetime.now(UTC)
-        result = self.threads.update_one(
+        next_seq = {
+            "$ifNull": [
+                "$next_turn_seq",
+                {"$add": [{"$size": {"$ifNull": ["$messages", []]}}, 1]},
+            ]
+        }
+        message_document = message.model_dump(mode="python", exclude={"turn_seq"})
+        document = self.threads.find_one_and_update(
             {
                 "thread_id": thread_id,
+                "active_request_id": message.request_id,
                 "messages": {
                     "$not": {
                         "$elemMatch": {
@@ -248,18 +368,32 @@ class MongoConversationRepository:
                     }
                 },
             },
-            {
-                "$push": {"messages": message.model_dump(mode="python")},
-                "$set": {
-                    "status": status,
-                    "summary": summary,
-                    "pending_fields": pending_fields,
-                    "clarification_round": clarification_round,
-                    "updated_at": now,
-                },
-            },
+            [
+                {
+                    "$set": {
+                        "messages": {
+                            "$concatArrays": [
+                                {"$ifNull": ["$messages", []]},
+                                [{"$mergeObjects": [message_document, {"turn_seq": next_seq}]}],
+                            ]
+                        },
+                        "status": status,
+                        "summary": summary,
+                        "summary_upto_message_id": summary_upto_message_id,
+                        "active_context": active_context.model_dump(mode="python"),
+                        "context_version": context_version,
+                        "last_turn_seq": next_seq,
+                        "next_turn_seq": {"$add": [next_seq, 1]},
+                        "pending_fields": pending_fields,
+                        "clarification_round": clarification_round,
+                        "updated_at": now,
+                    }
+                }
+            ],
+            projection={"_id": 0},
+            return_document=ReturnDocument.AFTER,
         )
-        if result.matched_count == 0:
+        if document is None:
             thread = self.get_thread(thread_id)
             if thread is None:
                 raise KeyError(thread_id)
@@ -269,9 +403,8 @@ class MongoConversationRepository:
             ):
                 raise RuntimeError("assistant response persistence was not acknowledged")
             return thread
-        thread = self.get_thread(thread_id)
-        if thread is None:
-            raise KeyError(thread_id)
+        thread = ThreadRecord.model_validate(document)
+        message.turn_seq = thread.last_turn_seq
         return thread
 
     def mark_message_request_running(
@@ -320,6 +453,7 @@ class MongoConversationRepository:
                     "status": status,
                     "result_payload": result_payload or {},
                     "assistant_message_id": assistant_message_id,
+                    "assistant_turn_seq": record.assistant_turn_seq,
                     "trace_id": trace_id,
                     "error_code": error_code,
                     "updated_at": now,
@@ -336,9 +470,12 @@ class MongoConversationRepository:
                 record.request_id,
             )
             if existing is not None and existing.status is status:
+                self._release_thread(existing)
                 return existing
             raise RuntimeError("message request terminal transition was not acknowledged")
-        return AgentMessageRequestRecord.model_validate(document)
+        terminal = AgentMessageRequestRecord.model_validate(document)
+        self._release_thread(terminal)
+        return terminal
 
     @staticmethod
     def _request_key(record: AgentMessageRequestRecord) -> dict[str, str]:

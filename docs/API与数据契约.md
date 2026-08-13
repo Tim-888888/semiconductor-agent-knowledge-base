@@ -57,7 +57,7 @@ data: {"event":"stage","event_id":"sse_<id>","request_id":"req_<id>","thread_id"
 
 ### T9-4.3 计划中的会话理解与按需路由契约
 
-本节状态为**方案已确认、尚未开发**。现有消息 URL 和 SSE 事件信封保持兼容，内部计划新增
+本节中 T9-4.3.1 上下文基础已经实现；T9-4.3.2 及后续意图/路由契约仍是已确认但尚未开发。现有消息 URL 和 SSE 事件信封保持兼容，内部计划新增
 `ConversationUnderstanding`：
 
 ```json
@@ -176,3 +176,23 @@ MinerU Precision API。`DEMO_MODE=true` 时在请求内同步处理，便于无�
 生产模式的评估接口始终异步返回 `202`。Celery task id 是运行认领所有权；同一任务重投可以
 恢复，其他任务不能并发认领同一运行。每个 Case 的 `trace_id` 对应 MongoDB `retrieval_traces`，
 `thread_id` 使用 `evaluation:<run_id>:<case_id>`，便于区分评估流量和用户流量。
+## T9-4.3.1 通用会话上下文契约
+
+`ChatMessage` 新增可选 `turn_seq`。新消息由线程级写租约分配严格递增序号；迁移后的历史消息也具有
+稳定序号。`agent_message_requests` 记录 `user_turn_seq` 与 `assistant_turn_seq`，幂等重试复用原用户消息
+序号，不重复追加消息。
+
+`ThreadRecord` 新增：
+
+- `summary_upto_message_id`：摘要覆盖到的最后一条精确消息；
+- `context_version`：活动上下文契约版本，当前为 `1`；
+- `active_context`：带 `source_message_id`、依赖关系与有效标记的槽位和证据引用；
+- `next_turn_seq` / `last_turn_seq`：持久化消息顺序游标；
+- `active_request_id` / `active_request_started_at`：同一线程的短时写租约。
+
+`ContextAssembler` 在 ACL 验证后装配当前线程：最近 12 轮精确消息、较旧历史的有界抽取式摘要、
+活动上下文和显式批准偏好。当前用户消息不重复放入 prior history。LangGraph 只允许有
+`source_message_id` 且 `valid=true` 的槽位用于标识继承；摘要不作为受控事实来源。
+
+同一线程已有请求租约时，流式和兼容非流式接口均返回 HTTP `409`，客户端应等待前一请求完成或取消，
+不得自动并发重试。不同线程不共享精确消息或活动上下文。

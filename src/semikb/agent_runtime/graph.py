@@ -35,6 +35,7 @@ class CaseState(TypedDict, total=False):
     thread_id: str
     run_id: str
     user_scope: dict[str, Any]
+    conversation_context: dict[str, Any]
     intent: str
     risk_level: str
     constraints: dict[str, Any]
@@ -125,10 +126,12 @@ class ConversationGraph:
             stage="analyzing_request",
             message="正在分析问题与会话上下文",
         )
-        preferences = await asyncio.to_thread(
-            self.memory_service.approved_preferences,
-            state["user_scope"]["user_id"],
-        )
+        preferences = state.get("approved_preferences")
+        if preferences is None:
+            preferences = await asyncio.to_thread(
+                self.memory_service.approved_preferences,
+                state["user_scope"]["user_id"],
+            )
         return {
             "status": "running",
             "constraints": {},
@@ -162,6 +165,7 @@ class ConversationGraph:
 
     async def _classify_and_extract(self, state: CaseState) -> CaseState:
         deterministic = self._deterministic_extract(state["request"])
+        context_payload = self._safe_context_payload(state.get("conversation_context", {}))
         llm_result: dict[str, Any] = {}
         metadata: dict[str, Any] = {}
         if not self.settings.demo_mode:
@@ -174,10 +178,21 @@ class ConversationGraph:
                                 "Extract semiconductor request constraints. Return JSON only with keys "
                                 "intent, risk_level, product, process_layer, tool_id, chamber, recipe_id, "
                                 "recipe_version, time_range, lot_id. Use null when absent. Do not infer "
-                                "identifiers that the user did not provide."
+                                "identifiers that the user did not provide. Valid sourced context slots may "
+                                "resolve references to prior turns, but invalid slots and summaries are not "
+                                "authoritative identifiers."
                             ),
                         },
-                        {"role": "user", "content": state["request"]},
+                        {
+                            "role": "user",
+                            "content": json.dumps(
+                                {
+                                    "current_request": state["request"],
+                                    "conversation_context": context_payload,
+                                },
+                                ensure_ascii=False,
+                            ),
+                        },
                     ],
                     response_json=True,
                     max_output_tokens=320,
@@ -206,7 +221,12 @@ class ConversationGraph:
                 "lot_id",
             )
             if (value := llm_result.get(key)) not in (None, "")
-            and self._constraint_is_grounded(key, value, state["request"])
+            and self._constraint_is_grounded(
+                key,
+                value,
+                state["request"],
+                state.get("conversation_context", {}),
+            )
         }
         constraints.update(deterministic["constraints"])
         intent = str(llm_result.get("intent") or deterministic["intent"])
@@ -224,18 +244,70 @@ class ConversationGraph:
         }
 
     @staticmethod
-    def _constraint_is_grounded(field: str, value: Any, request: str) -> bool:
+    def _constraint_is_grounded(
+        field: str,
+        value: Any,
+        request: str,
+        conversation_context: dict[str, Any] | None = None,
+    ) -> bool:
         """Never turn an LLM-inferred identifier into a retrieval filter."""
 
         normalized_value = re.sub(r"\s+", "", str(value)).lower()
         normalized_request = re.sub(r"\s+", "", request).lower()
         if not normalized_value:
             return False
+        active_context = (conversation_context or {}).get("active_context", {})
+        context_slots = (
+            active_context.get("slots", {}) if isinstance(active_context, dict) else {}
+        )
+        context_slot = context_slots.get(field, {}) if isinstance(context_slots, dict) else {}
+        if (
+            isinstance(context_slot, dict)
+            and context_slot.get("valid") is True
+            and re.sub(r"\s+", "", str(context_slot.get("value", ""))).lower()
+            == normalized_value
+            and context_slot.get("source_message_id")
+        ):
+            return True
         if field == "time_range":
             return any(char.isdigit() for char in normalized_value) and any(
                 token in normalized_request for token in ("小时", "天", "周", "最近", "过去", "-")
             )
-        return normalized_value in normalized_request
+        if normalized_value in normalized_request:
+            return True
+        return False
+
+    @staticmethod
+    def _safe_context_payload(context: dict[str, Any]) -> dict[str, Any]:
+        """Keep context bounded and omit operational fields that extraction does not need."""
+
+        if not isinstance(context, dict):
+            return {}
+        active = context.get("active_context", {})
+        valid_slots: dict[str, dict[str, str]] = {}
+        if isinstance(active, dict) and isinstance(active.get("slots"), dict):
+            for name, slot in active["slots"].items():
+                if isinstance(slot, dict) and slot.get("valid") is True:
+                    valid_slots[str(name)] = {
+                        "value": str(slot.get("value", "")),
+                        "source_message_id": str(slot.get("source_message_id", "")),
+                    }
+        recent = []
+        for item in context.get("recent_messages", [])[-24:]:
+            if isinstance(item, dict):
+                recent.append(
+                    {
+                        "role": str(item.get("role", "")),
+                        "content": str(item.get("content", ""))[:600],
+                        "message_id": str(item.get("message_id", "")),
+                    }
+                )
+        return {
+            "summary": str(context.get("summary", ""))[:2000],
+            "summary_upto_message_id": context.get("summary_upto_message_id"),
+            "recent_messages": recent,
+            "valid_slots": valid_slots,
+        }
 
     @staticmethod
     def _deterministic_extract(content: str) -> dict[str, Any]:

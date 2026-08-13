@@ -241,10 +241,65 @@ class ChatMessage(BaseModel):
     message_id: str = Field(default_factory=lambda: new_id("msg"))
     request_id: str | None = None
     run_id: str | None = None
+    turn_seq: int | None = Field(default=None, ge=1)
     role: str
     content: str
     created_at: datetime = Field(default_factory=utc_now)
     citations: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class ContextSlot(BaseModel):
+    """A sourced conversation value that can be invalidated without deleting history."""
+
+    value: str
+    source_message_id: str
+    source_kind: str = "explicit"
+    depends_on: list[str] = Field(default_factory=list)
+    valid: bool = True
+    invalidated_by_message_id: str | None = None
+    invalidation_reason: str | None = None
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
+class ContextEvidenceRef(BaseModel):
+    evidence_id: str
+    source_type: str
+    source_message_id: str
+    trace_id: str | None = None
+    valid: bool = True
+    invalidated_by_message_id: str | None = None
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
+class ActiveConversationContext(BaseModel):
+    """Small, sourced working context; exact messages remain the audit authority."""
+
+    topic: str | None = None
+    slots: dict[str, ContextSlot] = Field(default_factory=dict)
+    evidence_refs: list[ContextEvidenceRef] = Field(default_factory=list)
+    trace_id: str | None = None
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
+class ConversationContextMessage(BaseModel):
+    message_id: str
+    turn_seq: int = Field(ge=1)
+    role: str
+    content: str
+    created_at: datetime
+
+
+class AssembledConversationContext(BaseModel):
+    """Bounded graph input assembled from one owned thread."""
+
+    thread_id: str
+    context_version: int = Field(default=1, ge=1)
+    summary: str = ""
+    summary_upto_message_id: str | None = None
+    recent_messages: list[ConversationContextMessage] = Field(default_factory=list)
+    active_context: ActiveConversationContext = Field(default_factory=ActiveConversationContext)
+    approved_preferences: list[str] = Field(default_factory=list)
+    current_message_id: str | None = None
 
 
 class ThreadRecord(BaseModel):
@@ -253,6 +308,13 @@ class ThreadRecord(BaseModel):
     actor_scope: ActorScope = Field(default_factory=ActorScope)
     status: str = "active"
     summary: str = ""
+    summary_upto_message_id: str | None = None
+    context_version: int = Field(default=1, ge=1)
+    active_context: ActiveConversationContext = Field(default_factory=ActiveConversationContext)
+    next_turn_seq: int = Field(default=1, ge=1)
+    last_turn_seq: int = Field(default=0, ge=0)
+    active_request_id: str | None = None
+    active_request_started_at: datetime | None = None
     clarification_round: int = 0
     pending_fields: list[str] = Field(default_factory=list)
     messages: list[ChatMessage] = Field(default_factory=list)

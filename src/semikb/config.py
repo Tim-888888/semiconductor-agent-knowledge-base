@@ -82,6 +82,9 @@ class Settings(BaseSettings):
     agent_max_clarification_rounds: int = Field(default=2, ge=1, le=3)
     agent_answer_max_output_tokens: int = Field(default=1400, ge=256, le=4096)
     agent_stream_heartbeat_seconds: int = Field(default=10, ge=1, le=60)
+    agent_context_recent_turns: int = Field(default=12, ge=2, le=30)
+    agent_context_summary_max_chars: int = Field(default=6000, ge=1000, le=20000)
+    agent_thread_lease_seconds: int = Field(default=1800, ge=300, le=7200)
 
     embedding_dim: int = Field(default=1024, ge=1)
     embedding_batch_size: int = Field(default=10, ge=1, le=256)
