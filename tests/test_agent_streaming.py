@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import json
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -230,6 +232,33 @@ async def test_explicit_cancel_interrupts_active_graph_and_allows_retry(seeded_s
     persisted = store.get_thread(thread.thread_id)
     assert persisted is not None
     assert [message.role for message in persisted.messages] == ["user"]
+
+
+@pytest.mark.asyncio
+async def test_stream_emits_heartbeat_during_a_quiet_graph_window(seeded_services) -> None:
+    _, _, _, conversation, _ = seeded_services
+    scope = ActorScope(user_id="heartbeat_test")
+    thread = conversation.create_thread("heartbeat", scope)
+    prepared = await conversation.prepare_stream_message(
+        thread.thread_id,
+        "P-ALPHA ETCH-03 Chamber B 最近24小时异常",
+        "req_heartbeat_001",
+        scope,
+    )
+
+    class SlowCompiledGraph:
+        async def astream(self, *args, **kwargs):
+            await asyncio.sleep(1.2)
+            if False:
+                yield None
+
+    conversation.settings.agent_stream_heartbeat_seconds = 1
+    conversation.graph = SimpleNamespace(compiled=SlowCompiledGraph())
+    stream = conversation.stream_message(prepared)
+
+    assert (await anext(stream)).event is AgentStreamEventType.ACCEPTED
+    assert (await anext(stream)).event is AgentStreamEventType.HEARTBEAT
+    await stream.aclose()
 
 
 @pytest.mark.asyncio
