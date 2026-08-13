@@ -59,6 +59,12 @@ class PreparedStreamMessage:
     resume_checkpoint: bool
 
 
+@dataclass(slots=True)
+class ActiveStreamControl:
+    cancelled: asyncio.Event
+    graph_task: asyncio.Task[None] | None = None
+
+
 class ConversationService:
     """Own thread metadata while LangGraph owns checkpointed execution state."""
 
@@ -80,6 +86,7 @@ class ConversationService:
         self.checkpointer = checkpointer or InMemorySaver()
         self.long_term_store = long_term_store or InMemoryStore()
         self.memory = MemoryService(self.long_term_store)
+        self._active_streams: dict[tuple[str, str, str], ActiveStreamControl] = {}
         self.graph = ConversationGraph(
             settings=settings,
             repository=repository,
@@ -181,6 +188,9 @@ class ConversationService:
         """Run one prepared message and emit ordered, replayable domain events."""
 
         record = prepared.record
+        request_key = (record.actor_user_id, record.thread_id, record.request_id)
+        control = ActiveStreamControl(cancelled=asyncio.Event())
+        self._active_streams[request_key] = control
         sequence = 0
         started = time.perf_counter()
 
@@ -205,6 +215,7 @@ class ConversationService:
         )
 
         if prepared.replayed:
+            self._active_streams.pop(request_key, None)
             result = self._replayed_response(record)
             yield envelope(
                 StreamCompletedEvent,
@@ -237,25 +248,41 @@ class ConversationService:
                 config=config,
                 stream_mode=["custom", "values"],
             )
-            iterator = graph_stream.__aiter__()
-            next_item = asyncio.create_task(anext(iterator))
+            graph_events: asyncio.Queue[tuple[str, Any]] = asyncio.Queue()
+
+            async def pump_graph_events() -> None:
+                try:
+                    async for mode, payload in graph_stream:
+                        await graph_events.put((mode, payload))
+                except asyncio.CancelledError:
+                    raise
+                except BaseException as exc:
+                    await graph_events.put(("error", exc))
+                finally:
+                    await graph_events.put(("done", None))
+
+            graph_task = asyncio.create_task(pump_graph_events())
+            control.graph_task = graph_task
             try:
                 while True:
-                    done, _ = await asyncio.wait(
-                        {next_item},
-                        timeout=self.settings.agent_stream_heartbeat_seconds,
-                    )
-                    if not done:
+                    if control.cancelled.is_set():
+                        raise asyncio.CancelledError
+                    try:
+                        mode, payload = await asyncio.wait_for(
+                            graph_events.get(),
+                            timeout=self.settings.agent_stream_heartbeat_seconds,
+                        )
+                    except TimeoutError:
                         elapsed_ms = int((time.perf_counter() - started) * 1000)
                         yield envelope(
                             StreamHeartbeatEvent,
                             StreamHeartbeatData(elapsed_ms=elapsed_ms),
                         )
                         continue
-                    try:
-                        mode, payload = next_item.result()
-                    except StopAsyncIteration:
+                    if mode == "done":
                         break
+                    if mode == "error":
+                        raise payload
                     if mode == "values" and isinstance(payload, dict):
                         final_state = payload
                     elif mode == "custom" and isinstance(payload, dict):
@@ -265,12 +292,13 @@ class ConversationService:
                             if isinstance(event, StreamAnswerDeltaEvent):
                                 streamed_answer += event.data.delta
                             yield event
-                    next_item = asyncio.create_task(anext(iterator))
             finally:
-                if not next_item.done():
-                    next_item.cancel()
-                await graph_stream.aclose()
+                if not graph_task.done():
+                    graph_task.cancel()
+                await asyncio.gather(graph_task, return_exceptions=True)
 
+            if control.cancelled.is_set():
+                raise asyncio.CancelledError
             thread = self.repository.get_thread(record.thread_id)
             if thread is None:
                 raise KeyError(record.thread_id)
@@ -338,6 +366,49 @@ class ConversationService:
                     trace_id=record.trace_id,
                 ),
             )
+        finally:
+            self._active_streams.pop(request_key, None)
+
+    async def cancel_stream_message(
+        self,
+        thread_id: str,
+        request_id: str,
+        actor_scope: ActorScope,
+    ) -> AgentMessageRequestRecord:
+        """Cancel a live run before the browser closes its SSE connection."""
+
+        thread = self.get_thread(thread_id, actor_scope)
+        if thread is None:
+            raise KeyError(thread_id)
+        record = await asyncio.to_thread(
+            self.repository.get_message_request,
+            thread_id,
+            actor_scope.user_id,
+            request_id,
+        )
+        if record is None:
+            raise KeyError(request_id)
+        if record.status is AgentMessageRequestStatus.COMPLETED:
+            return record
+        control = self._active_streams.get(
+            (actor_scope.user_id, thread_id, request_id),
+            None,
+        )
+        if control is not None:
+            control.cancelled.set()
+            if control.graph_task is not None and not control.graph_task.done():
+                control.graph_task.cancel()
+        if record.status in {
+            AgentMessageRequestStatus.ACCEPTED,
+            AgentMessageRequestStatus.RUNNING,
+        }:
+            record = await asyncio.to_thread(
+                self.repository.mark_message_request_terminal,
+                record,
+                AgentMessageRequestStatus.CANCELLED,
+                error_code=AgentStreamErrorCode.CANCELLED,
+            )
+        return record
 
     async def _invoke_graph(self, thread: ThreadRecord, content: str) -> dict[str, Any]:
         config = {"configurable": {"thread_id": thread.thread_id}}

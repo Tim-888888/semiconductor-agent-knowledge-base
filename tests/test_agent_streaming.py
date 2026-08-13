@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 
 import pytest
@@ -172,6 +173,40 @@ async def test_accepted_request_rejects_a_concurrent_duplicate(seeded_services) 
             "req_concurrent_stream_001",
             scope,
         )
+
+
+@pytest.mark.asyncio
+async def test_explicit_cancel_interrupts_active_graph_and_allows_retry(seeded_services) -> None:
+    store, _, _, conversation, _ = seeded_services
+    scope = ActorScope(user_id="explicit_cancel_test")
+    thread = conversation.create_thread("explicit cancel", scope)
+    content = "ETCH-03 Chamber B 清腔后首片异常，当前 SOP 怎么要求？"
+    request_id = "req_explicit_cancel_001"
+    prepared = await conversation.prepare_stream_message(
+        thread.thread_id,
+        content,
+        request_id,
+        scope,
+    )
+    stream = conversation.stream_message(prepared)
+    await anext(stream)
+    await anext(stream)
+
+    cancelled = await conversation.cancel_stream_message(thread.thread_id, request_id, scope)
+    assert cancelled.status is AgentMessageRequestStatus.CANCELLED
+    with pytest.raises(asyncio.CancelledError):
+        await anext(stream)
+    retry = await conversation.prepare_stream_message(
+        thread.thread_id,
+        content,
+        request_id,
+        scope,
+    )
+
+    assert retry.record.attempt == 2
+    persisted = store.get_thread(thread.thread_id)
+    assert persisted is not None
+    assert [message.role for message in persisted.messages] == ["user"]
 
 
 @pytest.mark.asyncio

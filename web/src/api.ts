@@ -162,6 +162,11 @@ export async function sendMessageStream(
   return completed;
 }
 
+export const cancelMessageRequest = (threadId: string, requestId: string) =>
+  request<{ status: string }>(`/threads/${threadId}/message-requests/${requestId}/cancel`, {
+    method: "POST"
+  });
+
 export const listJobs = () => request<IngestionJob[]>("/ingestion-jobs");
 export const getJob = (jobId: string) => request<IngestionJob>(`/ingestion-jobs/${jobId}`);
 export const retryJob = (jobId: string) =>

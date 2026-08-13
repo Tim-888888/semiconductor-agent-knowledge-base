@@ -14,6 +14,7 @@ import {
   ApiError,
   AgentStreamError,
   bootstrapToken,
+  cancelMessageRequest,
   createThread,
   getEvaluation,
   getEvaluationCaseTrace,
@@ -297,8 +298,20 @@ function App() {
     }
   }
 
-  function stopStream() {
-    streamAbortRef.current?.abort();
+  async function stopStream() {
+    const controller = streamAbortRef.current;
+    if (!controller || !thread || !streamState) return;
+    setStreamState((current) => current ? {
+      ...current,
+      stageMessage: "正在停止生成并同步服务端状态"
+    } : current);
+    try {
+      await cancelMessageRequest(thread.thread_id, streamState.requestId);
+    } catch (caught) {
+      setError(messageFrom(caught, "服务端取消确认失败。"));
+    } finally {
+      controller.abort();
+    }
   }
 
   async function retryStream() {
@@ -457,7 +470,7 @@ function App() {
         onNewThread={() => void addThread()}
         onOpenImage={(imageId) => void openImage(imageId)}
         onOpenTrace={(traceId) => void openTrace(traceId)}
-        onStopStream={stopStream}
+        onStopStream={() => void stopStream()}
         onRetryStream={() => void retryStream()}
       />}
       {view === "trace" && <TracePanel traces={traceOptions} trace={selectedTrace} onSelect={(traceId) => void selectTrace(traceId)} onOpenImage={(imageId) => void openImage(imageId)} />}

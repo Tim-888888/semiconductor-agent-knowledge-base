@@ -246,6 +246,27 @@ async def get_message_request(
     )
 
 
+@app.post("/api/v1/threads/{thread_id}/message-requests/{request_id}/cancel")
+async def cancel_message_request(
+    thread_id: str,
+    request_id: str,
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> dict[str, object]:
+    try:
+        record = await container.conversations.cancel_stream_message(
+            thread_id,
+            request_id,
+            actor_scope,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found.") from exc
+    return record.model_dump(
+        mode="json",
+        exclude={"content_sha256", "result_payload"},
+    )
+
+
 @app.post("/api/v1/memories", status_code=status.HTTP_201_CREATED)
 def create_memory(
     request: CreateMemoryRequest,
