@@ -77,6 +77,7 @@ function App() {
   const [streamState, setStreamState] = useState<StreamUiState | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
   const streamStopRequestedRef = useRef(false);
+  const streamLifecycleRef = useRef<{ threadId: string; requestId: string } | null>(null);
 
   const traceOptions = useMemo(() => {
     if (!selectedTrace || traces.some((item) => item.trace_id === selectedTrace.trace_id)) return traces;
@@ -159,7 +160,21 @@ function App() {
     if (asset?.local_object_url) URL.revokeObjectURL(asset.url);
   }, [asset]);
 
-  useEffect(() => () => streamAbortRef.current?.abort(), []);
+  useEffect(() => {
+    function cancelOnPageHide() {
+      const active = streamLifecycleRef.current;
+      if (active) {
+        void cancelMessageRequest(active.threadId, active.requestId, true).catch(() => undefined);
+      }
+      streamAbortRef.current?.abort();
+    }
+
+    window.addEventListener("pagehide", cancelOnPageHide);
+    return () => {
+      window.removeEventListener("pagehide", cancelOnPageHide);
+      cancelOnPageHide();
+    };
+  }, []);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -203,6 +218,7 @@ function App() {
     const controller = new AbortController();
     streamAbortRef.current = controller;
     streamStopRequestedRef.current = false;
+    streamLifecycleRef.current = { threadId, requestId };
     setActionLoading(true);
     setError("");
     setNotice("");
@@ -296,6 +312,9 @@ function App() {
       if (stopped) setNotice("生成已停止，可使用同一请求重试");
       else setError(messageFrom(caught, "问题发送失败。"));
     } finally {
+      if (streamLifecycleRef.current?.requestId === requestId) {
+        streamLifecycleRef.current = null;
+      }
       streamAbortRef.current = null;
       setActionLoading(false);
     }

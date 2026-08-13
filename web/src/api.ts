@@ -162,9 +162,10 @@ export async function sendMessageStream(
   return completed;
 }
 
-export const cancelMessageRequest = (threadId: string, requestId: string) =>
+export const cancelMessageRequest = (threadId: string, requestId: string, keepalive = false) =>
   request<{ status: string }>(`/threads/${threadId}/message-requests/${requestId}/cancel`, {
-    method: "POST"
+    method: "POST",
+    keepalive
   });
 
 export const listJobs = () => request<IngestionJob[]>("/ingestion-jobs");
