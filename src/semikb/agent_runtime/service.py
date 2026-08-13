@@ -215,7 +215,8 @@ class ConversationService:
         )
 
         if prepared.replayed:
-            self._active_streams.pop(request_key, None)
+            if self._active_streams.get(request_key) is control:
+                self._active_streams.pop(request_key, None)
             result = self._replayed_response(record)
             yield envelope(
                 StreamCompletedEvent,
@@ -367,7 +368,8 @@ class ConversationService:
                 ),
             )
         finally:
-            self._active_streams.pop(request_key, None)
+            if self._active_streams.get(request_key) is control:
+                self._active_streams.pop(request_key, None)
 
     async def cancel_stream_message(
         self,
@@ -398,6 +400,7 @@ class ConversationService:
             control.cancelled.set()
             if control.graph_task is not None and not control.graph_task.done():
                 control.graph_task.cancel()
+                await asyncio.gather(control.graph_task, return_exceptions=True)
         if record.status in {
             AgentMessageRequestStatus.ACCEPTED,
             AgentMessageRequestStatus.RUNNING,

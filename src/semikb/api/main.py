@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hmac
 import json
 from pathlib import Path
@@ -204,12 +205,27 @@ async def stream_message(
 
     async def event_stream():
         stream = container.conversations.stream_message(prepared)
+
+        async def watch_disconnect() -> None:
+            while True:
+                if await http_request.is_disconnected():
+                    await container.conversations.cancel_stream_message(
+                        thread_id,
+                        stream_request.request_id,
+                        actor_scope,
+                    )
+                    return
+                await asyncio.sleep(0.2)
+
+        disconnect_task = asyncio.create_task(watch_disconnect())
         try:
             async for event in stream:
                 if await http_request.is_disconnected():
                     break
                 yield encode_sse_event(event)
         finally:
+            disconnect_task.cancel()
+            await asyncio.gather(disconnect_task, return_exceptions=True)
             await stream.aclose()
 
     return StreamingResponse(

@@ -98,6 +98,30 @@ def test_stream_api_emits_ordered_events_and_persists_before_completed() -> None
     assert persisted["messages"][-1]["request_id"] == "req_stream_api_001"
 
 
+def test_stream_api_validates_authentication_and_thread_before_sse_headers() -> None:
+    client, headers = _authenticated_client()
+    payload = {
+        "content": "ETCH-03 Chamber B 清腔后首片异常，当前 SOP 怎么要求？",
+        "request_id": "req_stream_preflight_001",
+    }
+
+    invalid_authentication = client.post(
+        "/api/v1/threads/thread_missing/messages/stream",
+        json=payload,
+        headers={"Authorization": "Bearer invalid-token"},
+    )
+    missing_thread = client.post(
+        "/api/v1/threads/thread_missing/messages/stream",
+        json=payload,
+        headers=headers,
+    )
+
+    assert invalid_authentication.status_code == 401
+    assert not invalid_authentication.headers["content-type"].startswith("text/event-stream")
+    assert missing_thread.status_code == 404
+    assert not missing_thread.headers["content-type"].startswith("text/event-stream")
+
+
 def test_completed_request_replays_without_duplicate_messages_and_conflicts_on_new_content() -> None:
     client, headers = _authenticated_client()
     thread_id = client.post(
@@ -204,6 +228,38 @@ async def test_explicit_cancel_interrupts_active_graph_and_allows_retry(seeded_s
     )
 
     assert retry.record.attempt == 2
+    persisted = store.get_thread(thread.thread_id)
+    assert persisted is not None
+    assert [message.role for message in persisted.messages] == ["user"]
+
+
+@pytest.mark.asyncio
+async def test_persistence_failure_never_emits_completed_or_saves_assistant(
+    seeded_services,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store, _, _, conversation, _ = seeded_services
+    scope = ActorScope(user_id="persistence_failure_test")
+    thread = conversation.create_thread("persistence failure", scope)
+    request_id = "req_persistence_failure_001"
+    prepared = await conversation.prepare_stream_message(
+        thread.thread_id,
+        "ETCH-03 Chamber B 清腔后首片异常，当前 SOP 怎么要求？",
+        request_id,
+        scope,
+    )
+
+    def fail_finalize(*args, **kwargs):
+        raise RuntimeError("injected persistence failure")
+
+    monkeypatch.setattr(store, "finalize_stream_response", fail_finalize)
+    events = [event async for event in conversation.stream_message(prepared)]
+
+    assert events[-1].event is AgentStreamEventType.ERROR
+    assert not any(event.event is AgentStreamEventType.COMPLETED for event in events)
+    record = store.get_message_request(thread.thread_id, scope.user_id, request_id)
+    assert record is not None
+    assert record.status is AgentMessageRequestStatus.FAILED
     persisted = store.get_thread(thread.thread_id)
     assert persisted is not None
     assert [message.role for message in persisted.messages] == ["user"]
