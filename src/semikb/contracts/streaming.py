@@ -79,6 +79,27 @@ class StreamMessageRequest(BaseModel):
     )
 
 
+class UnderstandingAudit(BaseModel):
+    """Sanitized intent-governance evidence; prompts and card bodies are never persisted."""
+
+    intent_catalog_version: str | None = Field(default=None, max_length=64)
+    intent_catalog_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    active_intent_card_count: int = Field(default=0, ge=0)
+    intent_card_selection: str | None = Field(default=None, max_length=32)
+    intent_cards_in_prompt: int = Field(default=0, ge=0)
+    intent_prompt_tokens: int = Field(default=0, ge=0)
+    intent_prompt_tokens_source: str | None = Field(default=None, max_length=64)
+    intent_catalog_capacity_warnings: list[str] = Field(default_factory=list, max_length=8)
+    understanding_source: str | None = Field(default=None, max_length=64)
+    understanding_calls: int = Field(default=0, ge=0, le=2)
+    understanding_provider: str | None = Field(default=None, max_length=128)
+    understanding_model: str | None = Field(default=None, max_length=128)
+    understanding_fallback_used: bool = False
+    understanding_repaired: bool = False
+    understanding_warning: str | None = Field(default=None, max_length=128)
+    understanding_latency_ms: float = Field(default=0, ge=0)
+
+
 class AgentMessageRequestRecord(BaseModel):
     """Persistent idempotency ledger; message content remains in the thread only."""
 
@@ -108,6 +129,7 @@ class AgentMessageRequestRecord(BaseModel):
     invalidated_context_refs: list[str] = Field(default_factory=list)
     cancel_scope: CancelScope | None = None
     affect: AffectSignals = Field(default_factory=AffectSignals)
+    understanding_audit: UnderstandingAudit = Field(default_factory=UnderstandingAudit)
     error_code: AgentStreamErrorCode | None = None
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)

@@ -54,6 +54,7 @@ from semikb.contracts.streaming import (
     StreamHeartbeatEvent,
     StreamStageData,
     StreamStageEvent,
+    UnderstandingAudit,
 )
 from semikb.storage.conversations import ConversationRepository
 
@@ -615,6 +616,12 @@ class ConversationService:
         understanding = result.get("understanding", {})
         if isinstance(understanding, dict) and understanding.get("affect"):
             record.affect = AffectSignals.model_validate(understanding["affect"])
+        metadata = result.get("model_metadata", {})
+        if isinstance(metadata, dict):
+            allowed = UnderstandingAudit.model_fields.keys()
+            record.understanding_audit = UnderstandingAudit.model_validate(
+                {key: metadata[key] for key in allowed if key in metadata}
+            )
 
     def _replayed_response(self, record: AgentMessageRequestRecord) -> SendMessageResponse:
         thread = self.repository.get_thread(record.thread_id)

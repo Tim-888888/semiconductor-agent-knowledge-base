@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from dataclasses import dataclass
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from semikb.agent_runtime.intent_catalog import IntentCatalog, load_intent_catalog
 from semikb.agent_runtime.llm_gateway import LLMProviderError, OpenAICompatibleLLMGateway
 from semikb.config import Settings
 from semikb.contracts.models import (
@@ -79,6 +81,7 @@ REFERENCE_TERMS = ("它", "这个", "该", "刚才", "上一轮", "继续", "基
 LATEST_TERMS = ("最新", "当前版本", "现行", "实时", "现在", "today", "latest")
 EXTERNAL_TERMS = ("外部", "互联网", "网上", "web", "公开资料", "行业最新", "官方公告")
 MUTATION_TERMS = ("修改", "下发", "写入", "删除", "停机", "执行变更", "调整recipe", "调整 recipe")
+ALARM_TERMS = ("报警", "告警", "alarm", "interlock")
 
 
 class _RawAffect(BaseModel):
@@ -146,9 +149,12 @@ class ConversationUnderstandingService:
         self,
         settings: Settings,
         llm: OpenAICompatibleLLMGateway,
+        *,
+        intent_catalog: IntentCatalog | None = None,
     ) -> None:
         self.settings = settings
         self.llm = llm
+        self.intent_catalog = intent_catalog or load_intent_catalog(settings.intent_catalog_path)
 
     async def understand(
         self,
@@ -157,21 +163,49 @@ class ConversationUnderstandingService:
         *,
         clarification_pending: bool = False,
     ) -> UnderstandingResult:
+        started = time.perf_counter()
+        base_metadata = self._intent_audit_metadata(prompt_tokens=0, cards_in_prompt=0)
         l0 = self._l0(request, context)
         if l0 is not None:
-            return UnderstandingResult(l0, {"understanding_source": "l0", "understanding_calls": 0})
+            return UnderstandingResult(
+                l0,
+                self._finish_metadata(
+                    {
+                        **base_metadata,
+                        "understanding_source": "l0",
+                        "understanding_calls": 0,
+                    },
+                    started,
+                ),
+            )
 
         if self.settings.demo_mode:
             fallback = self._heuristic(request, context, clarification_pending=clarification_pending)
             return UnderstandingResult(
                 fallback,
-                {"understanding_source": "deterministic_fallback", "understanding_calls": 0},
+                self._finish_metadata(
+                    {
+                        **base_metadata,
+                        "understanding_source": "deterministic_fallback",
+                        "understanding_calls": 0,
+                    },
+                    started,
+                ),
             )
 
-        metadata: dict[str, Any] = {"understanding_calls": 0}
         messages = self._prompt(request, context, clarification_pending)
+        estimated_tokens = self._estimate_prompt_tokens(messages)
+        metadata: dict[str, Any] = {
+            **self._intent_audit_metadata(
+                prompt_tokens=estimated_tokens,
+                cards_in_prompt=len(self.intent_catalog.active_cards),
+            ),
+            "understanding_calls": 0,
+            "intent_prompt_tokens_source": "deterministic_estimate",
+        }
         raw: _RawUnderstanding | None = None
         invalid_content = ""
+        provider_prompt_tokens = 0
         try:
             completion = await self.llm.complete(
                 messages,
@@ -181,6 +215,11 @@ class ConversationUnderstandingService:
                 max_output_tokens=1000,
             )
             metadata["understanding_calls"] = 1
+            used_tokens = self._input_tokens(completion.usage)
+            if used_tokens is not None:
+                provider_prompt_tokens += used_tokens
+                metadata["intent_prompt_tokens"] = provider_prompt_tokens
+                metadata["intent_prompt_tokens_source"] = "provider_usage"
             invalid_content = completion.content
             raw = _RawUnderstanding.model_validate_json(completion.content)
             metadata.update(
@@ -209,6 +248,11 @@ class ConversationUnderstandingService:
                     max_output_tokens=1000,
                 )
                 metadata["understanding_calls"] = 2
+                repair_tokens = self._input_tokens(repair.usage)
+                if repair_tokens is not None:
+                    provider_prompt_tokens += repair_tokens
+                    metadata["intent_prompt_tokens"] = provider_prompt_tokens
+                    metadata["intent_prompt_tokens_source"] = "provider_usage"
                 raw = _RawUnderstanding.model_validate_json(repair.content)
                 metadata.update(
                     {
@@ -232,7 +276,7 @@ class ConversationUnderstandingService:
                     "understanding_warning": "structured_understanding_unavailable",
                 }
             )
-            return UnderstandingResult(fallback, metadata)
+            return UnderstandingResult(fallback, self._finish_metadata(metadata, started))
         return UnderstandingResult(
             self._normalize_raw(
                 raw,
@@ -240,11 +284,11 @@ class ConversationUnderstandingService:
                 context,
                 clarification_pending=clarification_pending,
             ),
-            metadata,
+            self._finish_metadata(metadata, started),
         )
 
-    @staticmethod
     def _prompt(
+        self,
         request: str,
         context: dict[str, Any],
         clarification_pending: bool,
@@ -258,7 +302,10 @@ class ConversationUnderstandingService:
                     "Tool, Chamber, Recipe, Lot, Case, or time values. Use inherited_slot_names only for valid "
                     "context values needed by a pronoun or omitted reference. Recipe mutation, equipment control, "
                     "data deletion, and out-of-scope actions must use execution_policy=refuse. The suggested route "
-                    "is advisory; server policy makes the final decision. Do not include reasoning or prose."
+                    "is advisory; server policy makes the final decision. For each task, compare against every active "
+                    "intent card supplied by the server and use a legal task signature from the closest matching card. "
+                    "The complete active catalog is authoritative; do not invent another intent. Do not include "
+                    "reasoning, card IDs, or prose in the response."
                 ),
             },
             {
@@ -268,11 +315,59 @@ class ConversationUnderstandingService:
                         "current_request": request,
                         "clarification_pending": clarification_pending,
                         "conversation_context": ConversationUnderstandingService._safe_context(context),
+                        "intent_catalog": self.intent_catalog.prompt_payload(),
                     },
                     ensure_ascii=False,
                 ),
             },
         ]
+
+    def _intent_audit_metadata(
+        self,
+        *,
+        prompt_tokens: int,
+        cards_in_prompt: int,
+    ) -> dict[str, Any]:
+        return {
+            "intent_catalog_version": self.intent_catalog.catalog_version,
+            "intent_catalog_hash": self.intent_catalog.catalog_hash,
+            "active_intent_card_count": len(self.intent_catalog.active_cards),
+            "intent_card_selection": "all_active",
+            "intent_cards_in_prompt": cards_in_prompt,
+            "intent_prompt_tokens": prompt_tokens,
+            "intent_catalog_capacity_warnings": self.intent_catalog.capacity_warnings(
+                prompt_tokens=prompt_tokens
+            ),
+        }
+
+    def _finish_metadata(
+        self,
+        metadata: dict[str, Any],
+        started: float,
+    ) -> dict[str, Any]:
+        prompt_tokens = int(metadata.get("intent_prompt_tokens", 0) or 0)
+        metadata["intent_catalog_capacity_warnings"] = self.intent_catalog.capacity_warnings(
+            prompt_tokens=prompt_tokens
+        )
+        metadata["understanding_latency_ms"] = round(
+            (time.perf_counter() - started) * 1000,
+            3,
+        )
+        return metadata
+
+    @staticmethod
+    def _input_tokens(usage: dict[str, Any]) -> int | None:
+        for key in ("prompt_tokens", "input_tokens"):
+            value = usage.get(key)
+            if isinstance(value, int) and value >= 0:
+                return value
+        return None
+
+    @staticmethod
+    def _estimate_prompt_tokens(messages: list[dict[str, Any]]) -> int:
+        serialized = json.dumps(messages, ensure_ascii=False, separators=(",", ":"))
+        pieces = re.findall(r"[\u4e00-\u9fff]|[A-Za-z0-9_]+|[^\s]", serialized)
+        return len(pieces)
 
     @staticmethod
     def _safe_context(context: dict[str, Any]) -> dict[str, Any]:
@@ -395,6 +490,10 @@ class ConversationUnderstandingService:
             term in lowered for term in ("回答", "答案", "上面", "刚才", "上一轮")
         ):
             return PrimaryIntent.CONTENT_TASK
+        if any(term in lowered for term in ALARM_TERMS) and any(
+            term in lowered for term in ("含义", "解释", "定义", "代表什么", "手册")
+        ):
+            return PrimaryIntent.KNOWLEDGE_QUERY
         if any(term in lowered for term in EXTERNAL_TERMS):
             return PrimaryIntent.KNOWLEDGE_QUERY
         if any(
@@ -731,6 +830,29 @@ class ConversationUnderstandingService:
                 )
             ]
 
+        if primary is PrimaryIntent.KNOWLEDGE_QUERY and any(
+            term in lowered for term in ALARM_TERMS
+        ) and any(term in lowered for term in ("含义", "解释", "定义", "代表什么", "手册")):
+            candidates.append(
+                (
+                    PrimaryIntent.KNOWLEDGE_QUERY,
+                    IntentTarget.ALARM,
+                    IntentTaskAction.EXPLAIN,
+                    TaskExecutionDecision.EXECUTE,
+                )
+            )
+        if primary is PrimaryIntent.KNOWLEDGE_QUERY and any(
+            term in lowered for term in EXTERNAL_TERMS
+        ):
+            candidates.append(
+                (
+                    PrimaryIntent.KNOWLEDGE_QUERY,
+                    IntentTarget.GENERAL,
+                    IntentTaskAction.LOOKUP,
+                    TaskExecutionDecision.EXECUTE,
+                )
+            )
+
         data_requested = primary in {PrimaryIntent.DATA_QUERY, PrimaryIntent.INVESTIGATION} or (
             primary is PrimaryIntent.ACTION_REQUEST
             and any(term in lowered for term in ("查", "查询", "看"))
@@ -740,7 +862,7 @@ class ConversationUnderstandingService:
                 candidates.append((PrimaryIntent.DATA_QUERY, IntentTarget.FDC, IntentTaskAction.LOOKUP, TaskExecutionDecision.EXECUTE))
             elif "spc" in lowered or "趋势" in lowered:
                 candidates.append((PrimaryIntent.DATA_QUERY, IntentTarget.SPC, IntentTaskAction.LOOKUP, TaskExecutionDecision.EXECUTE))
-            elif any(term in lowered for term in ("lot", "wafer", "晶圆图")):
+            elif any(term in lowered for term in ("lot", "wafer", "晶圆图", "良率")):
                 candidates.append((PrimaryIntent.DATA_QUERY, IntentTarget.LOT, IntentTaskAction.LOOKUP, TaskExecutionDecision.EXECUTE))
 
         if "sop" in lowered:

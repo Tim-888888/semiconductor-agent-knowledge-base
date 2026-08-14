@@ -1,0 +1,373 @@
+{
+  "verification": "T9-4.3.3a",
+  "mode": "deterministic",
+  "catalog": {
+    "version": "semikb-intent-catalog-v1",
+    "hash": "01a5fa3ab6b12ac60a9612bde4a57de42247a72140eeb95fcf97bc38bb249f6e",
+    "total_cards": 15,
+    "active_cards": 13
+  },
+  "example_bank": {
+    "version": "intent-example-bank-v1",
+    "hash": "d6ead8e9e6f80a9f6390a45ec03c14b48c0b8b843d6431146505ac8be5808141",
+    "examples": 15,
+    "evaluation_leakage": 0
+  },
+  "evaluation": {
+    "dataset_version": "semikb-intent-v3",
+    "dataset_hash": "e5f2f689655e0eccd945bb25eec49e167c2dc07db5436c6dc4d360fc38976679",
+    "evaluated_cases": 108,
+    "metrics": {
+      "interaction_mode_accuracy": 1.0,
+      "primary_intent_accuracy": 1.0,
+      "primary_intent_macro_precision": 1.0,
+      "primary_intent_macro_recall": 1.0,
+      "primary_intent_macro_f1": 1.0,
+      "primary_intent_micro_f1": 1.0,
+      "route_accuracy": 1.0,
+      "route_macro_precision": 1.0,
+      "route_macro_recall": 1.0,
+      "route_macro_f1": 1.0,
+      "route_micro_f1": 1.0,
+      "intent_card_macro_f1": 1.0,
+      "intent_card_micro_f1": 1.0,
+      "high_risk_intent_f2": 1.0,
+      "task_set_exact_match_rate": 1.0,
+      "multi_task_exact_match_rate": 1.0,
+      "multi_task_miss_rate": 0.0,
+      "spurious_task_rate": 0.0,
+      "target_action_joint_accuracy": 1.0,
+      "task_execution_policy_accuracy": 1.0,
+      "task_dependency_accuracy": 1.0,
+      "slot_operation_accuracy": 1.0,
+      "explicit_slot_accuracy": 1.0,
+      "inherited_slot_accuracy": 1.0,
+      "missing_slot_accuracy": 1.0,
+      "unnecessary_retrieval_rate": 0.0,
+      "wrong_evidence_reuse_rate": 0.0,
+      "wrong_clarification_rate": 0.0,
+      "slot_correction_failure_rate": 0.0,
+      "dangerous_execution_miss_rate": 0.0,
+      "context_reference_accuracy": 1.0
+    },
+    "failures": [],
+    "source_counts": {
+      "l0": 38,
+      "deterministic_fallback": 70
+    },
+    "confusion_matrices": {
+      "primary_intent": {
+        "action_request": {
+          "action_request": 8
+        },
+        "content_task": {
+          "content_task": 8
+        },
+        "conversation": {
+          "conversation": 27
+        },
+        "data_query": {
+          "data_query": 25
+        },
+        "investigation": {
+          "investigation": 19
+        },
+        "knowledge_query": {
+          "knowledge_query": 21
+        }
+      },
+      "route": {
+        "chat_direct": {
+          "chat_direct": 16
+        },
+        "clarify": {
+          "clarify": 8
+        },
+        "history_direct": {
+          "history_direct": 19
+        },
+        "internal_rag": {
+          "internal_rag": 14
+        },
+        "rag_and_tool": {
+          "rag_and_tool": 14
+        },
+        "rag_and_web": {
+          "rag_and_web": 4
+        },
+        "refuse": {
+          "refuse": 7
+        },
+        "reuse_evidence": {
+          "reuse_evidence": 3
+        },
+        "tool_only": {
+          "tool_only": 23
+        }
+      },
+      "intent_card": {
+        "action.prohibited_write": {
+          "action.prohibited_write": 8
+        },
+        "content.report_generation": {
+          "content.report_generation": 1
+        },
+        "conversation.control": {
+          "conversation.control": 8
+        },
+        "conversation.feedback": {
+          "conversation.feedback": 4
+        },
+        "conversation.general": {
+          "conversation.general": 4
+        },
+        "conversation.history_recall": {
+          "conversation.history_recall": 11
+        },
+        "conversation.previous_answer_transform": {
+          "conversation.previous_answer_transform": 8
+        },
+        "data.manufacturing_lookup": {
+          "data.manufacturing_lookup": 35
+        },
+        "investigation.anomaly_diagnosis": {
+          "investigation.anomaly_diagnosis": 19
+        },
+        "knowledge.alarm_explanation": {
+          "knowledge.alarm_explanation": 2
+        },
+        "knowledge.external_lookup": {
+          "knowledge.external_lookup": 4
+        },
+        "knowledge.recipe_read": {
+          "knowledge.recipe_read": 3
+        },
+        "knowledge.sop_lookup": {
+          "knowledge.sop_lookup": 15
+        }
+      }
+    },
+    "per_class_metrics": {
+      "primary_intent": {
+        "action_request": {
+          "support": 8.0,
+          "predicted": 8.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "content_task": {
+          "support": 8.0,
+          "predicted": 8.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "conversation": {
+          "support": 27.0,
+          "predicted": 27.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "data_query": {
+          "support": 25.0,
+          "predicted": 25.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "investigation": {
+          "support": 19.0,
+          "predicted": 19.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "knowledge_query": {
+          "support": 21.0,
+          "predicted": 21.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        }
+      },
+      "route": {
+        "chat_direct": {
+          "support": 16.0,
+          "predicted": 16.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "clarify": {
+          "support": 8.0,
+          "predicted": 8.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "history_direct": {
+          "support": 19.0,
+          "predicted": 19.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "internal_rag": {
+          "support": 14.0,
+          "predicted": 14.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "rag_and_tool": {
+          "support": 14.0,
+          "predicted": 14.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "rag_and_web": {
+          "support": 4.0,
+          "predicted": 4.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "refuse": {
+          "support": 7.0,
+          "predicted": 7.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "reuse_evidence": {
+          "support": 3.0,
+          "predicted": 3.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "tool_only": {
+          "support": 23.0,
+          "predicted": 23.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        }
+      },
+      "intent_card": {
+        "action.prohibited_write": {
+          "support": 8.0,
+          "predicted": 8.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "content.report_generation": {
+          "support": 1.0,
+          "predicted": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "conversation.control": {
+          "support": 8.0,
+          "predicted": 8.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "conversation.feedback": {
+          "support": 4.0,
+          "predicted": 4.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "conversation.general": {
+          "support": 4.0,
+          "predicted": 4.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "conversation.history_recall": {
+          "support": 11.0,
+          "predicted": 11.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "conversation.previous_answer_transform": {
+          "support": 8.0,
+          "predicted": 8.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "data.manufacturing_lookup": {
+          "support": 35.0,
+          "predicted": 35.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "investigation.anomaly_diagnosis": {
+          "support": 19.0,
+          "predicted": 19.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "knowledge.alarm_explanation": {
+          "support": 2.0,
+          "predicted": 2.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "knowledge.external_lookup": {
+          "support": 4.0,
+          "predicted": 4.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "knowledge.recipe_read": {
+          "support": 3.0,
+          "predicted": 3.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "knowledge.sop_lookup": {
+          "support": 15.0,
+          "predicted": 15.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        }
+      }
+    },
+    "capacity": {
+      "intent_catalog_version": "semikb-intent-catalog-v1",
+      "intent_catalog_hash": "01a5fa3ab6b12ac60a9612bde4a57de42247a72140eeb95fcf97bc38bb249f6e",
+      "intent_card_selection": "all_active",
+      "active_intent_card_count": 13,
+      "llm_evaluated_cases": 0,
+      "all_active_cards_injected_rate": null,
+      "intent_prompt_tokens_p50": 0.0,
+      "intent_prompt_tokens_p95": 0.0,
+      "understanding_latency_ms_p50": 0.207,
+      "understanding_latency_ms_p95": 0.345,
+      "capacity_gates": {
+        "max_active_cards": 24,
+        "max_prompt_tokens": 12000,
+        "max_p95_latency_ms": 5000.0
+      }
+    },
+    "warnings": []
+  }
+}

@@ -1,0 +1,2198 @@
+{
+  "verification": "T9-4.3.3a",
+  "mode": "online",
+  "catalog": {
+    "version": "semikb-intent-catalog-v1",
+    "hash": "01a5fa3ab6b12ac60a9612bde4a57de42247a72140eeb95fcf97bc38bb249f6e",
+    "total_cards": 15,
+    "active_cards": 13
+  },
+  "example_bank": {
+    "version": "intent-example-bank-v1",
+    "hash": "d6ead8e9e6f80a9f6390a45ec03c14b48c0b8b843d6431146505ac8be5808141",
+    "examples": 15,
+    "evaluation_leakage": 0
+  },
+  "evaluation": {
+    "dataset_version": "semikb-intent-v3",
+    "dataset_hash": "e5f2f689655e0eccd945bb25eec49e167c2dc07db5436c6dc4d360fc38976679",
+    "evaluated_cases": 108,
+    "metrics": {
+      "interaction_mode_accuracy": 0.962963,
+      "primary_intent_accuracy": 0.990741,
+      "primary_intent_macro_precision": 0.991667,
+      "primary_intent_macro_recall": 0.992063,
+      "primary_intent_macro_f1": 0.991662,
+      "primary_intent_micro_f1": 0.990741,
+      "route_accuracy": 0.990741,
+      "route_macro_precision": 0.987654,
+      "route_macro_recall": 0.962963,
+      "route_macro_f1": 0.971242,
+      "route_micro_f1": 0.990741,
+      "intent_card_macro_f1": 0.900559,
+      "intent_card_micro_f1": 0.895397,
+      "high_risk_intent_f2": 0.846154,
+      "task_set_exact_match_rate": 0.703704,
+      "multi_task_exact_match_rate": 0.181818,
+      "multi_task_miss_rate": 0.065574,
+      "spurious_task_rate": 0.025641,
+      "target_action_joint_accuracy": 0.736842,
+      "task_execution_policy_accuracy": 0.938596,
+      "task_dependency_accuracy": 0.982456,
+      "slot_operation_accuracy": 1.0,
+      "explicit_slot_accuracy": 1.0,
+      "inherited_slot_accuracy": 1.0,
+      "missing_slot_accuracy": 1.0,
+      "unnecessary_retrieval_rate": 0.0,
+      "wrong_evidence_reuse_rate": 0.0,
+      "wrong_clarification_rate": 0.01,
+      "slot_correction_failure_rate": 0.0,
+      "dangerous_execution_miss_rate": 0.0,
+      "context_reference_accuracy": 1.0
+    },
+    "failures": [
+      {
+        "case_id": "knowledge-11",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "knowledge_query",
+          "route": "rag_and_web",
+          "task_count": 2,
+          "intent_card_ids": [
+            "knowledge.external_lookup",
+            "knowledge.sop_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "knowledge_query",
+              "target_type": "general",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_2",
+              "primary_intent": "knowledge_query",
+              "target_type": "sop",
+              "action": "compare",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "mixed",
+          "primary_intent": "knowledge_query",
+          "route": "rag_and_web",
+          "task_count": 2,
+          "intent_card_ids": [
+            "knowledge.external_lookup",
+            "knowledge.sop_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "knowledge_query",
+              "target_type": "general",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_2",
+              "primary_intent": "knowledge_query",
+              "target_type": "sop",
+              "action": "compare",
+              "depends_on": [
+                "task_1"
+              ],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "data-02",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "data_query",
+          "route": "tool_only",
+          "task_count": 1,
+          "intent_card_ids": [
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "fdc",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "data_query",
+          "route": "tool_only",
+          "task_count": 1,
+          "intent_card_ids": [
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "alarm",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "data-04",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "data_query",
+          "route": "tool_only",
+          "task_count": 1,
+          "intent_card_ids": [
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "lot",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "data_query",
+          "route": "tool_only",
+          "task_count": 3,
+          "intent_card_ids": [
+            "data.manufacturing_lookup",
+            "data.manufacturing_lookup",
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "lot",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_2",
+              "primary_intent": "data_query",
+              "target_type": "spc",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_3",
+              "primary_intent": "data_query",
+              "target_type": "fdc",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "data-05",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "data_query",
+          "route": "tool_only",
+          "task_count": 1,
+          "intent_card_ids": [
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "fdc",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "data_query",
+          "route": "tool_only",
+          "task_count": 1,
+          "intent_card_ids": [
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "alarm",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "data-07",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "data_query",
+          "route": "tool_only",
+          "task_count": 1,
+          "intent_card_ids": [
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "lot",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "data_query",
+          "route": "tool_only",
+          "task_count": 1,
+          "intent_card_ids": [
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "wafer_map",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "data-08",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "data_query",
+          "route": "tool_only",
+          "task_count": 1,
+          "intent_card_ids": [
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "fdc",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "data_query",
+          "route": "tool_only",
+          "task_count": 1,
+          "intent_card_ids": [
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "alarm",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "investigation-01",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 2,
+          "intent_card_ids": [
+            "data.manufacturing_lookup",
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "lot",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_2",
+              "primary_intent": "investigation",
+              "target_type": "case",
+              "action": "diagnose",
+              "depends_on": [
+                "task_1"
+              ],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 1,
+          "intent_card_ids": [
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "general",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "investigation-03",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 1,
+          "intent_card_ids": [
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "case",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 1,
+          "intent_card_ids": [
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "wafer_map",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "investigation-04",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 2,
+          "intent_card_ids": [
+            "data.manufacturing_lookup",
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "fdc",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_2",
+              "primary_intent": "investigation",
+              "target_type": "case",
+              "action": "diagnose",
+              "depends_on": [
+                "task_1"
+              ],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 1,
+          "intent_card_ids": [
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "alarm",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "investigation-05",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 1,
+          "intent_card_ids": [
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "case",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 1,
+          "intent_card_ids": [
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "general",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "investigation-06",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 1,
+          "intent_card_ids": [
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "case",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 1,
+          "intent_card_ids": [
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "general",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "investigation-07",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 2,
+          "intent_card_ids": [
+            "data.manufacturing_lookup",
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "lot",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_2",
+              "primary_intent": "investigation",
+              "target_type": "case",
+              "action": "diagnose",
+              "depends_on": [
+                "task_1"
+              ],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 1,
+          "intent_card_ids": [
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "wafer_map",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "investigation-08",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 1,
+          "intent_card_ids": [
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "case",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 1,
+          "intent_card_ids": [
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "general",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "investigation-09",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 2,
+          "intent_card_ids": [
+            "data.manufacturing_lookup",
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "lot",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_2",
+              "primary_intent": "investigation",
+              "target_type": "case",
+              "action": "diagnose",
+              "depends_on": [
+                "task_1"
+              ],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 1,
+          "intent_card_ids": [
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "general",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "investigation-10",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 2,
+          "intent_card_ids": [
+            "data.manufacturing_lookup",
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "fdc",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_2",
+              "primary_intent": "investigation",
+              "target_type": "case",
+              "action": "diagnose",
+              "depends_on": [
+                "task_1"
+              ],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 1,
+          "intent_card_ids": [
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "general",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "investigation-11",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 1,
+          "intent_card_ids": [
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "case",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 1,
+          "intent_card_ids": [
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "general",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "investigation-12",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 3,
+          "intent_card_ids": [
+            "data.manufacturing_lookup",
+            "knowledge.sop_lookup",
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "fdc",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_2",
+              "primary_intent": "knowledge_query",
+              "target_type": "sop",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_3",
+              "primary_intent": "investigation",
+              "target_type": "case",
+              "action": "diagnose",
+              "depends_on": [
+                "task_1",
+                "task_2"
+              ],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "mixed",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 3,
+          "intent_card_ids": [
+            "data.manufacturing_lookup",
+            "knowledge.sop_lookup",
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "alarm",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_2",
+              "primary_intent": "knowledge_query",
+              "target_type": "sop",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_3",
+              "primary_intent": "investigation",
+              "target_type": "alarm",
+              "action": "diagnose",
+              "depends_on": [
+                "task_1",
+                "task_2"
+              ],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "clarify-01",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "clarify",
+          "task_count": 2,
+          "intent_card_ids": [
+            "data.manufacturing_lookup",
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "lot",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_2",
+              "primary_intent": "investigation",
+              "target_type": "case",
+              "action": "diagnose",
+              "depends_on": [
+                "task_1"
+              ],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "clarify",
+          "task_count": 1,
+          "intent_card_ids": [
+            "__unmapped__"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "general",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "clarify"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "required_slots_missing"
+          ]
+        }
+      },
+      {
+        "case_id": "clarify-02",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "clarify",
+          "task_count": 1,
+          "intent_card_ids": [
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "case",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "clarify",
+          "task_count": 1,
+          "intent_card_ids": [
+            "__unmapped__"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "general",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "clarify"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "required_slots_missing"
+          ]
+        }
+      },
+      {
+        "case_id": "clarify-03",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "clarify",
+          "task_count": 1,
+          "intent_card_ids": [
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "case",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "clarify",
+          "task_count": 1,
+          "intent_card_ids": [
+            "__unmapped__"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "general",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "clarify"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "required_slots_missing"
+          ]
+        }
+      },
+      {
+        "case_id": "clarify-04",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "clarify",
+          "task_count": 1,
+          "intent_card_ids": [
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "case",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "clarify",
+          "task_count": 1,
+          "intent_card_ids": [
+            "__unmapped__"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "general",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "clarify"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "required_slots_missing"
+          ]
+        }
+      },
+      {
+        "case_id": "clarify-05",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "data_query",
+          "route": "clarify",
+          "task_count": 1,
+          "intent_card_ids": [
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "fdc",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "data_query",
+          "route": "clarify",
+          "task_count": 1,
+          "intent_card_ids": [
+            "__unmapped__"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "fdc",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "clarify"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "required_slots_missing"
+          ]
+        }
+      },
+      {
+        "case_id": "clarify-08",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "clarify",
+          "task_count": 2,
+          "intent_card_ids": [
+            "data.manufacturing_lookup",
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "lot",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_2",
+              "primary_intent": "investigation",
+              "target_type": "case",
+              "action": "diagnose",
+              "depends_on": [
+                "task_1"
+              ],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "clarify",
+          "task_count": 1,
+          "intent_card_ids": [
+            "__unmapped__"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "general",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "clarify"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "required_slots_missing"
+          ]
+        }
+      },
+      {
+        "case_id": "mixed-01",
+        "expected": {
+          "interaction_mode": "mixed",
+          "primary_intent": "data_query",
+          "route": "tool_only",
+          "task_count": 1,
+          "intent_card_ids": [
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "fdc",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "mixed",
+          "primary_intent": "data_query",
+          "route": "tool_only",
+          "task_count": 2,
+          "intent_card_ids": [
+            "data.manufacturing_lookup",
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "fdc",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_2",
+              "primary_intent": "data_query",
+              "target_type": "alarm",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "mixed-02",
+        "expected": {
+          "interaction_mode": "mixed",
+          "primary_intent": "data_query",
+          "route": "tool_only",
+          "task_count": 1,
+          "intent_card_ids": [
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "fdc",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "mixed",
+          "primary_intent": "data_query",
+          "route": "tool_only",
+          "task_count": 1,
+          "intent_card_ids": [
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "alarm",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "mixed-04",
+        "expected": {
+          "interaction_mode": "mixed",
+          "primary_intent": "data_query",
+          "route": "tool_only",
+          "task_count": 1,
+          "intent_card_ids": [
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "lot",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "mixed",
+          "primary_intent": "data_query",
+          "route": "tool_only",
+          "task_count": 1,
+          "intent_card_ids": [
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "general",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "mixed-06",
+        "expected": {
+          "interaction_mode": "mixed",
+          "primary_intent": "data_query",
+          "route": "tool_only",
+          "task_count": 1,
+          "intent_card_ids": [
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "fdc",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "mixed",
+          "primary_intent": "data_query",
+          "route": "tool_only",
+          "task_count": 1,
+          "intent_card_ids": [
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "alarm",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "reuse-01",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "knowledge_query",
+          "route": "reuse_evidence",
+          "task_count": 1,
+          "intent_card_ids": [
+            "knowledge.sop_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "knowledge_query",
+              "target_type": "sop",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "clarify",
+          "task_count": 1,
+          "intent_card_ids": [
+            "__unmapped__"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "general",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "clarify"
+            }
+          ],
+          "context_message_ids": [
+            "msg_prev_q",
+            "msg_prev_a"
+          ],
+          "reason_codes": [
+            "required_slots_missing"
+          ]
+        }
+      },
+      {
+        "case_id": "reuse-02",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "knowledge_query",
+          "route": "reuse_evidence",
+          "task_count": 1,
+          "intent_card_ids": [
+            "knowledge.sop_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "knowledge_query",
+              "target_type": "sop",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "knowledge_query",
+          "route": "reuse_evidence",
+          "task_count": 1,
+          "intent_card_ids": [
+            "knowledge.sop_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "knowledge_query",
+              "target_type": "sop",
+              "action": "explain",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [
+            "msg_prev_q",
+            "msg_prev_a"
+          ],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "v3-confusion-alarm-data",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "data_query",
+          "route": "tool_only",
+          "task_count": 1,
+          "intent_card_ids": [
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "fdc",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "data_query",
+          "route": "tool_only",
+          "task_count": 1,
+          "intent_card_ids": [
+            "data.manufacturing_lookup"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "alarm",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "v3-confusion-recipe-read",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "knowledge_query",
+          "route": "internal_rag",
+          "task_count": 1,
+          "intent_card_ids": [
+            "knowledge.recipe_read"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "knowledge_query",
+              "target_type": "recipe",
+              "action": "explain",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "knowledge_query",
+          "route": "internal_rag",
+          "task_count": 1,
+          "intent_card_ids": [
+            "knowledge.recipe_read"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "knowledge_query",
+              "target_type": "recipe",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "v3-confusion-investigation",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 1,
+          "intent_card_ids": [
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "case",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 1,
+          "intent_card_ids": [
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "investigation",
+              "target_type": "general",
+              "action": "diagnose",
+              "depends_on": [],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "v3-multi-rag-tool",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 3,
+          "intent_card_ids": [
+            "data.manufacturing_lookup",
+            "knowledge.sop_lookup",
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "fdc",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_2",
+              "primary_intent": "knowledge_query",
+              "target_type": "sop",
+              "action": "compare",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_3",
+              "primary_intent": "investigation",
+              "target_type": "case",
+              "action": "diagnose",
+              "depends_on": [
+                "task_1",
+                "task_2"
+              ],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "mixed",
+          "primary_intent": "investigation",
+          "route": "rag_and_tool",
+          "task_count": 2,
+          "intent_card_ids": [
+            "data.manufacturing_lookup",
+            "investigation.anomaly_diagnosis"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "fdc",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_2",
+              "primary_intent": "investigation",
+              "target_type": "alarm",
+              "action": "diagnose",
+              "depends_on": [
+                "task_1"
+              ],
+              "execution_policy": "execute"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      },
+      {
+        "case_id": "v3-multi-partial-refuse",
+        "expected": {
+          "interaction_mode": "task",
+          "primary_intent": "action_request",
+          "route": "tool_only",
+          "task_count": 3,
+          "intent_card_ids": [
+            "data.manufacturing_lookup",
+            "action.prohibited_write",
+            "content.report_generation"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "fdc",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_2",
+              "primary_intent": "action_request",
+              "target_type": "recipe",
+              "action": "execute",
+              "depends_on": [],
+              "execution_policy": "refuse"
+            },
+            {
+              "task_id": "task_3",
+              "primary_intent": "content_task",
+              "target_type": "report",
+              "action": "generate",
+              "depends_on": [],
+              "execution_policy": "defer"
+            }
+          ],
+          "context_message_ids": []
+        },
+        "actual": {
+          "interaction_mode": "mixed",
+          "primary_intent": "action_request",
+          "route": "tool_only",
+          "task_count": 3,
+          "intent_card_ids": [
+            "data.manufacturing_lookup",
+            "action.prohibited_write",
+            "content.report_generation"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_1",
+              "primary_intent": "data_query",
+              "target_type": "fdc",
+              "action": "lookup",
+              "depends_on": [],
+              "execution_policy": "execute"
+            },
+            {
+              "task_id": "task_2",
+              "primary_intent": "action_request",
+              "target_type": "recipe",
+              "action": "execute",
+              "depends_on": [],
+              "execution_policy": "refuse"
+            },
+            {
+              "task_id": "task_3",
+              "primary_intent": "content_task",
+              "target_type": "report",
+              "action": "generate",
+              "depends_on": [],
+              "execution_policy": "defer"
+            }
+          ],
+          "context_message_ids": [],
+          "reason_codes": [
+            "route_whitelist_match"
+          ]
+        }
+      }
+    ],
+    "source_counts": {
+      "l0": 38,
+      "llm": 70
+    },
+    "confusion_matrices": {
+      "primary_intent": {
+        "action_request": {
+          "action_request": 8
+        },
+        "content_task": {
+          "content_task": 8
+        },
+        "conversation": {
+          "conversation": 27
+        },
+        "data_query": {
+          "data_query": 25
+        },
+        "investigation": {
+          "investigation": 19
+        },
+        "knowledge_query": {
+          "investigation": 1,
+          "knowledge_query": 20
+        }
+      },
+      "route": {
+        "chat_direct": {
+          "chat_direct": 16
+        },
+        "clarify": {
+          "clarify": 8
+        },
+        "history_direct": {
+          "history_direct": 19
+        },
+        "internal_rag": {
+          "internal_rag": 14
+        },
+        "rag_and_tool": {
+          "rag_and_tool": 14
+        },
+        "rag_and_web": {
+          "rag_and_web": 4
+        },
+        "refuse": {
+          "refuse": 7
+        },
+        "reuse_evidence": {
+          "clarify": 1,
+          "reuse_evidence": 2
+        },
+        "tool_only": {
+          "tool_only": 23
+        }
+      },
+      "intent_card": {
+        "__spurious__": {
+          "data.manufacturing_lookup": 3
+        },
+        "action.prohibited_write": {
+          "action.prohibited_write": 8
+        },
+        "content.report_generation": {
+          "content.report_generation": 1
+        },
+        "conversation.control": {
+          "conversation.control": 8
+        },
+        "conversation.feedback": {
+          "conversation.feedback": 4
+        },
+        "conversation.general": {
+          "conversation.general": 4
+        },
+        "conversation.history_recall": {
+          "conversation.history_recall": 11
+        },
+        "conversation.previous_answer_transform": {
+          "conversation.previous_answer_transform": 8
+        },
+        "data.manufacturing_lookup": {
+          "__unmapped__": 3,
+          "data.manufacturing_lookup": 27,
+          "investigation.anomaly_diagnosis": 5
+        },
+        "investigation.anomaly_diagnosis": {
+          "__missing__": 8,
+          "__unmapped__": 3,
+          "investigation.anomaly_diagnosis": 8
+        },
+        "knowledge.alarm_explanation": {
+          "knowledge.alarm_explanation": 2
+        },
+        "knowledge.external_lookup": {
+          "knowledge.external_lookup": 4
+        },
+        "knowledge.recipe_read": {
+          "knowledge.recipe_read": 3
+        },
+        "knowledge.sop_lookup": {
+          "__unmapped__": 1,
+          "investigation.anomaly_diagnosis": 1,
+          "knowledge.sop_lookup": 13
+        }
+      }
+    },
+    "per_class_metrics": {
+      "primary_intent": {
+        "action_request": {
+          "support": 8.0,
+          "predicted": 8.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "content_task": {
+          "support": 8.0,
+          "predicted": 8.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "conversation": {
+          "support": 27.0,
+          "predicted": 27.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "data_query": {
+          "support": 25.0,
+          "predicted": 25.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "investigation": {
+          "support": 19.0,
+          "predicted": 20.0,
+          "precision": 0.95,
+          "recall": 1.0,
+          "f1": 0.974359
+        },
+        "knowledge_query": {
+          "support": 21.0,
+          "predicted": 20.0,
+          "precision": 1.0,
+          "recall": 0.952381,
+          "f1": 0.97561
+        }
+      },
+      "route": {
+        "chat_direct": {
+          "support": 16.0,
+          "predicted": 16.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "clarify": {
+          "support": 8.0,
+          "predicted": 9.0,
+          "precision": 0.888889,
+          "recall": 1.0,
+          "f1": 0.941176
+        },
+        "history_direct": {
+          "support": 19.0,
+          "predicted": 19.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "internal_rag": {
+          "support": 14.0,
+          "predicted": 14.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "rag_and_tool": {
+          "support": 14.0,
+          "predicted": 14.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "rag_and_web": {
+          "support": 4.0,
+          "predicted": 4.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "refuse": {
+          "support": 7.0,
+          "predicted": 7.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "reuse_evidence": {
+          "support": 3.0,
+          "predicted": 2.0,
+          "precision": 1.0,
+          "recall": 0.666667,
+          "f1": 0.8
+        },
+        "tool_only": {
+          "support": 23.0,
+          "predicted": 23.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        }
+      },
+      "intent_card": {
+        "__unmapped__": {
+          "support": 0.0,
+          "predicted": 7.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "action.prohibited_write": {
+          "support": 8.0,
+          "predicted": 8.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "content.report_generation": {
+          "support": 1.0,
+          "predicted": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "conversation.control": {
+          "support": 8.0,
+          "predicted": 8.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "conversation.feedback": {
+          "support": 4.0,
+          "predicted": 4.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "conversation.general": {
+          "support": 4.0,
+          "predicted": 4.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "conversation.history_recall": {
+          "support": 11.0,
+          "predicted": 11.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "conversation.previous_answer_transform": {
+          "support": 8.0,
+          "predicted": 8.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "data.manufacturing_lookup": {
+          "support": 35.0,
+          "predicted": 30.0,
+          "precision": 0.9,
+          "recall": 0.771429,
+          "f1": 0.830769
+        },
+        "investigation.anomaly_diagnosis": {
+          "support": 19.0,
+          "predicted": 14.0,
+          "precision": 1.0,
+          "recall": 0.736842,
+          "f1": 0.848485
+        },
+        "knowledge.alarm_explanation": {
+          "support": 2.0,
+          "predicted": 2.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "knowledge.external_lookup": {
+          "support": 4.0,
+          "predicted": 4.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "knowledge.recipe_read": {
+          "support": 3.0,
+          "predicted": 3.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        },
+        "knowledge.sop_lookup": {
+          "support": 15.0,
+          "predicted": 13.0,
+          "precision": 1.0,
+          "recall": 0.866667,
+          "f1": 0.928571
+        }
+      }
+    },
+    "capacity": {
+      "intent_catalog_version": "semikb-intent-catalog-v1",
+      "intent_catalog_hash": "01a5fa3ab6b12ac60a9612bde4a57de42247a72140eeb95fcf97bc38bb249f6e",
+      "intent_card_selection": "all_active",
+      "active_intent_card_count": 13,
+      "llm_evaluated_cases": 70,
+      "all_active_cards_injected_rate": 1.0,
+      "intent_prompt_tokens_p50": 4077.5,
+      "intent_prompt_tokens_p95": 4181.55,
+      "understanding_latency_ms_p50": 3673.554,
+      "understanding_latency_ms_p95": 7562.108,
+      "capacity_gates": {
+        "max_active_cards": 24,
+        "max_prompt_tokens": 12000,
+        "max_p95_latency_ms": 5000.0
+      }
+    },
+    "warnings": [
+      "understanding_p95_latency_exceeds_gate"
+    ]
+  }
+}

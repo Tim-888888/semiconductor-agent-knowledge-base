@@ -32,6 +32,7 @@ from semikb.contracts.streaming import (
     AgentMessageRequestRecord,
     AgentMessageRequestStatus,
     AgentStreamErrorCode,
+    UnderstandingAudit,
 )
 from semikb.rag_retrieval.encoders import HybridEmbedding
 from semikb.storage.conversations import (
@@ -435,6 +436,7 @@ class DemoStore:
             existing.invalidated_context_refs = []
             existing.cancel_scope = None
             existing.affect = AffectSignals()
+            existing.understanding_audit = UnderstandingAudit()
             existing.error_code = None
             existing.updated_at = datetime.now(UTC)
             existing.finished_at = None
@@ -565,6 +567,7 @@ class DemoStore:
             current.invalidated_context_refs = list(record.invalidated_context_refs)
             current.cancel_scope = record.cancel_scope
             current.affect = record.affect.model_copy(deep=True)
+            current.understanding_audit = record.understanding_audit.model_copy(deep=True)
             current.error_code = error_code
             current.updated_at = datetime.now(UTC)
             current.finished_at = current.updated_at

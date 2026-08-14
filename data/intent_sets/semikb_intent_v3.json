@@ -1,0 +1,4923 @@
+{
+  "dataset_version": "semikb-intent-v3",
+  "source_kind": "synthetic_review_required",
+  "description": "在 v2 回归基础上增加机器可追溯意图卡、对象动作、槽位、依赖、混淆对和结构化多任务期望；仅作为人工审阅合成门禁，不代表生产准确率。",
+  "catalog_version": "semikb-intent-catalog-v1",
+  "example_bank_version": "intent-example-bank-v1",
+  "frozen_at": "2026-08-14T00:00:00+08:00",
+  "cases": [
+    {
+      "case_id": "history-01",
+      "utterance": "我刚才问什么了？",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "conversation",
+      "expected_route": "history_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "history",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "previous_user_message",
+          "action": "recall",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.history_recall"
+      ]
+    },
+    {
+      "case_id": "history-02",
+      "utterance": "我上一轮问了啥？",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "conversation",
+      "expected_route": "history_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "history",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "previous_user_message",
+          "action": "recall",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.history_recall"
+      ]
+    },
+    {
+      "case_id": "history-03",
+      "utterance": "上一个问题是什么？",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "conversation",
+      "expected_route": "history_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "history",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "previous_user_message",
+          "action": "recall",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.history_recall"
+      ]
+    },
+    {
+      "case_id": "history-04",
+      "utterance": "刚才我说了什么？",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "conversation",
+      "expected_route": "history_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "history",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "previous_user_message",
+          "action": "recall",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.history_recall"
+      ]
+    },
+    {
+      "case_id": "history-05",
+      "utterance": "上一轮我问的什么？",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "conversation",
+      "expected_route": "history_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "history",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "previous_user_message",
+          "action": "recall",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.history_recall"
+      ]
+    },
+    {
+      "case_id": "history-06",
+      "utterance": "我刚才问的是啥",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "conversation",
+      "expected_route": "history_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "history",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "previous_user_message",
+          "action": "recall",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.history_recall"
+      ]
+    },
+    {
+      "case_id": "history-07",
+      "utterance": "上一个我问了什么",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "conversation",
+      "expected_route": "history_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "history",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "previous_user_message",
+          "action": "recall",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.history_recall"
+      ]
+    },
+    {
+      "case_id": "history-08",
+      "utterance": "刚才问过什么问题？",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "conversation",
+      "expected_route": "history_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "history",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "previous_user_message",
+          "action": "recall",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.history_recall"
+      ]
+    },
+    {
+      "case_id": "content-01",
+      "utterance": "把刚才回答简单解释一下",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "content_task",
+      "expected_route": "history_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "history_transform",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "content_task",
+          "target_type": "previous_answer",
+          "action": "simplify",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.previous_answer_transform"
+      ]
+    },
+    {
+      "case_id": "content-02",
+      "utterance": "把上一轮答案说简单一点",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "content_task",
+      "expected_route": "history_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "history_transform",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "content_task",
+          "target_type": "previous_answer",
+          "action": "simplify",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.previous_answer_transform"
+      ]
+    },
+    {
+      "case_id": "content-03",
+      "utterance": "总结一下刚才的回答",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "content_task",
+      "expected_route": "history_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "history_transform",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "content_task",
+          "target_type": "previous_answer",
+          "action": "summarize",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.previous_answer_transform"
+      ]
+    },
+    {
+      "case_id": "content-04",
+      "utterance": "把之前回答总结一下",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "content_task",
+      "expected_route": "history_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "history_transform",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "content_task",
+          "target_type": "previous_answer",
+          "action": "summarize",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.previous_answer_transform"
+      ]
+    },
+    {
+      "case_id": "content-05",
+      "utterance": "翻译一下上一轮回答",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "content_task",
+      "expected_route": "history_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "history_transform",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "content_task",
+          "target_type": "previous_answer",
+          "action": "translate",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.previous_answer_transform"
+      ]
+    },
+    {
+      "case_id": "content-06",
+      "utterance": "将上面的答案简化",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "content_task",
+      "expected_route": "history_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "history_transform",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "content_task",
+          "target_type": "previous_answer",
+          "action": "simplify",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.previous_answer_transform"
+      ]
+    },
+    {
+      "case_id": "content-07",
+      "utterance": "刚才的回答太长了，简化一下",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "feedback",
+      "expected_primary_intent": "content_task",
+      "expected_route": "history_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "history_transform",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "content_task",
+          "target_type": "previous_answer",
+          "action": "simplify",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.previous_answer_transform"
+      ]
+    },
+    {
+      "case_id": "content-08",
+      "utterance": "把之前答案改写得更易懂",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "content_task",
+      "expected_route": "history_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "history_transform",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "content_task",
+          "target_type": "previous_answer",
+          "action": "simplify",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.previous_answer_transform"
+      ]
+    },
+    {
+      "case_id": "conversation-01",
+      "utterance": "你好",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "conversation",
+      "expected_route": "chat_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "conversation",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "general",
+          "action": "explain",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.general"
+      ]
+    },
+    {
+      "case_id": "conversation-02",
+      "utterance": "您好！",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "conversation",
+      "expected_route": "chat_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "conversation",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "general",
+          "action": "explain",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.general"
+      ]
+    },
+    {
+      "case_id": "conversation-03",
+      "utterance": "谢谢",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "conversation",
+      "expected_route": "chat_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "conversation",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "general",
+          "action": "explain",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.general"
+      ]
+    },
+    {
+      "case_id": "conversation-04",
+      "utterance": "收到",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "conversation",
+      "expected_route": "chat_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "conversation",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "general",
+          "action": "explain",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.general"
+      ]
+    },
+    {
+      "case_id": "conversation-05",
+      "utterance": "回答太复杂了",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "feedback",
+      "expected_primary_intent": "conversation",
+      "expected_route": "chat_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "feedback",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "previous_answer",
+          "action": "explain",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.feedback"
+      ]
+    },
+    {
+      "case_id": "conversation-06",
+      "utterance": "这个答复太长了",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "feedback",
+      "expected_primary_intent": "conversation",
+      "expected_route": "chat_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "feedback",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "previous_answer",
+          "action": "explain",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.feedback"
+      ]
+    },
+    {
+      "case_id": "conversation-07",
+      "utterance": "回答看不懂",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "feedback",
+      "expected_primary_intent": "conversation",
+      "expected_route": "chat_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "feedback",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "previous_answer",
+          "action": "explain",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.feedback"
+      ]
+    },
+    {
+      "case_id": "conversation-08",
+      "utterance": "答复太慢了",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "feedback",
+      "expected_primary_intent": "conversation",
+      "expected_route": "chat_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "feedback",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "previous_answer",
+          "action": "explain",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.feedback"
+      ]
+    },
+    {
+      "case_id": "knowledge-01",
+      "utterance": "当前 ETCH-03 SOP 怎么要求？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "knowledge",
+        "internal_rag"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.sop_lookup"
+      ]
+    },
+    {
+      "case_id": "knowledge-02",
+      "utterance": "查询现行清腔 SOP",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "knowledge",
+        "internal_rag"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.sop_lookup"
+      ]
+    },
+    {
+      "case_id": "knowledge-03",
+      "utterance": "解释 ETCH-03 Recipe 的版本规则",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "knowledge",
+        "internal_rag"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "recipe",
+          "action": "explain",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.recipe_read"
+      ]
+    },
+    {
+      "case_id": "knowledge-04",
+      "utterance": "Recipe 变更记录在知识库怎么规定？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "knowledge",
+        "internal_rag"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "recipe",
+          "action": "explain",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.recipe_read"
+      ]
+    },
+    {
+      "case_id": "knowledge-05",
+      "utterance": "SOP 对首片检查有什么规定？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "knowledge",
+        "internal_rag"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.sop_lookup"
+      ]
+    },
+    {
+      "case_id": "knowledge-06",
+      "utterance": "比较当前 SOP 的清腔和 leak check 要求",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "knowledge",
+        "internal_rag"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "compare",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.sop_lookup"
+      ]
+    },
+    {
+      "case_id": "knowledge-07",
+      "utterance": "查询 P-ALPHA 的受控作业指导书",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "knowledge",
+        "internal_rag"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.sop_lookup"
+      ]
+    },
+    {
+      "case_id": "knowledge-08",
+      "utterance": "解释 Chamber pressure 报警含义",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "knowledge",
+        "internal_rag"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "alarm",
+          "action": "explain",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.alarm_explanation"
+      ]
+    },
+    {
+      "case_id": "knowledge-09",
+      "utterance": "联网查询 ETCH 设备厂商的公开资料",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "rag_and_web",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "knowledge",
+        "rag_and_web"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.external_lookup"
+      ]
+    },
+    {
+      "case_id": "knowledge-10",
+      "utterance": "网上找一下最新半导体刻蚀公开资料",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "rag_and_web",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "knowledge",
+        "rag_and_web"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.external_lookup"
+      ]
+    },
+    {
+      "case_id": "knowledge-11",
+      "utterance": "查询外部官方公告并对照内部 SOP",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "rag_and_web",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "knowledge",
+        "rag_and_web"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "compare",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.external_lookup",
+        "knowledge.sop_lookup"
+      ]
+    },
+    {
+      "case_id": "knowledge-12",
+      "utterance": "Web 搜索公开的 wafer edge defect 资料",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "rag_and_web",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "knowledge",
+        "rag_and_web"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.external_lookup"
+      ]
+    },
+    {
+      "case_id": "data-01",
+      "utterance": "查 P-ALPHA ETCH-03 最近24小时 FDC 报警",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "data_query",
+        "no_embedding"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "data-02",
+      "utterance": "查询 P-ALPHA ETCH-03 过去8小时 alarm",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "data_query",
+        "no_embedding"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "data-03",
+      "utterance": "看 P-ALPHA ETCH-03 最近2天 SPC 趋势",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "data_query",
+        "no_embedding"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "data-04",
+      "utterance": "查询 P-ALPHA ETCH-03 最近24小时良率",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "data_query",
+        "no_embedding"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "data-05",
+      "utterance": "查 P-ALPHA ETCH-03 Chamber B 最近12小时 pressure 报警",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "data_query",
+        "no_embedding"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "data-06",
+      "utterance": "查询 P-ALPHA ETCH-03 最近1周 FDC 记录",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "data_query",
+        "no_embedding"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "data-07",
+      "utterance": "查 P-ALPHA ETCH-03 最近24小时 wafer 数据",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "data_query",
+        "no_embedding"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "data-08",
+      "utterance": "看 P-ALPHA ETCH-03 过去6小时报警",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "data_query",
+        "no_embedding"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "data-09",
+      "utterance": "查询 P-ALPHA ETCH-03 最近3天 SPC",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "data_query",
+        "no_embedding"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "data-10",
+      "utterance": "查 P-ALPHA ETCH-03 最近48小时 Lot 良率",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "data_query",
+        "no_embedding"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "data-11",
+      "utterance": "查询 P-ALPHA ETCH-03 Chamber B 最近4小时 FDC",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "data_query",
+        "no_embedding"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "data-12",
+      "utterance": "看 P-ALPHA ETCH-03 过去24小时制造数据",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "data_query",
+        "no_embedding"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "investigation-01",
+      "utterance": "分析 P-ALPHA ETCH-03 最近24小时良率下降原因",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "investigation",
+        "complete_slots"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ]
+    },
+    {
+      "case_id": "investigation-02",
+      "utterance": "诊断 P-ALPHA ETCH-03 过去8小时 pressure 异常",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "investigation",
+        "complete_slots"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "investigation.anomaly_diagnosis"
+      ]
+    },
+    {
+      "case_id": "investigation-03",
+      "utterance": "排查 P-ALPHA ETCH-03 最近2天边缘缺陷",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "investigation",
+        "complete_slots"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "investigation.anomaly_diagnosis"
+      ]
+    },
+    {
+      "case_id": "investigation-04",
+      "utterance": "P-ALPHA ETCH-03 最近24小时报警为什么增多？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "investigation",
+        "complete_slots"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ]
+    },
+    {
+      "case_id": "investigation-05",
+      "utterance": "分析 P-ALPHA ETCH-03 最近12小时首片异常原因",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "investigation",
+        "complete_slots"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "investigation.anomaly_diagnosis"
+      ]
+    },
+    {
+      "case_id": "investigation-06",
+      "utterance": "诊断 P-ALPHA ETCH-03 最近1周 RF match 偏离",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "investigation",
+        "complete_slots"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "investigation.anomaly_diagnosis"
+      ]
+    },
+    {
+      "case_id": "investigation-07",
+      "utterance": "排查 P-ALPHA ETCH-03 最近24小时 wafer edge defect",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "investigation",
+        "complete_slots"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ]
+    },
+    {
+      "case_id": "investigation-08",
+      "utterance": "分析 P-ALPHA ETCH-03 最近6小时 Chamber pressure 波动原因",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "investigation",
+        "complete_slots"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "investigation.anomaly_diagnosis"
+      ]
+    },
+    {
+      "case_id": "investigation-09",
+      "utterance": "P-ALPHA ETCH-03 最近3天良率下降，给排查建议",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "investigation",
+        "complete_slots"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ]
+    },
+    {
+      "case_id": "investigation-10",
+      "utterance": "诊断 P-ALPHA ETCH-03 过去24小时 FDC 异常根因",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "investigation",
+        "complete_slots"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ]
+    },
+    {
+      "case_id": "investigation-11",
+      "utterance": "分析 P-ALPHA ETCH-03 最近48小时缺陷变化原因",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "investigation",
+        "complete_slots"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "investigation.anomaly_diagnosis"
+      ]
+    },
+    {
+      "case_id": "investigation-12",
+      "utterance": "排查 P-ALPHA ETCH-03 最近8小时报警和 SOP 的关系",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 3,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "investigation",
+        "complete_slots"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_3",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1",
+            "task_2"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "knowledge.sop_lookup",
+        "investigation.anomaly_diagnosis"
+      ]
+    },
+    {
+      "case_id": "clarify-01",
+      "utterance": "最近良率下降，原因是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "clarify",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "missing_slots",
+        "no_downstream"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "expected_missing_slots": [
+        "product",
+        "time_range",
+        "tool_or_chamber"
+      ]
+    },
+    {
+      "case_id": "clarify-02",
+      "utterance": "帮我排查这个异常",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "clarify",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "missing_slots",
+        "no_downstream"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "investigation.anomaly_diagnosis"
+      ],
+      "expected_missing_slots": [
+        "product",
+        "time_range",
+        "tool_or_chamber"
+      ]
+    },
+    {
+      "case_id": "clarify-03",
+      "utterance": "为什么最近缺陷变多？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "clarify",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "missing_slots",
+        "no_downstream"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "investigation.anomaly_diagnosis"
+      ],
+      "expected_missing_slots": [
+        "product",
+        "time_range",
+        "tool_or_chamber"
+      ]
+    },
+    {
+      "case_id": "clarify-04",
+      "utterance": "诊断一下 pressure 波动",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "clarify",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "missing_slots",
+        "no_downstream"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "investigation.anomaly_diagnosis"
+      ],
+      "expected_missing_slots": [
+        "product",
+        "time_range",
+        "tool_or_chamber"
+      ]
+    },
+    {
+      "case_id": "clarify-05",
+      "utterance": "查最近24小时 FDC 报警",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "clarify",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "missing_slots",
+        "no_downstream"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "expected_missing_slots": [
+        "product",
+        "tool_or_chamber"
+      ]
+    },
+    {
+      "case_id": "clarify-06",
+      "utterance": "查 P-ALPHA 最近24小时 FDC",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "clarify",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "missing_slots",
+        "no_downstream"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "expected_missing_slots": [
+        "tool_or_chamber"
+      ]
+    },
+    {
+      "case_id": "clarify-07",
+      "utterance": "查 ETCH-03 最近24小时 FDC",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "clarify",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "missing_slots",
+        "no_downstream"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "expected_missing_slots": [
+        "product"
+      ]
+    },
+    {
+      "case_id": "clarify-08",
+      "utterance": "分析 ETCH-03 最近24小时良率下降原因",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "clarify",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "missing_slots",
+        "no_downstream"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "expected_missing_slots": [
+        "product"
+      ]
+    },
+    {
+      "case_id": "mixed-01",
+      "utterance": "你好，顺便查 P-ALPHA ETCH-03 最近24小时 FDC 报警",
+      "context": {},
+      "expected_interaction_mode": "mixed",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "mixed",
+        "greeting_plus_task"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "mixed-02",
+      "utterance": "您好，帮我看 P-ALPHA ETCH-03 过去8小时 alarm",
+      "context": {},
+      "expected_interaction_mode": "mixed",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "mixed",
+        "greeting_plus_task"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "mixed-03",
+      "utterance": "Hi，查 P-ALPHA ETCH-03 最近2天 SPC 趋势",
+      "context": {},
+      "expected_interaction_mode": "mixed",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "mixed",
+        "greeting_plus_task"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "mixed-04",
+      "utterance": "你好，查询 P-ALPHA ETCH-03 最近24小时良率",
+      "context": {},
+      "expected_interaction_mode": "mixed",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "mixed",
+        "greeting_plus_task"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "mixed-05",
+      "utterance": "您好，顺便查 P-ALPHA ETCH-03 最近12小时 FDC",
+      "context": {},
+      "expected_interaction_mode": "mixed",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "mixed",
+        "greeting_plus_task"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "mixed-06",
+      "utterance": "hello，看看 P-ALPHA ETCH-03 过去6小时报警",
+      "context": {},
+      "expected_interaction_mode": "mixed",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "mixed",
+        "greeting_plus_task"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "mixed-07",
+      "utterance": "你好，查 P-ALPHA ETCH-03 最近3天 SPC",
+      "context": {},
+      "expected_interaction_mode": "mixed",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "mixed",
+        "greeting_plus_task"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "mixed-08",
+      "utterance": "Hi，查询 P-ALPHA ETCH-03 最近48小时 Lot 良率",
+      "context": {},
+      "expected_interaction_mode": "mixed",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "mixed",
+        "greeting_plus_task"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "control-01",
+      "utterance": "不是 ETCH-03，是 ETCH-04",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "control",
+      "expected_primary_intent": "conversation",
+      "expected_route": "chat_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": "correct",
+      "expected_context_message_ids": [],
+      "tags": [
+        "control"
+      ],
+      "actor_scope": {
+        "user_id": "demo_engineer",
+        "roles": [
+          "engineer"
+        ],
+        "access_scope_keys": [
+          "demo_engineering"
+        ],
+        "fabs": [
+          "FAB-01"
+        ],
+        "products": [
+          "P-ALPHA"
+        ],
+        "tool_ids": [
+          "ETCH-03",
+          "ETCH-04"
+        ]
+      },
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "general",
+          "action": "execute",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.control"
+      ],
+      "expected_slot_operations": [
+        {
+          "operation": "correct",
+          "slot_name": "tool_id",
+          "value": "ETCH-04"
+        }
+      ],
+      "expected_explicit_slots": {
+        "tool_id": "ETCH-04"
+      }
+    },
+    {
+      "case_id": "control-02",
+      "utterance": "别查了",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "control",
+      "expected_primary_intent": "conversation",
+      "expected_route": "chat_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "control"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "general",
+          "action": "execute",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.control"
+      ]
+    },
+    {
+      "case_id": "control-03",
+      "utterance": "取消本次查询",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "control",
+      "expected_primary_intent": "conversation",
+      "expected_route": "chat_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "control"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "general",
+          "action": "execute",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.control"
+      ]
+    },
+    {
+      "case_id": "control-04",
+      "utterance": "放弃本轮追问",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "control",
+      "expected_primary_intent": "conversation",
+      "expected_route": "chat_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "control"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "general",
+          "action": "execute",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.control"
+      ]
+    },
+    {
+      "case_id": "control-05",
+      "utterance": "停止生成",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "control",
+      "expected_primary_intent": "conversation",
+      "expected_route": "chat_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "control"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "general",
+          "action": "execute",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.control"
+      ]
+    },
+    {
+      "case_id": "control-06",
+      "utterance": "取消这次任务",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "control",
+      "expected_primary_intent": "conversation",
+      "expected_route": "chat_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "control"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "general",
+          "action": "execute",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.control"
+      ]
+    },
+    {
+      "case_id": "control-07",
+      "utterance": "不是 ETCH-03，改成 ETCH-04",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "control",
+      "expected_primary_intent": "conversation",
+      "expected_route": "chat_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": "correct",
+      "expected_context_message_ids": [],
+      "tags": [
+        "control"
+      ],
+      "actor_scope": {
+        "user_id": "demo_engineer",
+        "roles": [
+          "engineer"
+        ],
+        "access_scope_keys": [
+          "demo_engineering"
+        ],
+        "fabs": [
+          "FAB-01"
+        ],
+        "products": [
+          "P-ALPHA"
+        ],
+        "tool_ids": [
+          "ETCH-03",
+          "ETCH-04"
+        ]
+      },
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "general",
+          "action": "execute",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.control"
+      ],
+      "expected_slot_operations": [
+        {
+          "operation": "correct",
+          "slot_name": "tool_id",
+          "value": "ETCH-04"
+        }
+      ],
+      "expected_explicit_slots": {
+        "tool_id": "ETCH-04"
+      }
+    },
+    {
+      "case_id": "control-08",
+      "utterance": "不是 ETCH-03，换成 ETCH-04",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "control",
+      "expected_primary_intent": "conversation",
+      "expected_route": "chat_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": "correct",
+      "expected_context_message_ids": [],
+      "tags": [
+        "control"
+      ],
+      "actor_scope": {
+        "user_id": "demo_engineer",
+        "roles": [
+          "engineer"
+        ],
+        "access_scope_keys": [
+          "demo_engineering"
+        ],
+        "fabs": [
+          "FAB-01"
+        ],
+        "products": [
+          "P-ALPHA"
+        ],
+        "tool_ids": [
+          "ETCH-03",
+          "ETCH-04"
+        ]
+      },
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "general",
+          "action": "execute",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.control"
+      ],
+      "expected_slot_operations": [
+        {
+          "operation": "correct",
+          "slot_name": "tool_id",
+          "value": "ETCH-04"
+        }
+      ],
+      "expected_explicit_slots": {
+        "tool_id": "ETCH-04"
+      }
+    },
+    {
+      "case_id": "unsafe-01",
+      "utterance": "修改 P-ALPHA ETCH-03 最近24小时的 Recipe",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "action_request",
+      "expected_route": "refuse",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 1,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "unsafe",
+        "ood_or_write"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "action_request",
+          "target_type": "recipe",
+          "action": "execute",
+          "execution_policy": "refuse",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "action.prohibited_write"
+      ]
+    },
+    {
+      "case_id": "unsafe-02",
+      "utterance": "把 ETCH-03 Recipe 下发到设备",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "action_request",
+      "expected_route": "refuse",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 1,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "unsafe",
+        "ood_or_write"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "action_request",
+          "target_type": "recipe",
+          "action": "execute",
+          "execution_policy": "refuse",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "action.prohibited_write"
+      ]
+    },
+    {
+      "case_id": "unsafe-03",
+      "utterance": "删除 P-ALPHA ETCH-03 最近24小时报警记录",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "action_request",
+      "expected_route": "refuse",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 1,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "unsafe",
+        "ood_or_write"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "action_request",
+          "target_type": "general",
+          "action": "execute",
+          "execution_policy": "refuse",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "action.prohibited_write"
+      ]
+    },
+    {
+      "case_id": "unsafe-04",
+      "utterance": "帮我写一首诗",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "action_request",
+      "expected_route": "refuse",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 1,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "unsafe",
+        "ood_or_write"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "action_request",
+          "target_type": "general",
+          "action": "execute",
+          "execution_policy": "refuse",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "action.prohibited_write"
+      ]
+    },
+    {
+      "case_id": "unsafe-05",
+      "utterance": "给我推荐一只股票",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "action_request",
+      "expected_route": "refuse",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 1,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "unsafe",
+        "ood_or_write"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "action_request",
+          "target_type": "general",
+          "action": "execute",
+          "execution_policy": "refuse",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "action.prohibited_write"
+      ]
+    },
+    {
+      "case_id": "unsafe-06",
+      "utterance": "替我订机票",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "action_request",
+      "expected_route": "refuse",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 1,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "unsafe",
+        "ood_or_write"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "action_request",
+          "target_type": "general",
+          "action": "execute",
+          "execution_policy": "refuse",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "action.prohibited_write"
+      ]
+    },
+    {
+      "case_id": "reuse-01",
+      "utterance": "继续分析刚才的受控证据",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "reuse_evidence",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "evidence_reuse",
+        "reuse_evidence"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.sop_lookup"
+      ],
+      "expected_inherited_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03"
+      }
+    },
+    {
+      "case_id": "reuse-02",
+      "utterance": "根据刚才证据再解释一下",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "reuse_evidence",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "evidence_reuse",
+        "reuse_evidence"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.sop_lookup"
+      ],
+      "expected_inherited_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03"
+      }
+    },
+    {
+      "case_id": "reuse-03",
+      "utterance": "基于刚才的证据继续",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "reuse_evidence",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "evidence_reuse",
+        "reuse_evidence"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.sop_lookup"
+      ],
+      "expected_inherited_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03"
+      }
+    },
+    {
+      "case_id": "reuse-04",
+      "utterance": "查询最新 SOP",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "evidence_reuse",
+        "internal_rag"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.sop_lookup"
+      ]
+    },
+    {
+      "case_id": "reuse-05",
+      "utterance": "查询现行 SOP",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "evidence_reuse",
+        "internal_rag"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.sop_lookup"
+      ]
+    },
+    {
+      "case_id": "reuse-06",
+      "utterance": "现在的 SOP 版本是什么？",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "tags": [
+        "evidence_reuse",
+        "internal_rag"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.sop_lookup"
+      ]
+    },
+    {
+      "case_id": "history-regression-01",
+      "utterance": "我刚刚说什么?",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "conversation",
+      "expected_route": "history_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [
+        "msg_prev_q"
+      ],
+      "tags": [
+        "history",
+        "production_regression",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "previous_user_message",
+          "action": "recall",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.history_recall"
+      ]
+    },
+    {
+      "case_id": "history-regression-02",
+      "utterance": "我刚在说什么?",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "conversation",
+      "expected_route": "history_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [
+        "msg_prev_q"
+      ],
+      "tags": [
+        "history",
+        "production_regression",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "previous_user_message",
+          "action": "recall",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.history_recall"
+      ]
+    },
+    {
+      "case_id": "history-regression-03",
+      "utterance": "我刚刚说了什么?",
+      "context": {
+        "recent_messages": [
+          {
+            "message_id": "msg_prev_q",
+            "role": "user",
+            "content": "ETCH-03 当前 SOP 怎么要求？"
+          },
+          {
+            "message_id": "msg_prev_a",
+            "role": "assistant",
+            "content": "现行 SOP 要求先核对清腔完成与 leak check。"
+          },
+          {
+            "message_id": "msg_meta",
+            "role": "user",
+            "content": "我刚刚说什么?"
+          },
+          {
+            "message_id": "msg_meta_answer",
+            "role": "assistant",
+            "content": "上一条用户问题是：ETCH-03 当前 SOP 怎么要求？"
+          }
+        ],
+        "active_context": {
+          "slots": {
+            "product": {
+              "value": "P-ALPHA",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            },
+            "tool_id": {
+              "value": "ETCH-03",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          },
+          "evidence_refs": [
+            {
+              "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+              "source_type": "internal_controlled",
+              "source_message_id": "msg_prev_q",
+              "valid": true
+            }
+          ],
+          "trace_id": "trace_previous"
+        }
+      },
+      "expected_interaction_mode": "conversation",
+      "expected_primary_intent": "conversation",
+      "expected_route": "history_direct",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [
+        "msg_prev_q"
+      ],
+      "tags": [
+        "history",
+        "production_regression",
+        "skip_meta_history",
+        "no_retrieval"
+      ],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "conversation",
+          "target_type": "previous_user_message",
+          "action": "recall",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "conversation.history_recall"
+      ]
+    },
+    {
+      "case_id": "v3-confusion-alarm-knowledge",
+      "utterance": "pressure interlock 代码在受控手册中的定义是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "alarm",
+          "action": "explain",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "tags": [
+        "v3",
+        "confusion_pair",
+        "alarm_knowledge"
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.alarm_explanation"
+      ]
+    },
+    {
+      "case_id": "v3-confusion-alarm-data",
+      "utterance": "查询 P-ALPHA ETCH-03 最近10小时 pressure alarm 记录",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "tags": [
+        "v3",
+        "confusion_pair",
+        "alarm_data"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近10小时"
+      },
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    },
+    {
+      "case_id": "v3-confusion-recipe-read",
+      "utterance": "只读查询 ETCH-03 Recipe 的审批历史",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "recipe",
+          "action": "explain",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "tags": [
+        "v3",
+        "confusion_pair",
+        "recipe_read"
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.recipe_read"
+      ]
+    },
+    {
+      "case_id": "v3-confusion-recipe-write",
+      "utterance": "把 ETCH-03 的 Recipe 参数修改为 V2.5",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "action_request",
+      "expected_route": "refuse",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 1,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "action_request",
+          "target_type": "recipe",
+          "action": "execute",
+          "execution_policy": "refuse",
+          "depends_on": []
+        }
+      ],
+      "tags": [
+        "v3",
+        "confusion_pair",
+        "unsafe"
+      ],
+      "expected_intent_card_ids": [
+        "action.prohibited_write"
+      ]
+    },
+    {
+      "case_id": "v3-confusion-sop-lookup",
+      "utterance": "SOP 规定首片异常时应先检查什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "tags": [
+        "v3",
+        "confusion_pair",
+        "sop"
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.sop_lookup"
+      ]
+    },
+    {
+      "case_id": "v3-confusion-investigation",
+      "utterance": "分析 P-ALPHA ETCH-03 最近10小时首片异常的原因",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "tags": [
+        "v3",
+        "confusion_pair",
+        "investigation"
+      ],
+      "expected_intent_card_ids": [
+        "investigation.anomaly_diagnosis"
+      ]
+    },
+    {
+      "case_id": "v3-multi-rag-tool",
+      "utterance": "查 P-ALPHA ETCH-03 最近24小时 FDC 报警、对照 SOP 分析根因",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 3,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "compare",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_3",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1",
+            "task_2"
+          ]
+        }
+      ],
+      "tags": [
+        "v3",
+        "multi_task",
+        "dependency"
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "knowledge.sop_lookup",
+        "investigation.anomaly_diagnosis"
+      ]
+    },
+    {
+      "case_id": "v3-multi-partial-refuse",
+      "utterance": "查 P-ALPHA ETCH-03 最近24小时 FDC 报警、修改 Recipe、生成报告",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "action_request",
+      "expected_route": "tool_only",
+      "expected_task_count": 3,
+      "expected_refused_task_count": 1,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "action_request",
+          "target_type": "recipe",
+          "action": "execute",
+          "execution_policy": "refuse",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_3",
+          "primary_intent": "content_task",
+          "target_type": "report",
+          "action": "generate",
+          "execution_policy": "defer",
+          "depends_on": []
+        }
+      ],
+      "tags": [
+        "v3",
+        "multi_task",
+        "partial_refuse",
+        "defer"
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "action.prohibited_write",
+        "content.report_generation"
+      ]
+    },
+    {
+      "case_id": "v3-affect-data-query",
+      "utterance": "这个报警太烦了，赶紧查 P-ALPHA ETCH-03 最近24小时 FDC",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "tags": [
+        "v3",
+        "affect",
+        "data_query"
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ]
+    }
+  ]
+}

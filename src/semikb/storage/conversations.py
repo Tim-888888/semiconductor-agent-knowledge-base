@@ -20,6 +20,7 @@ from semikb.contracts.streaming import (
     AgentMessageRequestRecord,
     AgentMessageRequestStatus,
     AgentStreamErrorCode,
+    UnderstandingAudit,
 )
 
 
@@ -234,6 +235,7 @@ class MongoConversationRepository:
                     "invalidated_context_refs": [],
                     "cancel_scope": None,
                     "affect": AffectSignals().model_dump(mode="python"),
+                    "understanding_audit": UnderstandingAudit().model_dump(mode="python"),
                     "error_code": None,
                 },
                 "$inc": {"attempt": 1},
@@ -486,6 +488,7 @@ class MongoConversationRepository:
                     "invalidated_context_refs": record.invalidated_context_refs,
                     "cancel_scope": record.cancel_scope,
                     "affect": record.affect.model_dump(mode="python"),
+                    "understanding_audit": record.understanding_audit.model_dump(mode="python"),
                     "error_code": error_code,
                     "updated_at": now,
                     "finished_at": now,

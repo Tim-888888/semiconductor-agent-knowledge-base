@@ -27,6 +27,7 @@ from semikb.contracts.streaming import (
     AgentStreamEventType,
     AgentStreamStage,
     StreamMessageRequest,
+    UnderstandingAudit,
     agent_stream_event_adapter,
     validate_stream_event_sequence,
 )
@@ -56,6 +57,7 @@ __all__ = [
     "AgentStreamEventType",
     "AgentStreamStage",
     "StreamMessageRequest",
+    "UnderstandingAudit",
     "agent_stream_event_adapter",
     "validate_stream_event_sequence",
 ]

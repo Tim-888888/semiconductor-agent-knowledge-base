@@ -85,6 +85,8 @@ class Settings(BaseSettings):
     agent_context_recent_turns: int = Field(default=12, ge=2, le=30)
     agent_context_summary_max_chars: int = Field(default=6000, ge=1000, le=20000)
     agent_thread_lease_seconds: int = Field(default=1800, ge=300, le=7200)
+    intent_catalog_path: str = "data/intent_catalogs/semikb_intent_catalog_v1.json"
+    intent_example_bank_path: str = "data/intent_examples/intent_example_bank_v1.json"
 
     embedding_dim: int = Field(default=1024, ge=1)
     embedding_batch_size: int = Field(default=10, ge=1, le=256)

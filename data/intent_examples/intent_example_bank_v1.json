@@ -1,0 +1,263 @@
+{
+  "example_bank_version": "intent-example-bank-v1",
+  "catalog_version": "semikb-intent-catalog-v1",
+  "source_kind": "reviewed_examples_not_evaluation",
+  "description": "供后续固定或动态 Few-shot 影子实验使用的独立示例库。本文件不参与 T9-4.3.3a 线上 Prompt，也不得与冻结评估集共享输入。",
+  "examples": [
+    {
+      "example_id": "example-general-capability-01",
+      "card_id": "conversation.general",
+      "utterance": "说说这个工程智库适合帮我处理哪些工作",
+      "interaction_mode": "conversation",
+      "primary_intent": "conversation",
+      "task_items": [
+        {
+          "primary_intent": "conversation",
+          "target_type": "general",
+          "action": "explain",
+          "execution_policy": "execute"
+        }
+      ],
+      "expected_route": "chat_direct",
+      "tags": ["capability", "no_retrieval"]
+    },
+    {
+      "example_id": "example-general-social-01",
+      "card_id": "conversation.general",
+      "utterance": "明白了，今天的排查先到这里",
+      "interaction_mode": "conversation",
+      "primary_intent": "conversation",
+      "task_items": [
+        {
+          "primary_intent": "conversation",
+          "target_type": "general",
+          "action": "explain",
+          "execution_policy": "execute"
+        }
+      ],
+      "expected_route": "chat_direct",
+      "tags": ["social", "no_retrieval"]
+    },
+    {
+      "example_id": "example-history-recall-01",
+      "card_id": "conversation.history_recall",
+      "utterance": "回顾一下我前一条实质性提问",
+      "interaction_mode": "conversation",
+      "primary_intent": "conversation",
+      "task_items": [
+        {
+          "primary_intent": "conversation",
+          "target_type": "previous_user_message",
+          "action": "recall",
+          "execution_policy": "execute"
+        }
+      ],
+      "expected_route": "history_direct",
+      "tags": ["history", "no_retrieval"]
+    },
+    {
+      "example_id": "example-history-transform-01",
+      "card_id": "conversation.previous_answer_transform",
+      "utterance": "将你上一条答复概括为三个要点",
+      "interaction_mode": "conversation",
+      "primary_intent": "content_task",
+      "task_items": [
+        {
+          "primary_intent": "content_task",
+          "target_type": "previous_answer",
+          "action": "summarize",
+          "execution_policy": "execute"
+        }
+      ],
+      "expected_route": "history_direct",
+      "tags": ["history_transform", "no_retrieval"]
+    },
+    {
+      "example_id": "example-sop-lookup-01",
+      "card_id": "knowledge.sop_lookup",
+      "utterance": "受控规范对清腔确认项是怎么写的",
+      "interaction_mode": "task",
+      "primary_intent": "knowledge_query",
+      "task_items": [
+        {
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "lookup",
+          "execution_policy": "execute"
+        }
+      ],
+      "expected_route": "internal_rag",
+      "tags": ["sop", "knowledge"]
+    },
+    {
+      "example_id": "example-sop-compare-01",
+      "card_id": "knowledge.sop_lookup",
+      "utterance": "比较清腔规范修订前后的首片放行条件",
+      "interaction_mode": "task",
+      "primary_intent": "knowledge_query",
+      "task_items": [
+        {
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "compare",
+          "execution_policy": "execute"
+        }
+      ],
+      "expected_route": "internal_rag",
+      "tags": ["sop", "compare"]
+    },
+    {
+      "example_id": "example-recipe-read-01",
+      "card_id": "knowledge.recipe_read",
+      "utterance": "只读说明 ETCH 配方版本的审批约束",
+      "interaction_mode": "task",
+      "primary_intent": "knowledge_query",
+      "task_items": [
+        {
+          "primary_intent": "knowledge_query",
+          "target_type": "recipe",
+          "action": "explain",
+          "execution_policy": "execute"
+        }
+      ],
+      "expected_route": "internal_rag",
+      "tags": ["recipe", "read_only"]
+    },
+    {
+      "example_id": "example-alarm-explain-01",
+      "card_id": "knowledge.alarm_explanation",
+      "utterance": "手册中 RF generator mismatch 告警表示什么",
+      "interaction_mode": "task",
+      "primary_intent": "knowledge_query",
+      "task_items": [
+        {
+          "primary_intent": "knowledge_query",
+          "target_type": "alarm",
+          "action": "explain",
+          "execution_policy": "execute"
+        }
+      ],
+      "expected_route": "internal_rag",
+      "tags": ["alarm", "knowledge"]
+    },
+    {
+      "example_id": "example-fdc-query-01",
+      "card_id": "data.manufacturing_lookup",
+      "utterance": "调取 P-ALPHA ETCH-03 过去十小时的 FDC 事件",
+      "interaction_mode": "task",
+      "primary_intent": "data_query",
+      "task_items": [
+        {
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute"
+        }
+      ],
+      "expected_route": "tool_only",
+      "tags": ["fdc", "data_query"]
+    },
+    {
+      "example_id": "example-spc-query-01",
+      "card_id": "data.manufacturing_lookup",
+      "utterance": "查看 P-ALPHA ETCH-03 最近五天的 SPC 走势",
+      "interaction_mode": "task",
+      "primary_intent": "data_query",
+      "task_items": [
+        {
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute"
+        }
+      ],
+      "expected_route": "tool_only",
+      "tags": ["spc", "data_query"]
+    },
+    {
+      "example_id": "example-investigation-01",
+      "card_id": "investigation.anomaly_diagnosis",
+      "utterance": "诊断 P-ALPHA ETCH-03 过去十六小时边缘缺陷上升的原因",
+      "interaction_mode": "task",
+      "primary_intent": "investigation",
+      "task_items": [
+        {
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute"
+        }
+      ],
+      "expected_route": "rag_and_tool",
+      "tags": ["investigation", "high_risk"]
+    },
+    {
+      "example_id": "example-web-lookup-01",
+      "card_id": "knowledge.external_lookup",
+      "utterance": "在白名单网站中查供应商公开的真空维护公告",
+      "interaction_mode": "task",
+      "primary_intent": "knowledge_query",
+      "task_items": [
+        {
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute"
+        }
+      ],
+      "expected_route": "rag_and_web",
+      "tags": ["web", "external"]
+    },
+    {
+      "example_id": "example-write-refuse-01",
+      "card_id": "action.prohibited_write",
+      "utterance": "替我删除 ETCH-03 昨天产生的全部 FDC 事件",
+      "interaction_mode": "task",
+      "primary_intent": "action_request",
+      "task_items": [
+        {
+          "primary_intent": "action_request",
+          "target_type": "general",
+          "action": "execute",
+          "execution_policy": "refuse"
+        }
+      ],
+      "expected_route": "refuse",
+      "tags": ["unsafe", "write"]
+    },
+    {
+      "example_id": "example-recipe-refuse-01",
+      "card_id": "action.prohibited_write",
+      "utterance": "立即下发 ETCH-ALPHA V2.4 到 ETCH-03",
+      "interaction_mode": "task",
+      "primary_intent": "action_request",
+      "task_items": [
+        {
+          "primary_intent": "action_request",
+          "target_type": "recipe",
+          "action": "execute",
+          "execution_policy": "refuse"
+        }
+      ],
+      "expected_route": "refuse",
+      "tags": ["unsafe", "recipe_write"]
+    },
+    {
+      "example_id": "example-report-defer-01",
+      "card_id": "content.report_generation",
+      "utterance": "把当前证据整理成一份八段式异常调查报告",
+      "interaction_mode": "task",
+      "primary_intent": "content_task",
+      "task_items": [
+        {
+          "primary_intent": "content_task",
+          "target_type": "report",
+          "action": "generate",
+          "execution_policy": "defer"
+        }
+      ],
+      "expected_route": "chat_direct",
+      "tags": ["report", "defer"]
+    }
+  ]
+}
