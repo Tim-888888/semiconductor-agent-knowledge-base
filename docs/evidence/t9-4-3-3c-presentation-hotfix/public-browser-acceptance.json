@@ -1,0 +1,45 @@
+{
+  "stage": "T9-4.3.3c-presentation-hotfix",
+  "date": "2026-08-14",
+  "target": "http://112.74.99.143/",
+  "checks": {
+    "legacy_rag_card_restored_after_reload": true,
+    "rag_card_count_before_new_chat_direct": 1,
+    "rag_card_count_after_new_chat_direct": 1,
+    "clarify_card_count": 0,
+    "refuse_card_count": 0,
+    "mobile_viewport": "390x844",
+    "mobile_horizontal_overflow": false,
+    "browser_console_error_or_warning_count": 0
+  },
+  "presentation_matrix": {
+    "structured_card": [
+      "reuse_evidence",
+      "internal_rag",
+      "tool_only",
+      "rag_and_tool",
+      "rag_and_web"
+    ],
+    "bubble": [
+      "history_direct_legacy",
+      "chat_direct",
+      "clarify",
+      "refuse"
+    ]
+  },
+  "ecs": {
+    "api_container_id": "3c9317df020b",
+    "worker_container_id": "77a2c2ffe84f",
+    "web_container_id": "9609c491b2e",
+    "worker_ping": "pong",
+    "health": "ok",
+    "data_service_container_ids_unchanged": true,
+    "production_source_mounts": 0,
+    "api_reload_enabled": false
+  },
+  "screenshots": [
+    "desktop-route-presentation.png",
+    "desktop-refuse-bubble.png",
+    "mobile-390x844-route-presentation.png"
+  ]
+}

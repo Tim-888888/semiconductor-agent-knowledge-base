@@ -119,6 +119,7 @@ h4 { margin: 0; font-size: 13px; }
 .query-box textarea { display: block; width: 100%; min-height: 74px; max-height: 190px; resize: vertical; padding: 11px 48px 11px 11px; border: 1px solid #bdc7c0; border-radius: 4px; color: var(--ink); background: #fff; line-height: 1.45; }
 .icon-command { position: absolute; right: 30px; bottom: 28px; width: 32px; height: 32px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; background: var(--green); color: #fff; }
 .structured-answer { max-width: 920px; border-top: 2px solid var(--green); background: #fff; padding: 16px 18px; box-shadow: 0 1px 0 #d9ddd8; }
+.message-body > .structured-answer { margin-top: 12px; }
 .structured-heading { display: flex; justify-content: space-between; gap: 15px; align-items: flex-start; margin-bottom: 13px; }
 .structured-heading h3 { font-size: 16px; }
 .answer-badges { display: flex; align-items: center; gap: 6px; }

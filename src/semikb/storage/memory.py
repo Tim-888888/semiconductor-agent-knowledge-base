@@ -450,6 +450,20 @@ class DemoStore:
     ) -> AgentMessageRequestRecord | None:
         return self.message_requests.get((thread_id, actor_user_id, request_id))
 
+    def list_message_requests(
+        self,
+        thread_id: str,
+        actor_user_id: str,
+    ) -> list[AgentMessageRequestRecord]:
+        return sorted(
+            (
+                record
+                for (stored_thread_id, stored_user_id, _), record in self.message_requests.items()
+                if stored_thread_id == thread_id and stored_user_id == actor_user_id
+            ),
+            key=lambda record: record.created_at,
+        )
+
     def append_message_once(self, thread_id: str, message: ChatMessage) -> ThreadRecord:
         with self._lock:
             thread = self.threads.get(thread_id)

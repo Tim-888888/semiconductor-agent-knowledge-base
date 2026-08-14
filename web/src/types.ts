@@ -25,6 +25,7 @@ export type Message = {
   role: "user" | "assistant";
   content: string;
   citations: Citation[];
+  presentation?: MessagePresentation | null;
   created_at: string;
 };
 
@@ -80,6 +81,15 @@ export type AgentRoute =
   | "rag_and_web"
   | "clarify"
   | "refuse";
+
+export type MessagePresentation = {
+  mode: "bubble" | "structured_card";
+  route_decision?: AgentRoute | string | null;
+  status?: string | null;
+  answer?: AgentAnswer | null;
+  trace_id?: string | null;
+  verification_warnings: string[];
+};
 
 export type IntentTaskItem = {
   task_id: string;

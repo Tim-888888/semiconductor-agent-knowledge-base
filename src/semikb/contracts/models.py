@@ -237,6 +237,35 @@ class RetrievalTrace(BaseModel):
     created_at: datetime = Field(default_factory=utc_now)
 
 
+class AnswerClaim(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
+    citation_ids: list[str] = Field(default_factory=list)
+
+
+class AgentAnswer(BaseModel):
+    facts: list[AnswerClaim] = Field(default_factory=list)
+    hypotheses: list[AnswerClaim] = Field(default_factory=list)
+    unknowns: list[str] = Field(default_factory=list)
+    next_actions: list[str] = Field(default_factory=list)
+    confidence: str = Field(default="low", pattern="^(low|medium|high)$")
+
+
+class MessageRenderMode(StrEnum):
+    BUBBLE = "bubble"
+    STRUCTURED_CARD = "structured_card"
+
+
+class MessagePresentation(BaseModel):
+    """Persisted UI projection selected by server-owned route policy."""
+
+    mode: MessageRenderMode = MessageRenderMode.BUBBLE
+    route_decision: str | None = None
+    status: str | None = None
+    answer: AgentAnswer | None = None
+    trace_id: str | None = None
+    verification_warnings: list[str] = Field(default_factory=list)
+
+
 class ChatMessage(BaseModel):
     message_id: str = Field(default_factory=lambda: new_id("msg"))
     request_id: str | None = None
@@ -246,6 +275,7 @@ class ChatMessage(BaseModel):
     content: str
     created_at: datetime = Field(default_factory=utc_now)
     citations: list[dict[str, Any]] = Field(default_factory=list)
+    presentation: MessagePresentation | None = None
 
 
 class ContextSlot(BaseModel):
@@ -490,19 +520,6 @@ class EvidenceLedgerEntry(BaseModel):
     context_selection_reason: str | None = None
     image_ids: list[str] = Field(default_factory=list)
     external_url: str = ""
-
-
-class AnswerClaim(BaseModel):
-    text: str = Field(min_length=1, max_length=2000)
-    citation_ids: list[str] = Field(default_factory=list)
-
-
-class AgentAnswer(BaseModel):
-    facts: list[AnswerClaim] = Field(default_factory=list)
-    hypotheses: list[AnswerClaim] = Field(default_factory=list)
-    unknowns: list[str] = Field(default_factory=list)
-    next_actions: list[str] = Field(default_factory=list)
-    confidence: str = Field(default="low", pattern="^(low|medium|high)$")
 
 
 class SendMessageResponse(BaseModel):

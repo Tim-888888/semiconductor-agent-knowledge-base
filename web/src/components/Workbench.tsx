@@ -14,7 +14,7 @@ import {
   SearchCheck,
   Square
 } from "lucide-react";
-import type { AgentResponse, AssetAccess, EvidenceLedgerEntry, StreamUiState, Thread } from "../types";
+import type { AgentResponse, AssetAccess, EvidenceLedgerEntry, MessagePresentation, StreamUiState, Thread } from "../types";
 import { StatusPill } from "./Common";
 
 type Props = {
@@ -109,13 +109,17 @@ export function Workbench({
                 key={citation.evidence_id ?? citation.chunk_id ?? index}
                 className="citation"
                 type="button"
-                onClick={() => onOpenTrace(result?.trace_id)}
+                onClick={() => onOpenTrace(message.presentation?.trace_id)}
               >
                 <FileText size={13} />
                 {citation.document_id ?? citation.source_type ?? "证据"} {citation.revision ?? ""}
                 {citation.page_or_section ? ` · ${citation.page_or_section}` : ""}
               </button>)}
             </div>}
+            {message.role === "assistant"
+              && message.presentation?.mode === "structured_card"
+              && message.presentation.answer
+              && <StructuredAnswer presentation={message.presentation} onOpenTrace={onOpenTrace} />}
           </div>
         </article>) : <div className="empty-conversation">当前线程尚无消息</div>}
 
@@ -124,8 +128,6 @@ export function Workbench({
           onStop={onStopStream}
           onRetry={onRetryStream}
         />}
-
-        {!streamState && result?.answer && !result.clarification_required && <StructuredAnswer result={result} onOpenTrace={onOpenTrace} />}
       </div>
 
       <form className="query-box" onSubmit={onSubmit}>
@@ -223,19 +225,19 @@ function stageLabel(stage?: StreamUiState["stage"]): string {
   } as Record<string, string>)[stage ?? ""] ?? "请求处理中…";
 }
 
-function StructuredAnswer({ result, onOpenTrace }: { result: AgentResponse; onOpenTrace: (traceId?: string | null) => void }) {
-  const answer = result.answer!;
+function StructuredAnswer({ presentation, onOpenTrace }: { presentation: MessagePresentation; onOpenTrace: (traceId?: string | null) => void }) {
+  const answer = presentation.answer!;
   return <section className="structured-answer" data-testid="structured-answer">
     <div className="structured-heading">
       <div><span className="section-label">VERIFIED INVESTIGATION</span><h3>结构化调查结果</h3></div>
-      <div className="answer-badges"><StatusPill value={result.status ?? "completed"} /><span className={`confidence confidence-${answer.confidence}`}>{answer.confidence}</span></div>
+      <div className="answer-badges"><StatusPill value={presentation.status ?? "completed"} /><span className={`confidence confidence-${answer.confidence}`}>{answer.confidence}</span></div>
     </div>
     <AnswerSection icon={<CheckCircle2 size={17} />} title="已知事实" claims={answer.facts.map((item) => item.text)} />
     <AnswerSection icon={<FlaskConical size={17} />} title="待验证假设" claims={answer.hypotheses.map((item) => item.text)} />
     <AnswerSection icon={<AlertTriangle size={17} />} title="未知项" claims={answer.unknowns} />
     <AnswerSection icon={<ListChecks size={17} />} title="下一步" claims={answer.next_actions} />
-    {(result.verification_warnings ?? []).length > 0 && <div className="verification-warning"><AlertTriangle size={15} />{result.verification_warnings!.join(" / ")}</div>}
-    {result.trace_id && <button type="button" className="text-command" onClick={() => onOpenTrace(result.trace_id)}><SearchCheck size={16} />查看证据选择过程</button>}
+    {(presentation.verification_warnings ?? []).length > 0 && <div className="verification-warning"><AlertTriangle size={15} />{presentation.verification_warnings.join(" / ")}</div>}
+    {presentation.trace_id && <button type="button" className="text-command" onClick={() => onOpenTrace(presentation.trace_id)}><SearchCheck size={16} />查看证据选择过程</button>}
   </section>;
 }
 

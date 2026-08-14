@@ -95,7 +95,9 @@ function App() {
       listEvaluations(),
       listEvaluationDatasets()
     ]);
-    const activeThread = existingThreads[0] ?? await createThread("ETCH-03 异常调查");
+    const activeThread = existingThreads[0]
+      ? await getThread(existingThreads[0].thread_id)
+      : await createThread("ETCH-03 异常调查");
     setThreads(existingThreads.length ? existingThreads : [activeThread]);
     setThread(activeThread);
     setJobs(nextJobs);

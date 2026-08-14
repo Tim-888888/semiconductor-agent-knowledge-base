@@ -17,6 +17,7 @@ from semikb.agent_runtime.context import ContextAssembler
 from semikb.agent_runtime.graph import ConversationGraph
 from semikb.agent_runtime.llm_gateway import LLMProviderError, OpenAICompatibleLLMGateway
 from semikb.agent_runtime.memory import MemoryService
+from semikb.agent_runtime.presentation import build_message_presentation
 from semikb.agent_runtime.tools import ManufacturingToolbox
 from semikb.agent_runtime.web_search import AliyunWebSearchGateway
 from semikb.config import Settings
@@ -117,7 +118,7 @@ class ConversationService:
             return None
         if actor_scope and "admin" not in actor_scope.roles and thread.actor_scope.user_id != actor_scope.user_id:
             return None
-        return thread
+        return self._hydrate_message_presentations(thread)
 
     def list_threads(self, actor_scope: ActorScope) -> list[ThreadRecord]:
         return self.repository.list_threads(actor_scope.user_id)
@@ -391,7 +392,7 @@ class ConversationService:
                 pending_fields=thread_state["pending_fields"],
                 clarification_round=thread_state["clarification_round"],
             )
-            response_model.thread = persisted_thread
+            response_model.thread = self._hydrate_message_presentations(persisted_thread)
             record.assistant_turn_seq = assistant.turn_seq
             result_payload = response_model.model_dump(mode="python", exclude={"thread"})
             record = await asyncio.to_thread(
@@ -526,6 +527,13 @@ class ConversationService:
                 run_id=run_id,
                 role="assistant",
                 content=response,
+                presentation=build_message_presentation(
+                    route=result.get("route_decision", AgentRoute.CLARIFY),
+                    answer=None,
+                    status="waiting_for_clarification",
+                    trace_id=None,
+                    verification_warnings=list(result.get("verification_warnings", [])),
+                ),
             )
             model = SendMessageResponse(
                 thread=thread,
@@ -545,20 +553,28 @@ class ConversationService:
 
         response = str(result.get("answer_text") or "系统未生成可验证答复。")
         citations = list(result.get("citations", []))
+        answer_payload = result.get("answer")
+        answer = AgentAnswer.model_validate(answer_payload) if answer_payload else None
         assistant = ChatMessage(
             request_id=request_id,
             run_id=run_id,
             role="assistant",
             content=response,
             citations=citations,
+            presentation=build_message_presentation(
+                route=result.get("route_decision"),
+                answer=answer,
+                status=str(result.get("status", "completed")),
+                trace_id=result.get("trace_id"),
+                verification_warnings=list(result.get("verification_warnings", [])),
+            ),
         )
-        answer_payload = result.get("answer")
         model = SendMessageResponse(
             thread=thread,
             response=response,
             clarification_required=False,
             status=str(result.get("status", "completed")),
-            answer=AgentAnswer.model_validate(answer_payload) if answer_payload else None,
+            answer=answer,
             citations=citations,
             trace_id=result.get("trace_id"),
             image_asset_ids=list(result.get("image_evidence", [])),
@@ -632,10 +648,53 @@ class ConversationService:
                 record.direct_reply_audit = DirectReplyAudit.model_validate(direct_audit)
 
     def _replayed_response(self, record: AgentMessageRequestRecord) -> SendMessageResponse:
-        thread = self.repository.get_thread(record.thread_id)
+        thread = self.get_thread(record.thread_id)
         if thread is None:
             raise KeyError(record.thread_id)
         return SendMessageResponse.model_validate({"thread": thread, **record.result_payload})
+
+    def _hydrate_message_presentations(self, thread: ThreadRecord) -> ThreadRecord:
+        missing_request_ids = {
+            message.request_id
+            for message in thread.messages
+            if message.role == "assistant"
+            and message.presentation is None
+            and message.request_id
+        }
+        if not missing_request_ids:
+            return thread
+
+        records = self.repository.list_message_requests(
+            thread.thread_id,
+            thread.actor_scope.user_id,
+        )
+        records_by_id = {
+            record.request_id: record
+            for record in records
+            if record.request_id in missing_request_ids
+            and record.status is AgentMessageRequestStatus.COMPLETED
+        }
+        if not records_by_id:
+            return thread
+
+        hydrated = thread.model_copy(deep=True)
+        for message in hydrated.messages:
+            if message.role != "assistant" or message.presentation is not None:
+                continue
+            record = records_by_id.get(message.request_id or "")
+            if record is None:
+                continue
+            payload = record.result_payload
+            message.presentation = build_message_presentation(
+                route=payload.get("route_decision") or record.route_decision,
+                answer=payload.get("answer"),
+                status=str(payload["status"]) if payload.get("status") is not None else None,
+                trace_id=str(payload.get("trace_id") or record.trace_id or "") or None,
+                verification_warnings=[
+                    str(item) for item in payload.get("verification_warnings", [])
+                ],
+            )
+        return hydrated
 
     @staticmethod
     def _custom_stream_event(

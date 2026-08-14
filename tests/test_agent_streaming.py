@@ -97,6 +97,20 @@ def test_stream_api_emits_ordered_events_and_persists_before_completed() -> None
     persisted = client.get(f"/api/v1/threads/{thread_id}", headers=headers).json()
     assert persisted["messages"][-1]["content"] == completed.data.result.response
     assert persisted["messages"][-1]["request_id"] == "req_stream_api_001"
+    assert persisted["messages"][-1]["presentation"]["mode"] == "structured_card"
+    assert persisted["messages"][-1]["presentation"]["route_decision"] == "internal_rag"
+
+    _stream_events(
+        client,
+        headers,
+        thread_id,
+        "req_stream_api_002",
+        "你好",
+    )
+    refreshed = client.get(f"/api/v1/threads/{thread_id}", headers=headers).json()
+    assert refreshed["messages"][-1]["presentation"]["mode"] == "bubble"
+    assert refreshed["messages"][-1]["presentation"]["route_decision"] == "chat_direct"
+    assert refreshed["messages"][-3]["presentation"]["mode"] == "structured_card"
 
 
 def test_stream_api_validates_authentication_and_thread_before_sse_headers() -> None:

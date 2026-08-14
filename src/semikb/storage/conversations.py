@@ -57,6 +57,12 @@ class ConversationRepository(Protocol):
         request_id: str,
     ) -> AgentMessageRequestRecord | None: ...
 
+    def list_message_requests(
+        self,
+        thread_id: str,
+        actor_user_id: str,
+    ) -> list[AgentMessageRequestRecord]: ...
+
     def append_message_once(self, thread_id: str, message: ChatMessage) -> ThreadRecord: ...
 
     def finalize_stream_response(
@@ -317,6 +323,17 @@ class MongoConversationRepository:
             {"_id": 0},
         )
         return AgentMessageRequestRecord.model_validate(document) if document else None
+
+    def list_message_requests(
+        self,
+        thread_id: str,
+        actor_user_id: str,
+    ) -> list[AgentMessageRequestRecord]:
+        cursor = self.message_requests.find(
+            {"thread_id": thread_id, "actor_user_id": actor_user_id},
+            {"_id": 0},
+        ).sort("created_at", 1)
+        return [AgentMessageRequestRecord.model_validate(document) for document in cursor]
 
     def append_message_once(self, thread_id: str, message: ChatMessage) -> ThreadRecord:
         now = datetime.now(UTC)

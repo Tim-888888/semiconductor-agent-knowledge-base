@@ -224,3 +224,16 @@ MinerU Precision API。`DEMO_MODE=true` 时在请求内同步处理，便于无�
 
 同一线程已有请求租约时，流式和兼容非流式接口均返回 HTTP `409`，客户端应等待前一请求完成或取消，
 不得自动并发重试。不同线程不共享精确消息或活动上下文。
+
+## T9-4.3.3c 消息展示契约
+
+`ChatMessage.presentation` 为可选的向后兼容字段，包含：
+
+- `mode`：`bubble` 或 `structured_card`；
+- `route_decision`：产生该消息的最终服务端路由；
+- `status`、`answer`、`trace_id`、`verification_warnings`：仅供该消息对应的结构化卡片使用。
+
+服务端固定把 `reuse_evidence/internal_rag/tool_only/rag_and_tool/rag_and_web` 映射为
+`structured_card`，把 `chat_direct/clarify/refuse` 及旧 `history_direct` 映射为 `bubble`。模型不能输出
+或覆盖该决策；前端只按消息字段渲染，不能使用全局最新结果控制历史消息。旧消息缺少展示字段时，服务端
+按 `request_id` 从已完成的 `agent_message_requests.result_payload` 补齐，MongoDB 原消息不做破坏性迁移。
