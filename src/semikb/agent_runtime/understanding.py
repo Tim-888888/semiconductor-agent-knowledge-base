@@ -11,6 +11,10 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from semikb.agent_runtime.intent_catalog import IntentCatalog, load_intent_catalog
+from semikb.agent_runtime.intent_experiments import (
+    IntentExperimentProfile,
+    IntentFewShotSelection,
+)
 from semikb.agent_runtime.llm_gateway import LLMProviderError, OpenAICompatibleLLMGateway
 from semikb.config import Settings
 from semikb.contracts.models import (
@@ -151,10 +155,16 @@ class ConversationUnderstandingService:
         llm: OpenAICompatibleLLMGateway,
         *,
         intent_catalog: IntentCatalog | None = None,
+        experiment_profile: IntentExperimentProfile | None = None,
     ) -> None:
         self.settings = settings
         self.llm = llm
         self.intent_catalog = intent_catalog or load_intent_catalog(settings.intent_catalog_path)
+        self.experiment_profile = (
+            experiment_profile or IntentExperimentProfile.production_baseline()
+        )
+        if self.experiment_profile.example_bank is not None:
+            self.experiment_profile.example_bank.validate_against_catalog(self.intent_catalog)
 
     async def understand(
         self,
@@ -164,7 +174,11 @@ class ConversationUnderstandingService:
         clarification_pending: bool = False,
     ) -> UnderstandingResult:
         started = time.perf_counter()
-        base_metadata = self._intent_audit_metadata(prompt_tokens=0, cards_in_prompt=0)
+        empty_selection = IntentFewShotSelection()
+        base_metadata = {
+            **self._intent_audit_metadata(prompt_tokens=0, cards_in_prompt=0),
+            **self.experiment_profile.audit_metadata(empty_selection),
+        }
         l0 = self._l0(request, context)
         if l0 is not None:
             return UnderstandingResult(
@@ -193,19 +207,32 @@ class ConversationUnderstandingService:
                 ),
             )
 
-        messages = self._prompt(request, context, clarification_pending)
+        selection = await self.experiment_profile.select_examples(request)
+        messages = self._prompt(request, context, clarification_pending, selection)
         estimated_tokens = self._estimate_prompt_tokens(messages)
+        cards_in_prompt = (
+            len(self.intent_catalog.active_cards)
+            if self.experiment_profile.include_catalog
+            else 0
+        )
         metadata: dict[str, Any] = {
             **self._intent_audit_metadata(
                 prompt_tokens=estimated_tokens,
-                cards_in_prompt=len(self.intent_catalog.active_cards),
+                cards_in_prompt=cards_in_prompt,
             ),
+            **self.experiment_profile.audit_metadata(selection),
             "understanding_calls": 0,
             "intent_prompt_tokens_source": "deterministic_estimate",
+            "intent_completion_tokens": 0,
+            "intent_completion_tokens_source": "not_available",
+            "intent_total_tokens": estimated_tokens,
+            "intent_usage_source": "deterministic_estimate",
         }
         raw: _RawUnderstanding | None = None
         invalid_content = ""
-        provider_prompt_tokens = 0
+        observed_prompt_tokens = 0
+        observed_completion_tokens = 0
+        usage_sources: set[str] = set()
         try:
             completion = await self.llm.complete(
                 messages,
@@ -215,11 +242,30 @@ class ConversationUnderstandingService:
                 max_output_tokens=1000,
             )
             metadata["understanding_calls"] = 1
-            used_tokens = self._input_tokens(completion.usage)
-            if used_tokens is not None:
-                provider_prompt_tokens += used_tokens
-                metadata["intent_prompt_tokens"] = provider_prompt_tokens
-                metadata["intent_prompt_tokens_source"] = "provider_usage"
+            input_tokens = self._input_tokens(completion.usage)
+            output_tokens = self._output_tokens(completion.usage)
+            observed_prompt_tokens += (
+                input_tokens if input_tokens is not None else estimated_tokens
+            )
+            observed_completion_tokens += (
+                output_tokens
+                if output_tokens is not None
+                else self._estimate_text_tokens(completion.content)
+            )
+            usage_sources.update(
+                {
+                    "provider_usage" if input_tokens is not None else "deterministic_estimate",
+                    "provider_usage" if output_tokens is not None else "deterministic_estimate",
+                }
+            )
+            self._apply_usage_metadata(
+                metadata,
+                prompt_tokens=observed_prompt_tokens,
+                completion_tokens=observed_completion_tokens,
+                usage_sources=usage_sources,
+                input_from_provider=input_tokens is not None,
+                output_from_provider=output_tokens is not None,
+            )
             invalid_content = completion.content
             raw = _RawUnderstanding.model_validate_json(completion.content)
             metadata.update(
@@ -233,26 +279,56 @@ class ConversationUnderstandingService:
             )
         except (ValidationError, json.JSONDecodeError, ValueError):
             try:
+                repair_messages = [
+                    *messages,
+                    {"role": "assistant", "content": invalid_content[:8000]},
+                    {
+                        "role": "user",
+                        "content": "The previous object violated the schema. Return one corrected object only.",
+                    },
+                ]
                 repair = await self.llm.complete(
-                    [
-                        *messages,
-                        {"role": "assistant", "content": invalid_content[:8000]},
-                        {
-                            "role": "user",
-                            "content": "The previous object violated the schema. Return one corrected object only.",
-                        },
-                    ],
+                    repair_messages,
                     response_schema=_RawUnderstanding.model_json_schema(),
                     schema_name="semikb_conversation_understanding_v1",
                     temperature=0,
                     max_output_tokens=1000,
                 )
                 metadata["understanding_calls"] = 2
-                repair_tokens = self._input_tokens(repair.usage)
-                if repair_tokens is not None:
-                    provider_prompt_tokens += repair_tokens
-                    metadata["intent_prompt_tokens"] = provider_prompt_tokens
-                    metadata["intent_prompt_tokens_source"] = "provider_usage"
+                repair_input_tokens = self._input_tokens(repair.usage)
+                repair_output_tokens = self._output_tokens(repair.usage)
+                observed_prompt_tokens += (
+                    repair_input_tokens
+                    if repair_input_tokens is not None
+                    else self._estimate_prompt_tokens(repair_messages)
+                )
+                observed_completion_tokens += (
+                    repair_output_tokens
+                    if repair_output_tokens is not None
+                    else self._estimate_text_tokens(repair.content)
+                )
+                usage_sources.update(
+                    {
+                        "provider_usage"
+                        if repair_input_tokens is not None
+                        else "deterministic_estimate",
+                        "provider_usage"
+                        if repair_output_tokens is not None
+                        else "deterministic_estimate",
+                    }
+                )
+                self._apply_usage_metadata(
+                    metadata,
+                    prompt_tokens=observed_prompt_tokens,
+                    completion_tokens=observed_completion_tokens,
+                    usage_sources=usage_sources,
+                    input_from_provider=(
+                        input_tokens is not None and repair_input_tokens is not None
+                    ),
+                    output_from_provider=(
+                        output_tokens is not None and repair_output_tokens is not None
+                    ),
+                )
                 raw = _RawUnderstanding.model_validate_json(repair.content)
                 metadata.update(
                     {
@@ -292,33 +368,68 @@ class ConversationUnderstandingService:
         request: str,
         context: dict[str, Any],
         clarification_pending: bool,
+        selection: IntentFewShotSelection,
     ) -> list[dict[str, Any]]:
+        if not self.experiment_profile.include_catalog:
+            return [
+                {
+                    "role": "system",
+                    "content": (
+                        "Classify one turn for a semiconductor knowledge Agent. Return only the strict schema object. "
+                        "Preserve up to three explicit tasks. Separate emotion from task intent. Never invent Product, "
+                        "Tool, Chamber, Recipe, Lot, Case, or time values. Use inherited_slot_names only for valid "
+                        "context values needed by a pronoun or omitted reference. Recipe mutation, equipment control, "
+                        "data deletion, and out-of-scope actions must use execution_policy=refuse. The suggested route "
+                        "is advisory; server policy makes the final decision. Do not include reasoning or prose."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        {
+                            "current_request": request,
+                            "clarification_pending": clarification_pending,
+                            "conversation_context": ConversationUnderstandingService._safe_context(
+                                context
+                            ),
+                        },
+                        ensure_ascii=False,
+                    ),
+                },
+            ]
+
+        system_content = (
+            "Classify one turn for a semiconductor knowledge Agent. Return only the strict schema object. "
+            "Preserve up to three explicit tasks. Separate emotion from task intent. Never invent Product, "
+            "Tool, Chamber, Recipe, Lot, Case, or time values. Use inherited_slot_names only for valid "
+            "context values needed by a pronoun or omitted reference. Recipe mutation, equipment control, "
+            "data deletion, and out-of-scope actions must use execution_policy=refuse. The suggested route "
+            "is advisory; server policy makes the final decision. For each task, compare against every active "
+            "intent card supplied by the server and use a legal task signature from the closest matching card. "
+            "The complete active catalog is authoritative; do not invent another intent. Do not include "
+            "reasoning, card IDs, or prose in the response."
+        )
+        payload: dict[str, Any] = {
+            "current_request": request,
+            "clarification_pending": clarification_pending,
+            "conversation_context": ConversationUnderstandingService._safe_context(context),
+            "intent_catalog": self.intent_catalog.prompt_payload(),
+        }
+        if selection.examples:
+            system_content += (
+                " The supplied intent examples are classification precedents only. Use them to distinguish "
+                "intent signatures, but extract slots, dependencies, context references, and entity values "
+                "independently from the current request. Never copy an example entity into the current turn."
+            )
+            payload["intent_examples"] = selection.prompt_payload()
         return [
             {
                 "role": "system",
-                "content": (
-                    "Classify one turn for a semiconductor knowledge Agent. Return only the strict schema object. "
-                    "Preserve up to three explicit tasks. Separate emotion from task intent. Never invent Product, "
-                    "Tool, Chamber, Recipe, Lot, Case, or time values. Use inherited_slot_names only for valid "
-                    "context values needed by a pronoun or omitted reference. Recipe mutation, equipment control, "
-                    "data deletion, and out-of-scope actions must use execution_policy=refuse. The suggested route "
-                    "is advisory; server policy makes the final decision. For each task, compare against every active "
-                    "intent card supplied by the server and use a legal task signature from the closest matching card. "
-                    "The complete active catalog is authoritative; do not invent another intent. Do not include "
-                    "reasoning, card IDs, or prose in the response."
-                ),
+                "content": system_content,
             },
             {
                 "role": "user",
-                "content": json.dumps(
-                    {
-                        "current_request": request,
-                        "clarification_pending": clarification_pending,
-                        "conversation_context": ConversationUnderstandingService._safe_context(context),
-                        "intent_catalog": self.intent_catalog.prompt_payload(),
-                    },
-                    ensure_ascii=False,
-                ),
+                "content": json.dumps(payload, ensure_ascii=False),
             },
         ]
 
@@ -332,7 +443,9 @@ class ConversationUnderstandingService:
             "intent_catalog_version": self.intent_catalog.catalog_version,
             "intent_catalog_hash": self.intent_catalog.catalog_hash,
             "active_intent_card_count": len(self.intent_catalog.active_cards),
-            "intent_card_selection": "all_active",
+            "intent_card_selection": (
+                "all_active" if self.experiment_profile.include_catalog else "none"
+            ),
             "intent_cards_in_prompt": cards_in_prompt,
             "intent_prompt_tokens": prompt_tokens,
             "intent_catalog_capacity_warnings": self.intent_catalog.capacity_warnings(
@@ -364,9 +477,44 @@ class ConversationUnderstandingService:
         return None
 
     @staticmethod
+    def _output_tokens(usage: dict[str, Any]) -> int | None:
+        for key in ("completion_tokens", "output_tokens"):
+            value = usage.get(key)
+            if isinstance(value, int) and value >= 0:
+                return value
+        return None
+
+    @staticmethod
+    def _apply_usage_metadata(
+        metadata: dict[str, Any],
+        *,
+        prompt_tokens: int,
+        completion_tokens: int,
+        usage_sources: set[str],
+        input_from_provider: bool,
+        output_from_provider: bool,
+    ) -> None:
+        metadata["intent_prompt_tokens"] = prompt_tokens
+        metadata["intent_completion_tokens"] = completion_tokens
+        metadata["intent_total_tokens"] = prompt_tokens + completion_tokens
+        metadata["intent_prompt_tokens_source"] = (
+            "provider_usage" if input_from_provider else "deterministic_estimate"
+        )
+        metadata["intent_completion_tokens_source"] = (
+            "provider_usage" if output_from_provider else "deterministic_estimate"
+        )
+        metadata["intent_usage_source"] = (
+            "provider_usage" if usage_sources == {"provider_usage"} else "mixed_estimate"
+        )
+
+    @staticmethod
     def _estimate_prompt_tokens(messages: list[dict[str, Any]]) -> int:
         serialized = json.dumps(messages, ensure_ascii=False, separators=(",", ":"))
-        pieces = re.findall(r"[\u4e00-\u9fff]|[A-Za-z0-9_]+|[^\s]", serialized)
+        return ConversationUnderstandingService._estimate_text_tokens(serialized)
+
+    @staticmethod
+    def _estimate_text_tokens(text: str) -> int:
+        pieces = re.findall(r"[\u4e00-\u9fff]|[A-Za-z0-9_]+|[^\s]", text)
         return len(pieces)
 
     @staticmethod

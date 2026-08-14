@@ -123,5 +123,8 @@ async def test_non_l0_understanding_injects_every_active_card_without_prefilter(
     assert result.metadata["intent_card_selection"] == "all_active"
     assert result.metadata["intent_prompt_tokens"] == 2345
     assert result.metadata["intent_prompt_tokens_source"] == "provider_usage"
+    assert result.metadata["intent_completion_tokens"] == 120
+    assert result.metadata["intent_total_tokens"] == 2465
+    assert result.metadata["intent_experiment_arm"] == "b_all_active_cards"
     assert result.metadata["intent_catalog_capacity_warnings"] == []
     assert result.metadata["understanding_latency_ms"] >= 0

@@ -248,9 +248,17 @@ class IntentEvaluationRunner:
         actual_card_labels: list[list[str]] = []
         card_confusion_pairs: list[tuple[str, str]] = []
         prompt_tokens: list[float] = []
+        completion_tokens: list[float] = []
+        total_tokens: list[float] = []
+        cards_in_prompt: list[float] = []
+        few_shot_examples: list[float] = []
+        few_shot_selection_latencies_ms: list[float] = []
         latencies_ms: list[float] = []
         llm_cases = 0
         all_active_injected = 0
+        provider_calls = 0
+        few_shot_embedding_calls = 0
+        few_shot_embedding_input_tokens_estimate = 0
         retrieval_routes = {
             AgentRoute.REUSE_EVIDENCE,
             AgentRoute.INTERNAL_RAG,
@@ -274,9 +282,31 @@ class IntentEvaluationRunner:
             metadata = result.metadata
             sources[interpreted.classifier_source] += 1
             latencies_ms.append(float(metadata.get("understanding_latency_ms", 0) or 0))
+            provider_calls += int(metadata.get("understanding_calls", 0) or 0)
+            few_shot_embedding_calls += int(
+                metadata.get("intent_few_shot_embedding_calls", 0) or 0
+            )
+            few_shot_embedding_input_tokens_estimate += int(
+                metadata.get("intent_few_shot_embedding_input_tokens_estimate", 0) or 0
+            )
             if metadata.get("understanding_source") == "llm":
                 llm_cases += 1
                 prompt_tokens.append(float(metadata.get("intent_prompt_tokens", 0) or 0))
+                completion_tokens.append(
+                    float(metadata.get("intent_completion_tokens", 0) or 0)
+                )
+                total_tokens.append(float(metadata.get("intent_total_tokens", 0) or 0))
+                cards_in_prompt.append(
+                    float(metadata.get("intent_cards_in_prompt", 0) or 0)
+                )
+                few_shot_examples.append(
+                    float(metadata.get("intent_few_shot_example_count", 0) or 0)
+                )
+                few_shot_selection_latencies_ms.append(
+                    float(
+                        metadata.get("intent_few_shot_selection_latency_ms", 0) or 0
+                    )
+                )
                 all_active_injected += int(
                     metadata.get("intent_card_selection") == "all_active"
                     and metadata.get("intent_cards_in_prompt")
@@ -505,25 +535,67 @@ class IntentEvaluationRunner:
         }
         prompt_p50 = self._percentile(prompt_tokens, 50)
         prompt_p95 = self._percentile(prompt_tokens, 95)
+        completion_p50 = self._percentile(completion_tokens, 50)
+        completion_p95 = self._percentile(completion_tokens, 95)
+        total_p50 = self._percentile(total_tokens, 50)
+        total_p95 = self._percentile(total_tokens, 95)
+        cards_p50 = self._percentile(cards_in_prompt, 50)
+        cards_p95 = self._percentile(cards_in_prompt, 95)
+        examples_p50 = self._percentile(few_shot_examples, 50)
+        examples_p95 = self._percentile(few_shot_examples, 95)
+        selection_latency_p50 = self._percentile(few_shot_selection_latencies_ms, 50)
+        selection_latency_p95 = self._percentile(few_shot_selection_latencies_ms, 95)
         latency_p50 = self._percentile(latencies_ms, 50)
         latency_p95 = self._percentile(latencies_ms, 95)
         warnings = self.catalog.capacity_warnings(
             prompt_tokens=int(prompt_p95),
             p95_latency_ms=latency_p95,
         )
+        profile = self.understanding.experiment_profile
+        bank = profile.example_bank
         capacity = {
             "intent_catalog_version": self.catalog.catalog_version,
             "intent_catalog_hash": self.catalog.catalog_hash,
-            "intent_card_selection": "all_active",
+            "intent_experiment_arm": profile.arm.value,
+            "intent_card_selection": (
+                "all_active" if profile.include_catalog else "none"
+            ),
             "active_intent_card_count": len(self.catalog.active_cards),
             "llm_evaluated_cases": llm_cases,
+            "understanding_provider_calls": provider_calls,
             "all_active_cards_injected_rate": (
                 all_active_injected / llm_cases if llm_cases else None
             ),
+            "intent_cards_in_prompt_p50": round(cards_p50, 3),
+            "intent_cards_in_prompt_p95": round(cards_p95, 3),
             "intent_prompt_tokens_p50": round(prompt_p50, 3),
             "intent_prompt_tokens_p95": round(prompt_p95, 3),
+            "intent_prompt_tokens_total": int(sum(prompt_tokens)),
+            "intent_completion_tokens_p50": round(completion_p50, 3),
+            "intent_completion_tokens_p95": round(completion_p95, 3),
+            "intent_completion_tokens_total": int(sum(completion_tokens)),
+            "intent_total_tokens_p50": round(total_p50, 3),
+            "intent_total_tokens_p95": round(total_p95, 3),
+            "intent_total_tokens_total": int(sum(total_tokens)),
             "understanding_latency_ms_p50": round(latency_p50, 3),
             "understanding_latency_ms_p95": round(latency_p95, 3),
+            "intent_few_shot_strategy": profile.few_shot_strategy.value,
+            "intent_example_bank_version": (
+                bank.example_bank_version if bank is not None else None
+            ),
+            "intent_example_bank_hash": bank.example_bank_hash if bank is not None else None,
+            "intent_few_shot_example_count_p50": round(examples_p50, 3),
+            "intent_few_shot_example_count_p95": round(examples_p95, 3),
+            "intent_few_shot_selection_latency_ms_p50": round(
+                selection_latency_p50, 3
+            ),
+            "intent_few_shot_selection_latency_ms_p95": round(
+                selection_latency_p95, 3
+            ),
+            "intent_few_shot_embedding_calls": few_shot_embedding_calls,
+            "intent_few_shot_embedding_input_tokens_estimate": (
+                few_shot_embedding_input_tokens_estimate
+            ),
             "capacity_gates": self.catalog.capacity_gates.model_dump(mode="json"),
         }
         return IntentEvaluationResult(
