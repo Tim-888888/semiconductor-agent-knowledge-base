@@ -28,6 +28,10 @@ LangGraph `InMemorySaver`；真实模式使用官方 `MongoDBSaver` 写入 `chec
 “无需检索时跳过 RAG”。预定义组合执行、路由专用答案校验和前端路由标识仍属于 T9-4.3.3，不能把
 当前能力描述为全部业务闭环已经完成。
 
+T9-4.3.3 目标契约已于 2026-08-14 补充，但尚未实现：历史回顾和历史回答变换的新请求将迁移为
+`chat_direct`，由服务端固定 `context_message_ids` 后交给 LLM 自然表达；`history_direct` 只保留为旧
+请求台账和 Trace 的兼容枚举。该迁移不改变当前线上 T9-4.3.2 的已验收事实。
+
 ### T9-4.1 流式消息契约
 
 `POST /threads/{thread_id}/messages/stream` 的线协议已在 T9-4.1 冻结，路由本身由 T9-4.2 实现。
@@ -89,6 +93,9 @@ T9-4.3.1 上下文基础和 T9-4.3.2 意图/路由契约已经实现。现有消
 }
 ```
 
+上例是当前 T9-4.3.2 已部署契约。T9-4.3.3c 迁移后，同一语义的新请求把 `suggested_route` 和最终
+`route_decision` 写为 `chat_direct`，继续保留相同的 `context_message_ids` 作为历史约束。
+
 `interaction_mode` 固定为 `task`、`conversation`、`feedback`、`control`、
 `clarification_answer` 和 `mixed`。一级意图固定为 `conversation`、`knowledge_query`、
 `investigation`、`data_query`、`action_request` 和 `content_task`。二级语义由最多 3 个
@@ -103,12 +110,19 @@ T9-4.3.1 上下文基础和 T9-4.3.2 意图/路由契约已经实现。现有消
 `temperature=0`，再经 Pydantic 校验；最多一次结构化修复，失败后确定性降级。服务端不能把 Schema
 约束视为权限、过滤表达式或工具参数校验的替代品。
 
-可用路由为 `history_direct`、`chat_direct`、`reuse_evidence`、`internal_rag`、`tool_only`、
+兼容路由枚举仍为 `history_direct`、`chat_direct`、`reuse_evidence`、`internal_rag`、`tool_only`、
 `rag_and_tool`、`rag_and_web`、`clarify` 和 `refuse`。LLM 只返回 `suggested_route`；服务端
 `RoutePolicy` 根据权限、风险、槽位、上下文和证据有效性作最终决定。历史回顾和普通聊天不调用 T5；
 查询最新版本或实时状态不得直接复用旧证据。
 
-一期不新增向量意图路由、不增加第二次意图 LLM 调用、不引入自由任务 DAG。置信度阈值按半导体意图
+T9-4.3.3c 完成后，新历史请求统一产生 `chat_direct`，并以 `context_message_ids` 和稳定 reason code
+区分普通聊天、历史回顾和历史变换。服务端先验证消息属于当前用户与线程，再把选中的精确消息和有界
+最近历史交给生成器；生成器不得自行选择历史目标。模型失败时使用确定性精确回退。旧
+`history_direct` 不立即删除，避免旧 MongoDB 记录、评估快照和 Trace 反序列化失败。
+
+一期不新增独立向量意图路由、不增加第二次意图 LLM 调用、不引入自由任务 DAG。T9-4.3.3b 只允许
+复用现有 Embedding 网关离线检索独立意图示例，和固定 Few-shot 做影子对照；动态示例未通过冻结
+`semikb-intent-v3` 门禁并再次取得用户确认前，不进入线上请求链路。置信度阈值按半导体意图
 评估集和路由风险校准，不写死通用 `0.8/0.6/0.4`；语义低置信度进入澄清，Provider 熔断只由超时、
 429、5xx 或无效响应触发。
 
