@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://semikb.local/contracts/semikb-ingest-v1.schema.json",
+  "title": "ParsedDocument",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "source_format",
+    "normalized_markdown",
+    "chunks",
+    "images",
+    "tables",
+    "provenance",
+    "warnings",
+    "metrics"
+  ],
+  "properties": {
+    "contract_version": {"const": "semikb-ingest-v1"},
+    "source_format": {
+      "enum": ["pdf", "docx", "xlsx", "csv", "pptx", "image", "markdown", "text", "html"]
+    },
+    "normalized_markdown": {"type": "string"},
+    "detected_title": {"type": ["string", "null"]},
+    "detected_language": {"type": ["string", "null"]},
+    "chunks": {"type": "array", "items": {"$ref": "#/$defs/ChunkDraft"}},
+    "images": {"type": "array", "items": {"$ref": "#/$defs/ImageAssetDraft"}},
+    "tables": {"type": "array", "items": {"$ref": "#/$defs/TableAssetDraft"}},
+    "provenance": {"$ref": "#/$defs/ParseProvenance"},
+    "warnings": {"type": "array", "items": {"$ref": "#/$defs/ParseWarning"}},
+    "metrics": {"$ref": "#/$defs/ParseMetrics"}
+  },
+  "$defs": {
+    "SourceLocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["section_path"],
+      "properties": {
+        "section_path": {"type": "array", "items": {"type": "string"}},
+        "page_number": {"type": ["integer", "null"], "minimum": 1},
+        "slide_number": {"type": ["integer", "null"], "minimum": 1},
+        "sheet_name": {"type": ["string", "null"]},
+        "cell_range": {"type": ["string", "null"]},
+        "row_start": {"type": ["integer", "null"], "minimum": 1},
+        "row_end": {"type": ["integer", "null"], "minimum": 1},
+        "bbox": {
+          "type": ["array", "null"],
+          "prefixItems": [
+            {"type": "number"},
+            {"type": "number"},
+            {"type": "number"},
+            {"type": "number"}
+          ],
+          "minItems": 4,
+          "maxItems": 4
+        }
+      }
+    },
+    "BinaryPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handle", "filename", "content_type", "size_bytes", "sha256"],
+      "properties": {
+        "handle": {"type": "string", "minLength": 1},
+        "filename": {"type": "string", "minLength": 1},
+        "content_type": {"type": "string", "minLength": 1},
+        "size_bytes": {"type": "integer", "minimum": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      },
+      "description": "Process-local opaque payload handle. It is consumed immediately by rag_ingestion and is never persisted as a durable MinIO reference."
+    },
+    "ParseProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "parser_name",
+        "parser_version",
+        "provider_name",
+        "provider_version",
+        "upstream_project",
+        "upstream_commit",
+        "source_filename",
+        "source_media_type",
+        "source_sha256",
+        "detected_format"
+      ],
+      "properties": {
+        "parser_name": {"type": "string", "minLength": 1},
+        "parser_version": {"type": "string", "minLength": 1},
+        "provider_name": {"type": ["string", "null"]},
+        "provider_version": {"type": ["string", "null"]},
+        "upstream_project": {"type": ["string", "null"]},
+        "upstream_commit": {"type": ["string", "null"], "pattern": "^[0-9a-f]{40}$"},
+        "source_filename": {"type": "string", "minLength": 1},
+        "source_media_type": {"type": "string", "minLength": 1},
+        "source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "detected_format": {"type": "string", "minLength": 1}
+      }
+    },
+    "ChunkDraft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "draft_id",
+        "chunk_type",
+        "text",
+        "title_path",
+        "location",
+        "parent_draft_id",
+        "image_asset_ids",
+        "table_asset_ids",
+        "metadata"
+      ],
+      "properties": {
+        "draft_id": {"type": "string", "pattern": "^draft_[A-Za-z0-9._:-]+$"},
+        "chunk_type": {"enum": ["text", "table", "image_text"]},
+        "text": {"type": "string", "minLength": 1},
+        "title_path": {"type": "array", "items": {"type": "string"}},
+        "location": {"$ref": "#/$defs/SourceLocation"},
+        "parent_draft_id": {"type": ["string", "null"]},
+        "image_asset_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "table_asset_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "metadata": {"type": "object", "additionalProperties": true}
+      }
+    },
+    "ImageAssetDraft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset_id",
+        "payload",
+        "image_type",
+        "caption",
+        "caption_source",
+        "caption_confidence",
+        "ocr_text",
+        "detection_summary",
+        "location",
+        "related_chunk_draft_ids"
+      ],
+      "properties": {
+        "asset_id": {"type": "string", "minLength": 1},
+        "payload": {"$ref": "#/$defs/BinaryPayload"},
+        "image_type": {"type": "string", "minLength": 1},
+        "caption": {"type": "string"},
+        "caption_source": {"enum": ["human", "parser", "ocr", "vlm", "mineru"]},
+        "caption_confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "ocr_text": {"type": "string"},
+        "detection_summary": {"type": "string"},
+        "location": {"$ref": "#/$defs/SourceLocation"},
+        "related_chunk_draft_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+      }
+    },
+    "TableAssetDraft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset_id",
+        "title",
+        "html",
+        "markdown",
+        "headers",
+        "row_count",
+        "column_count",
+        "location",
+        "related_chunk_draft_ids"
+      ],
+      "properties": {
+        "asset_id": {"type": "string", "minLength": 1},
+        "title": {"type": "string"},
+        "html": {"type": "string", "minLength": 1},
+        "markdown": {"type": "string", "minLength": 1},
+        "headers": {"type": "array", "items": {"type": "string"}},
+        "row_count": {"type": "integer", "minimum": 0},
+        "column_count": {"type": "integer", "minimum": 0},
+        "location": {"$ref": "#/$defs/SourceLocation"},
+        "related_chunk_draft_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+      }
+    },
+    "ParseWarning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "safe_message", "location"],
+      "properties": {
+        "code": {"type": "string", "pattern": "^INGEST_WARNING_[A-Z0-9_]+$"},
+        "safe_message": {"type": "string", "minLength": 1},
+        "location": {"$ref": "#/$defs/SourceLocation"}
+      }
+    },
+    "ParseMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pages", "slides", "sheets", "chunks", "images", "tables", "duration_ms"],
+      "properties": {
+        "pages": {"type": "integer", "minimum": 0},
+        "slides": {"type": "integer", "minimum": 0},
+        "sheets": {"type": "integer", "minimum": 0},
+        "chunks": {"type": "integer", "minimum": 0},
+        "images": {"type": "integer", "minimum": 0},
+        "tables": {"type": "integer", "minimum": 0},
+        "duration_ms": {"type": "number", "minimum": 0}
+      }
+    }
+  }
+}

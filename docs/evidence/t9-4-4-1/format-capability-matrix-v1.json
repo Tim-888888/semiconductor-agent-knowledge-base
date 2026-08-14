@@ -1,0 +1,143 @@
+{
+  "contract_version": "semikb-ingest-formats-v1",
+  "default_policy": {
+    "unknown_format": "reject",
+    "extension_media_signature_mismatch": "reject",
+    "invalid_office_container": "reject",
+    "provider_fallback": "format_scoped_only",
+    "external_asset_fetch": "disabled"
+  },
+  "detection": {
+    "inputs": [
+      "normalized_extension",
+      "declared_media_type",
+      "file_signature",
+      "office_container_members"
+    ],
+    "rule": "All available signals must be compatible; an extension alone never overrides a conflicting signature or invalid Office container."
+  },
+  "formats": [
+    {
+      "format": "markdown",
+      "extensions": [".md", ".markdown"],
+      "media_types": ["text/markdown", "text/plain"],
+      "signatures": [],
+      "parser_id": "markdown-structured-v1",
+      "provider": "builtin",
+      "upstream_strategy": "reference_rewrite",
+      "capabilities": ["headings", "paragraphs", "lists", "tables", "code_blocks"],
+      "fallback": "none",
+      "known_limits": ["Remote and local sidecar image references are not fetched from a single-file upload."]
+    },
+    {
+      "format": "text",
+      "extensions": [".txt"],
+      "media_types": ["text/plain"],
+      "signatures": [],
+      "parser_id": "text-structured-v1",
+      "provider": "builtin",
+      "upstream_strategy": "autonomous",
+      "capabilities": ["encoding_detection", "paragraphs"],
+      "fallback": "none",
+      "known_limits": ["Plain text has no authoritative heading hierarchy unless explicit markers are present."]
+    },
+    {
+      "format": "html",
+      "extensions": [".html", ".htm"],
+      "media_types": ["text/html"],
+      "signatures": [],
+      "parser_id": "html-structured-v1",
+      "provider": "local-html",
+      "upstream_strategy": "adapt_candidate",
+      "capabilities": ["headings", "paragraphs", "lists", "tables", "code_blocks", "noise_removal"],
+      "fallback": "none",
+      "known_limits": ["Scripts, styles and navigation noise are removed; external images and links are not fetched."]
+    },
+    {
+      "format": "pdf",
+      "extensions": [".pdf"],
+      "media_types": ["application/pdf"],
+      "signatures": ["offset:0:255044462d"],
+      "parser_id": "pdf-mineru-v1",
+      "provider": "mineru",
+      "upstream_strategy": "keep_existing_semikb_provider",
+      "capabilities": ["pages", "headings", "paragraphs", "tables", "images", "formulas"],
+      "fallback": "none",
+      "known_limits": ["A MinerU failure leaves the job unpublished; page-memory and local PyMuPDF are not Phase 1 fallbacks."]
+    },
+    {
+      "format": "docx",
+      "extensions": [".docx"],
+      "media_types": ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+      "signatures": ["offset:0:504b0304", "offset:0:504b0506", "offset:0:504b0708"],
+      "required_container_members": ["[Content_Types].xml", "word/document.xml"],
+      "parser_id": "docx-structured-v1",
+      "provider": "local-docx",
+      "upstream_strategy": "reference_rewrite",
+      "capabilities": ["headings", "paragraphs", "lists", "tables", "images", "document_order"],
+      "fallback": "none",
+      "known_limits": ["Legacy .doc and macro-enabled .docm are outside the Phase 1 contract."]
+    },
+    {
+      "format": "xlsx",
+      "extensions": [".xlsx"],
+      "media_types": ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
+      "signatures": ["offset:0:504b0304", "offset:0:504b0506", "offset:0:504b0708"],
+      "required_container_members": ["[Content_Types].xml", "xl/workbook.xml"],
+      "parser_id": "xlsx-structured-v1",
+      "provider": "local-xlsx",
+      "upstream_strategy": "reference_rewrite",
+      "capabilities": ["visible_sheets", "headers", "units", "merged_cells", "formula_cached_values", "table_regions"],
+      "fallback": "none",
+      "known_limits": ["Hidden sheets are excluded by default; formulas are not recalculated; legacy .xls and .xlsm are outside Phase 1."]
+    },
+    {
+      "format": "csv",
+      "extensions": [".csv"],
+      "media_types": ["text/csv", "text/plain", "application/csv"],
+      "signatures": [],
+      "parser_id": "csv-structured-v1",
+      "provider": "builtin-csv",
+      "upstream_strategy": "autonomous",
+      "capabilities": ["encoding_detection", "delimiter_detection", "headers", "rows"],
+      "fallback": "none",
+      "known_limits": ["CSV is implemented independently because the pinned upstream router does not route .csv despite its README claim."]
+    },
+    {
+      "format": "pptx",
+      "extensions": [".pptx"],
+      "media_types": ["application/vnd.openxmlformats-officedocument.presentationml.presentation"],
+      "signatures": ["offset:0:504b0304", "offset:0:504b0506", "offset:0:504b0708"],
+      "required_container_members": ["[Content_Types].xml", "ppt/presentation.xml"],
+      "parser_id": "pptx-structured-v1",
+      "provider": "local-pptx",
+      "upstream_strategy": "reference_rewrite",
+      "capabilities": ["slides", "titles", "text_boxes", "tables", "images", "speaker_notes"],
+      "fallback": "none",
+      "known_limits": ["Phase 1 does not install LibreOffice or render slides to PDF; layout fidelity is validated from the OOXML structure."]
+    },
+    {
+      "format": "image",
+      "extensions": [".png", ".jpg", ".jpeg"],
+      "media_types": ["image/png", "image/jpeg"],
+      "signatures": ["offset:0:89504e470d0a1a0a", "offset:0:ffd8ff"],
+      "parser_id": "image-vlm-v1",
+      "provider": "qwen-vl",
+      "upstream_strategy": "reference_rewrite",
+      "capabilities": ["real_asset", "dimensions", "ocr", "caption", "image_text"],
+      "fallback": "ocr_only_when_configured",
+      "known_limits": ["No caption is fabricated when VLM/OCR is unavailable; visual similarity search remains out of scope."]
+    }
+  ],
+  "explicitly_out_of_scope": [
+    ".doc",
+    ".xls",
+    ".docm",
+    ".xlsm",
+    ".json",
+    ".xml",
+    ".epub",
+    ".mp3",
+    ".mp4"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "schema_version": "knowhere-source-lock-v1",
+  "audited_at": "2026-08-15",
+  "repository": "https://github.com/Ontos-AI/knowhere.git",
+  "branch": "main",
+  "commit": "2e4eb5846249d273b11902ee00f26db949e45b38",
+  "commit_date": "2026-08-14T23:14:13+08:00",
+  "commit_subject": "Merge pull request #287 from Ontos-AI/perf/wangbinqi/worker-concurrency-10",
+  "previous_audited_commit": "8d2bb0d4edda2074f1fad084040b183c8a7522ab",
+  "license": {
+    "spdx": "Apache-2.0",
+    "license_file_sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6",
+    "notice_file_sha256": "b2c977015e2346a143dc69839905d0d30d884c0513e8639575c7d4522b897f03"
+  },
+  "audited_blobs": {
+    "README.md": "a96d66960e74fac1e8f117a8ca8b50af31993d6e",
+    "LICENSE": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64",
+    "NOTICE": "09ae8670c0f84c72ad333ffd7afb95ce7f6bc2f2",
+    "apps/worker/pyproject.toml": "7c4e085d647923af1a5cb228023e3ba260ca86e7",
+    "deploy/docker/Dockerfile.worker": "4439ff68f1390ab6f3c599913dd63dadd4bed741",
+    "apps/worker/app/services/document_parser/orchestration/format_router.py": "156e4de4795b99fdcbe4b05d2f28ea05a91c4134",
+    "apps/worker/app/services/document_parser/orchestration/format_adapters.py": "5a26a45ba1c0a709d3a93ddf0ad27c9817ef78de",
+    "apps/worker/app/services/document_parser/orchestration/office_container_validator.py": "3009603c1e9b888a0bd01cdf6918c5eb16f58fef",
+    "apps/worker/app/services/document_parser/orchestration/parse_output.py": "8e70fd56db3277741aafaa08f04f0f6d6772cad5",
+    "apps/worker/app/services/document_parser/formats/docx/parser.py": "f978ab77dcdec37820be150b356ae3cc97486b00",
+    "apps/worker/app/services/document_parser/formats/excel/structure_parser.py": "e8aa42e933d206b7add6c6cb0a9b3639474e26df",
+    "apps/worker/app/services/document_parser/formats/image/parser.py": "52ff4df6db79832cdcf59d53a8145485716896fb",
+    "apps/worker/app/services/document_parser/formats/markdown/parser.py": "32b5094b1de9a4160aaa4927175ce287a605ccef",
+    "apps/worker/app/services/document_parser/formats/html/document_parser.py": "67454613a35754781338f9ae4f9d51a353092312",
+    "apps/worker/app/services/document_parser/formats/pptx/parser.py": "9bf3a9f9654dcd5044f4e4257ee794f63bd41110",
+    "apps/worker/app/services/document_parser/providers/mineru/client.py": "b86f77531af047c812c6292274bb547614e5cadc",
+    "apps/worker/app/services/page_memory/memory_service.py": "0c09005bab7f5197b285c0f680961c7b60a9c187"
+  },
+  "reuse_status": "audit_only_no_vendored_source",
+  "vendored_files": [],
+  "next_copy_gate": "Update THIRD_PARTY_NOTICES.md, retain the upstream license and notice, and record copied paths plus local modifications before committing upstream-derived source."
+}

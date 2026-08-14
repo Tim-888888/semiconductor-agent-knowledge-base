@@ -1,0 +1,117 @@
+{
+  "catalog_version": "semikb-ingest-errors-v1",
+  "errors": [
+    {
+      "code": "INGEST_UNSUPPORTED_FORMAT",
+      "http_status": 415,
+      "stage": "validating",
+      "retry_policy": "never",
+      "quarantine": false
+    },
+    {
+      "code": "INGEST_FILE_TYPE_MISMATCH",
+      "http_status": 422,
+      "stage": "validating",
+      "retry_policy": "after_source_replacement",
+      "quarantine": false
+    },
+    {
+      "code": "INGEST_INVALID_OFFICE_CONTAINER",
+      "http_status": 422,
+      "stage": "validating",
+      "retry_policy": "after_source_replacement",
+      "quarantine": false
+    },
+    {
+      "code": "INGEST_ZIP_BOMB_SUSPECTED",
+      "http_status": 422,
+      "stage": "validating",
+      "retry_policy": "never",
+      "quarantine": true
+    },
+    {
+      "code": "INGEST_CORRUPT_DOCUMENT",
+      "http_status": 422,
+      "stage": "parsing",
+      "retry_policy": "after_source_replacement",
+      "quarantine": true
+    },
+    {
+      "code": "INGEST_ENCRYPTED_DOCUMENT",
+      "http_status": 422,
+      "stage": "parsing",
+      "retry_policy": "after_source_replacement",
+      "quarantine": true
+    },
+    {
+      "code": "INGEST_TEXT_DECODE_FAILED",
+      "http_status": 422,
+      "stage": "parsing",
+      "retry_policy": "after_source_replacement",
+      "quarantine": true
+    },
+    {
+      "code": "INGEST_DOCUMENT_LIMIT_EXCEEDED",
+      "http_status": 413,
+      "stage": "validating",
+      "retry_policy": "after_policy_change",
+      "quarantine": false
+    },
+    {
+      "code": "INGEST_PARSER_NOT_CONFIGURED",
+      "http_status": 503,
+      "stage": "parsing",
+      "retry_policy": "after_configuration",
+      "quarantine": false
+    },
+    {
+      "code": "INGEST_PARSER_UNAVAILABLE",
+      "http_status": 503,
+      "stage": "parsing",
+      "retry_policy": "automatic_bounded",
+      "quarantine": false
+    },
+    {
+      "code": "INGEST_PARSER_TIMEOUT",
+      "http_status": 504,
+      "stage": "parsing",
+      "retry_policy": "automatic_bounded",
+      "quarantine": false
+    },
+    {
+      "code": "INGEST_PARSE_FAILED",
+      "http_status": 422,
+      "stage": "parsing",
+      "retry_policy": "after_review",
+      "quarantine": true
+    },
+    {
+      "code": "INGEST_EMPTY_PARSE_RESULT",
+      "http_status": 422,
+      "stage": "quality_check",
+      "retry_policy": "after_review",
+      "quarantine": true
+    },
+    {
+      "code": "INGEST_ASSET_EXTRACTION_FAILED",
+      "http_status": 422,
+      "stage": "quality_check",
+      "retry_policy": "after_review",
+      "quarantine": true
+    },
+    {
+      "code": "INGEST_QUALITY_GATE_FAILED",
+      "http_status": 422,
+      "stage": "quality_check",
+      "retry_policy": "after_review",
+      "quarantine": true
+    },
+    {
+      "code": "INGEST_CONTRACT_VIOLATION",
+      "http_status": 500,
+      "stage": "quality_check",
+      "retry_policy": "after_deployment_fix",
+      "quarantine": true
+    }
+  ]
+}
