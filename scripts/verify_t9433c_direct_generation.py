@@ -73,6 +73,17 @@ async def run_probe() -> dict:
             reason_codes=("outside_semikb_capability",),
             alternative_codes=("capability_guidance",),
         ),
+        DirectReplyRequest(
+            kind=DirectReplyKind.FEEDBACK,
+            user_request="回答太复杂了，请简短一点",
+            conversation_context=context,
+        ),
+        DirectReplyRequest(
+            kind=DirectReplyKind.CONTROL_ACK,
+            user_request="别查了",
+            conversation_context=context,
+            control_summary="已记录本次取消范围；会话历史仍会保留。",
+        ),
     ]
     results = []
     for case in cases:
@@ -96,8 +107,8 @@ async def run_probe() -> dict:
     live_stream_count = sum(
         item["audit"]["generation_mode"] == "llm_stream" for item in results
     )
-    if live_stream_count < 4:
-        raise RuntimeError("fewer than four direct reply kinds passed live unit validation")
+    if live_stream_count < 6:
+        raise RuntimeError("fewer than six direct reply kinds passed live unit validation")
     return {
         "verification": "T9-4.3.3c-live-direct-generation",
         "live_stream_count": live_stream_count,

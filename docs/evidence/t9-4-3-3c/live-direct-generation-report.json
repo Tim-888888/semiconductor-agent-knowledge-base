@@ -1,25 +1,25 @@
 {
   "verification": "T9-4.3.3c-live-direct-generation",
-  "live_stream_count": 5,
+  "live_stream_count": 7,
   "cases": [
     {
       "reply_kind": "general_chat",
-      "response": "你好！我是 SEMIKB 半导体 Agent 智库，可以查询有权限的 SOP、Recipe 和历史 Case，读取明确标记的模拟制造数据，并结合证据协助异常排查。我不能修改或下发 Recipe、控制设备、删除数据，也不能替代工程师确认根因或绕过权限与版本治理。",
-      "delta_count": 2,
+      "response": "你好！我是 SEMIKB 半导体 Agent 智库助手，可以：\n- 查询有权限访问的 SOP、Recipe 和历史 Case\n- 只读查询明确标记的模拟制造数据\n- 结合证据协助半导体异常排查\n- 处理当前对话中的历史消息\n\n我不能修改或下发 Recipe、控制设备、删除数据，也不能替代工程师确认根因或绕过权限治理。",
+      "delta_count": 1,
       "audit": {
         "reply_kind": "general_chat",
         "generation_mode": "llm_stream",
         "provider": "closeai",
         "model": "gpt-5.6-luna-2026-07-09",
         "fallback_used": false,
-        "latency_ms": 2293.509,
-        "verified_unit_count": 2,
+        "latency_ms": 7202.57,
+        "verified_unit_count": 1,
         "context_message_count": 2,
         "warning_codes": [],
         "usage": {
-          "completion_tokens": 98,
+          "completion_tokens": 114,
           "prompt_tokens": 373,
-          "total_tokens": 471
+          "total_tokens": 487
         }
       }
     },
@@ -33,7 +33,7 @@
         "provider": "closeai",
         "model": "gpt-5.6-luna-2026-07-09",
         "fallback_used": false,
-        "latency_ms": 5707.762,
+        "latency_ms": 2492.962,
         "verified_unit_count": 1,
         "context_message_count": 1,
         "warning_codes": [],
@@ -54,7 +54,7 @@
         "provider": "closeai",
         "model": "gpt-5.6-luna-2026-07-09",
         "fallback_used": false,
-        "latency_ms": 4590.798,
+        "latency_ms": 4428.47,
         "verified_unit_count": 1,
         "context_message_count": 1,
         "warning_codes": [],
@@ -75,7 +75,7 @@
         "provider": "closeai",
         "model": "gpt-5.6-luna-2026-07-09",
         "fallback_used": false,
-        "latency_ms": 1981.712,
+        "latency_ms": 3126.771,
         "verified_unit_count": 2,
         "context_message_count": 2,
         "warning_codes": [],
@@ -88,7 +88,7 @@
     },
     {
       "reply_kind": "refusal",
-      "response": "SEMIKB 仅支持受控的半导体知识查询、模拟数据只读分析及异常排查，不能代办无关的外部任务。\n\n我可以协助查询有权限的 SOP、Recipe、历史 Case 或分析半导体异常。",
+      "response": "SEMIKB 仅支持受控的半导体知识查询、只读数据分析与异常排查，无法代办无关的外部任务。\n\n我可以协助查询有权限的 SOP、Recipe、历史 Case 或分析明确标记的模拟制造数据。",
       "delta_count": 2,
       "audit": {
         "reply_kind": "refusal",
@@ -96,14 +96,56 @@
         "provider": "closeai",
         "model": "gpt-5.6-luna-2026-07-09",
         "fallback_used": false,
-        "latency_ms": 3889.886,
+        "latency_ms": 2018.291,
         "verified_unit_count": 2,
         "context_message_count": 2,
         "warning_codes": [],
         "usage": {
-          "completion_tokens": 99,
+          "completion_tokens": 101,
           "prompt_tokens": 326,
-          "total_tokens": 425
+          "total_tokens": 427
+        }
+      }
+    },
+    {
+      "reply_kind": "feedback",
+      "response": "好的，我会简短回答。",
+      "delta_count": 1,
+      "audit": {
+        "reply_kind": "feedback",
+        "generation_mode": "llm_stream",
+        "provider": "closeai",
+        "model": "gpt-5.6-luna-2026-07-09",
+        "fallback_used": false,
+        "latency_ms": 1598.643,
+        "verified_unit_count": 1,
+        "context_message_count": 2,
+        "warning_codes": [],
+        "usage": {
+          "completion_tokens": 24,
+          "prompt_tokens": 279,
+          "total_tokens": 303
+        }
+      }
+    },
+    {
+      "reply_kind": "control_ack",
+      "response": "已停止本次查询。",
+      "delta_count": 1,
+      "audit": {
+        "reply_kind": "control_ack",
+        "generation_mode": "llm_stream",
+        "provider": "closeai",
+        "model": "gpt-5.6-luna-2026-07-09",
+        "fallback_used": false,
+        "latency_ms": 1922.639,
+        "verified_unit_count": 1,
+        "context_message_count": 2,
+        "warning_codes": [],
+        "usage": {
+          "completion_tokens": 42,
+          "prompt_tokens": 293,
+          "total_tokens": 335
         }
       }
     }

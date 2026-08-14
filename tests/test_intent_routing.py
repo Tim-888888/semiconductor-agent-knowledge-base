@@ -21,6 +21,7 @@ from semikb.contracts.models import (
     ContextSlot,
     IntentTarget,
     InteractionMode,
+    MessageRenderMode,
     PrimaryIntent,
     TaskExecutionDecision,
 )
@@ -304,16 +305,43 @@ async def test_repeated_history_recall_skips_meta_question_and_returns_business_
 
 @pytest.mark.asyncio
 async def test_feedback_is_not_hijacked_into_retrieval(seeded_services) -> None:
-    _, service, retrieval, toolbox, web = _service(seeded_services)
-    thread = service.create_thread("feedback", ActorScope())
+    store, service, retrieval, toolbox, web = _service(seeded_services)
+    scope = ActorScope()
+    thread = service.create_thread("feedback", scope)
 
-    result = await service.send_message(thread.thread_id, "回答太复杂了")
+    result = await service.send_message(thread.thread_id, "回答太复杂了", scope)
 
     assert result["interaction_mode"] is InteractionMode.FEEDBACK
     assert result["route_decision"] is AgentRoute.CHAT_DIRECT
+    assert result["thread"]["messages"][-1]["presentation"]["mode"] is MessageRenderMode.BUBBLE
     assert retrieval.search_calls == 0
     assert toolbox.query_calls == 0
     assert web.search_calls == 0
+    request_id = result["thread"]["messages"][-1]["request_id"]
+    record = store.get_message_request(thread.thread_id, scope.user_id, request_id)
+    assert record is not None
+    assert record.direct_reply_audit is not None
+    assert record.direct_reply_audit.reply_kind == "feedback"
+
+
+@pytest.mark.asyncio
+async def test_help_is_natural_chat_without_downstream_calls(seeded_services) -> None:
+    store, service, retrieval, toolbox, web = _service(seeded_services)
+    scope = ActorScope()
+    thread = service.create_thread("help", scope)
+
+    result = await service.send_message(thread.thread_id, "/help", scope)
+
+    assert result["route_decision"] is AgentRoute.CHAT_DIRECT
+    assert result["thread"]["messages"][-1]["presentation"]["mode"] is MessageRenderMode.BUBBLE
+    assert retrieval.search_calls == 0
+    assert toolbox.query_calls == 0
+    assert web.search_calls == 0
+    request_id = result["thread"]["messages"][-1]["request_id"]
+    record = store.get_message_request(thread.thread_id, scope.user_id, request_id)
+    assert record is not None
+    assert record.direct_reply_audit is not None
+    assert record.direct_reply_audit.reply_kind == "general_chat"
 
 
 @pytest.mark.asyncio
@@ -416,23 +444,105 @@ async def test_slot_correction_invalidates_dependents_but_keeps_product(seeded_s
     assert updated.active_context.slots["chamber"].valid is False
     assert updated.active_context.slots["recipe_id"].valid is False
     assert updated.active_context.evidence_refs[0].valid is False
+    assert result["thread"]["messages"][-1]["presentation"]["mode"] is MessageRenderMode.BUBBLE
     assert retrieval.search_calls == 0
     assert toolbox.query_calls == 0
     assert web.search_calls == 0
+    request_id = result["thread"]["messages"][-1]["request_id"]
+    record = store.get_message_request(thread.thread_id, scope.user_id, request_id)
+    assert record is not None
+    assert record.direct_reply_audit is not None
+    assert record.direct_reply_audit.reply_kind == "control_ack"
+
+
+@pytest.mark.asyncio
+async def test_chamber_correction_uses_affirmed_value_and_invalidates_dependents(
+    seeded_services,
+) -> None:
+    store, service, retrieval, toolbox, web = _service(seeded_services)
+    scope = ActorScope(tool_ids=["ETCH-03"])
+    thread = service.create_thread("chamber-correction", scope)
+    now = datetime.now(UTC)
+    source = ChatMessage(role="user", content="P-ALPHA ETCH-03 Chamber B", turn_seq=1)
+    thread.messages.append(source)
+    thread.last_turn_seq = 1
+    thread.next_turn_seq = 2
+    thread.active_context = ActiveConversationContext(
+        slots={
+            "product": ContextSlot(value="P-ALPHA", source_message_id=source.message_id),
+            "tool_id": ContextSlot(value="ETCH-03", source_message_id=source.message_id),
+            "chamber": ContextSlot(
+                value="B",
+                source_message_id=source.message_id,
+                depends_on=["tool_id"],
+            ),
+            "recipe_id": ContextSlot(
+                value="ETCH-ALPHA",
+                source_message_id=source.message_id,
+                depends_on=["tool_id", "chamber"],
+            ),
+        },
+        evidence_refs=[
+            ContextEvidenceRef(
+                evidence_id="chunk:chamber-test",
+                source_type="internal_controlled",
+                source_message_id=source.message_id,
+                updated_at=now,
+            )
+        ],
+    )
+    store.save_thread(thread)
+
+    result = await service.send_message(
+        thread.thread_id,
+        "不是 Chamber B，是 Chamber A",
+        scope,
+    )
+    updated = service.get_thread(thread.thread_id, scope)
+
+    assert result["route_decision"] is AgentRoute.CHAT_DIRECT
+    assert result["interaction_mode"] is InteractionMode.CONTROL
+    assert updated is not None
+    assert updated.active_context.slots["product"].valid is True
+    assert updated.active_context.slots["tool_id"].valid is True
+    assert updated.active_context.slots["chamber"].value == "A"
+    assert updated.active_context.slots["chamber"].valid is True
+    assert updated.active_context.slots["recipe_id"].valid is False
+    assert updated.active_context.evidence_refs[0].valid is False
+    assert "chamber=A" in result["response"]
+    assert "chamber=B" not in result["response"]
+    assert result["thread"]["messages"][-1]["presentation"]["mode"] is MessageRenderMode.BUBBLE
+    assert retrieval.search_calls == 0
+    assert toolbox.query_calls == 0
+    assert web.search_calls == 0
+    request_id = result["thread"]["messages"][-1]["request_id"]
+    record = store.get_message_request(thread.thread_id, scope.user_id, request_id)
+    assert record is not None
+    assert record.slot_operations[0].slot_name == "chamber"
+    assert record.slot_operations[0].value == "A"
+    assert record.direct_reply_audit is not None
+    assert record.direct_reply_audit.reply_kind == "control_ack"
 
 
 @pytest.mark.asyncio
 async def test_cancel_current_task_skips_all_downstream(seeded_services) -> None:
-    _, service, retrieval, toolbox, web = _service(seeded_services)
-    thread = service.create_thread("cancel", ActorScope())
+    store, service, retrieval, toolbox, web = _service(seeded_services)
+    scope = ActorScope()
+    thread = service.create_thread("cancel", scope)
 
-    result = await service.send_message(thread.thread_id, "别查了")
+    result = await service.send_message(thread.thread_id, "别查了", scope)
 
     assert result["route_decision"] is AgentRoute.CHAT_DIRECT
     assert result["retrieval_skipped_reason"] == "answer_available_without_external_retrieval"
+    assert result["thread"]["messages"][-1]["presentation"]["mode"] is MessageRenderMode.BUBBLE
     assert retrieval.search_calls == 0
     assert toolbox.query_calls == 0
     assert web.search_calls == 0
+    request_id = result["thread"]["messages"][-1]["request_id"]
+    record = store.get_message_request(thread.thread_id, scope.user_id, request_id)
+    assert record is not None
+    assert record.direct_reply_audit is not None
+    assert record.direct_reply_audit.reply_kind == "control_ack"
 
 
 @pytest.mark.asyncio
@@ -554,6 +664,67 @@ async def test_l0_history_rule_never_calls_llm(utterance: str) -> None:
     assert result.understanding.classifier_source == "l0"
     assert result.understanding.suggested_route is AgentRoute.CHAT_DIRECT
     assert result.metadata["understanding_calls"] == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "utterance",
+    [
+        "不是 Chamber B，是 Chamber A",
+        "不是腔体B，改成腔体A",
+        "不是B腔，换成A腔",
+    ],
+)
+async def test_l0_chamber_correction_uses_affirmed_value_without_llm(utterance: str) -> None:
+    service = ConversationUnderstandingService(
+        Settings(_env_file=None, demo_mode=False),
+        ForbiddenLLM(),
+    )
+    context = {
+        "active_context": {
+            "slots": {
+                "chamber": {
+                    "value": "B",
+                    "valid": True,
+                    "source_message_id": "msg_source",
+                }
+            }
+        }
+    }
+
+    result = await service.understand(utterance, context)
+    understanding = result.understanding
+
+    assert understanding.classifier_source == "l0"
+    assert understanding.interaction_mode is InteractionMode.CONTROL
+    assert understanding.suggested_route is AgentRoute.CHAT_DIRECT
+    assert understanding.explicit_slots == {"chamber": "A"}
+    assert len(understanding.slot_operations) == 1
+    assert understanding.slot_operations[0].operation.value == "correct"
+    assert understanding.slot_operations[0].slot_name == "chamber"
+    assert understanding.slot_operations[0].value == "A"
+    assert result.metadata["understanding_calls"] == 0
+
+
+@pytest.mark.parametrize(
+    "utterance,slot_name,expected",
+    [
+        ("不是 ETCH-03，是 ETCH-04", "tool_id", "ETCH-04"),
+        ("不是 P-ALPHA，改成 P-BETA", "product", "P-BETA"),
+        ("不是 V2.3，换成 V2.4", "recipe_version", "V2.4"),
+        ("不是最近24小时，是最近12小时", "time_range", "最近12小时"),
+        ("不是 LOT-A01，是 LOT-B02", "lot_id", "LOT-B02"),
+        ("不是 CASE-OLD，是 CASE-NEW", "case_id", "CASE-NEW"),
+    ],
+)
+def test_explicit_slot_extraction_prefers_affirmed_correction_value(
+    utterance: str,
+    slot_name: str,
+    expected: str,
+) -> None:
+    slots = ConversationUnderstandingService.extract_explicit_slots(utterance)
+
+    assert slots[slot_name] == expected
 
 
 @pytest.mark.asyncio

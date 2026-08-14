@@ -1,0 +1,150 @@
+{
+  "verification": "T9-4.3.3c-closing-browser-and-mongo-acceptance",
+  "generated_at": "2026-08-14T11:50:56.6486631Z",
+  "public_url": "http://112.74.99.143/",
+  "slot_correction": {
+    "request": "不是 Chamber B，是 Chamber A",
+    "route_decision": "chat_direct",
+    "interaction_mode": "control",
+    "slot_operation": {
+      "operation": "correct",
+      "slot_name": "chamber",
+      "value": "A"
+    },
+    "response": "已确认，当前条件为 Chamber A。",
+    "trace_id": null,
+    "presentation_mode": "bubble",
+    "direct_reply_audit": {
+      "reply_kind": "control_ack",
+      "generation_mode": "llm_stream",
+      "provider": "closeai",
+      "model": "gpt-5.6-luna-2026-07-09",
+      "warning_codes": []
+    }
+  },
+  "route_presentation_matrix": [
+    {
+      "route": "internal_rag",
+      "presentation_mode": "structured_card",
+      "trace_required": true
+    },
+    {
+      "route": "tool_only",
+      "presentation_mode": "structured_card",
+      "trace_required": false,
+      "retrieval_skipped_reason": "manufacturing_data_only_no_vector_retrieval"
+    },
+    {
+      "route": "rag_and_tool",
+      "presentation_mode": "structured_card",
+      "trace_required": true
+    },
+    {
+      "route": "reuse_evidence",
+      "presentation_mode": "structured_card",
+      "trace_required": true,
+      "retrieval_skipped_reason": "validated_previous_evidence_reused",
+      "reused_trace_id": "trace_a81797814cac45629a32c83b2efe31f6"
+    },
+    {
+      "route": "rag_and_web",
+      "presentation_mode": "structured_card",
+      "trace_required": true
+    },
+    {
+      "route": "chat_direct",
+      "presentation_mode": "bubble",
+      "trace_required": false
+    },
+    {
+      "route": "clarify",
+      "presentation_mode": "bubble",
+      "trace_required": false
+    },
+    {
+      "route": "refuse",
+      "presentation_mode": "bubble",
+      "trace_required": false
+    }
+  ],
+  "direct_route_audits": [
+    {
+      "request": "/help",
+      "route": "chat_direct",
+      "reply_kind": "general_chat",
+      "trace_id": null
+    },
+    {
+      "request": "回答太复杂了，请简短一点",
+      "route": "chat_direct",
+      "reply_kind": "feedback",
+      "trace_id": null
+    },
+    {
+      "request": "别查了",
+      "route": "chat_direct",
+      "reply_kind": "control_ack",
+      "trace_id": null
+    },
+    {
+      "request": "我刚才说什么？",
+      "route": "chat_direct",
+      "reply_kind": "history_recall",
+      "trace_id": null
+    },
+    {
+      "request": "把上一段回答说简单一点",
+      "route": "chat_direct",
+      "reply_kind": "history_transform",
+      "trace_id": null
+    },
+    {
+      "request": "帮我调查良率下降",
+      "route": "clarify",
+      "reply_kind": "clarification",
+      "trace_id": null
+    },
+    {
+      "request": "帮我修改 ETCH-03 的 Recipe 参数",
+      "route": "refuse",
+      "reply_kind": "refusal",
+      "trace_id": null
+    },
+    {
+      "request": "帮我写一首关于晚风的诗",
+      "route": "refuse",
+      "reply_kind": "refusal",
+      "trace_id": null
+    }
+  ],
+  "browser": {
+    "refresh_restored_slot_correction": true,
+    "refresh_restored_prior_structured_card": true,
+    "mobile_viewport": {
+      "width": 390,
+      "height": 844,
+      "slot_correction_visible": true,
+      "structured_card_visible": true
+    },
+    "console_errors": []
+  },
+  "runtime": {
+    "application_containers": {
+      "api": "9758ef466af3",
+      "worker": "34a87267a064",
+      "web": "e9c921b133ba"
+    },
+    "unchanged_data_containers": {
+      "mongodb": "e6bd110ad320",
+      "milvus": "2f6827ca640e",
+      "milvus_minio": "6c9133e777d2",
+      "business_minio": "54dab754141e",
+      "etcd": "9deab8ba1805",
+      "redis": "ada0a643b6a6"
+    },
+    "api_health": "ok",
+    "worker_ping": "pong",
+    "application_source_mount_count": 0,
+    "recent_error_log_matches": 0
+  }
+}

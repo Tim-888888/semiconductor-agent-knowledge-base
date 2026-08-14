@@ -232,6 +232,95 @@ async def test_partial_stream_failure_appends_safe_closure_and_persists_same_tex
 
 
 @pytest.mark.asyncio
+async def test_feedback_streams_validated_natural_reply_and_records_reply_kind() -> None:
+    result = await _generate(
+        FakeStreamLLM(
+            '{"type":"text","text":"收到，我会先给结论，再保留必要依据。"}\n'
+            '{"type":"done"}',
+            chunk_size=2,
+        ),
+        DirectReplyRequest(
+            kind=DirectReplyKind.FEEDBACK,
+            user_request="回答太复杂了，请简短一点",
+            conversation_context=_context(),
+        ),
+    )
+
+    assert result.text == "收到，我会先给结论，再保留必要依据。"
+    assert result.audit.reply_kind == "feedback"
+    assert result.audit.generation_mode == "llm_stream"
+    assert result.audit.verified_unit_count == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "control_summary,natural_reply",
+    [
+        (
+            "已记录本次取消范围；会话历史仍会保留。",
+            "好的，本次查询已取消，会话历史会继续保留。",
+        ),
+        (
+            "已更新当前会话条件：tool_id=ETCH-04。依赖旧条件的上下文将失效。",
+            "收到，当前机台已改为 ETCH-04，依赖旧机台的上下文不再沿用。",
+        ),
+    ],
+)
+async def test_control_ack_streams_only_server_owned_state(
+    control_summary: str,
+    natural_reply: str,
+) -> None:
+    content = (
+        json.dumps(
+            {
+                "type": "ack",
+                "control_code": control_summary,
+                "text": natural_reply,
+            },
+            ensure_ascii=False,
+        )
+        + '\n{"type":"done"}'
+    )
+    result = await _generate(
+        FakeStreamLLM(content, chunk_size=3),
+        DirectReplyRequest(
+            kind=DirectReplyKind.CONTROL_ACK,
+            user_request="更新当前会话状态",
+            conversation_context=_context(),
+            control_summary=control_summary,
+        ),
+    )
+
+    assert result.text == natural_reply
+    assert result.audit.reply_kind == "control_ack"
+    assert result.audit.generation_mode == "llm_stream"
+    assert result.audit.verified_unit_count == 1
+
+
+@pytest.mark.asyncio
+async def test_control_ack_rejects_changed_state_and_uses_exact_server_fallback() -> None:
+    server_state = "已记录本次取消范围；会话历史仍会保留。"
+    result = await _generate(
+        FakeStreamLLM(
+            '{"type":"ack","control_code":"已删除全部会话",'
+            '"text":"全部历史已经删除。"}\n{"type":"done"}',
+        ),
+        DirectReplyRequest(
+            kind=DirectReplyKind.CONTROL_ACK,
+            user_request="别查了",
+            conversation_context=_context(),
+            control_summary=server_state,
+        ),
+    )
+
+    assert result.text == server_state
+    assert "删除" not in result.text
+    assert result.audit.reply_kind == "control_ack"
+    assert result.audit.generation_mode == "deterministic_fallback"
+    assert result.audit.warning_codes == ["direct_reply_unit_validation_failed"]
+
+
+@pytest.mark.asyncio
 async def test_prompt_injection_stays_untrusted_data_and_context_is_bounded() -> None:
     context = {
         "summary": "S" * 3000,

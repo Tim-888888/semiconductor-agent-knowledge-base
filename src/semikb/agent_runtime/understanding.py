@@ -60,9 +60,69 @@ TIME_PATTERN = re.compile(
     r"\d{4}[-/]\d{1,2}[-/]\d{1,2}(?:\s*(?:至|到|~)\s*\d{4}[-/]\d{1,2}[-/]\d{1,2})?",
     re.IGNORECASE,
 )
-CORRECTION_PATTERN = re.compile(
-    r"不是\s*([A-Z]+-\d+[A-Z]?)\s*[，,、]?\s*(?:是|改成|换成)\s*([A-Z]+-\d+[A-Z]?)",
-    re.IGNORECASE,
+CORRECTION_SEPARATOR = r"\s*[，,、]?\s*(?:是|改成|换成)\s*"
+SLOT_CORRECTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    (
+        "tool_id",
+        re.compile(
+            rf"不是\s*([A-Z]+-\d+[A-Z]?){CORRECTION_SEPARATOR}([A-Z]+-\d+[A-Z]?)",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "chamber",
+        re.compile(
+            rf"不是\s*(?:CHAMBER|腔体)\s*[-:]?\s*([A-Z0-9]+)"
+            rf"{CORRECTION_SEPARATOR}(?:CHAMBER|腔体)\s*[-:]?\s*([A-Z0-9]+)",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "chamber",
+        re.compile(
+            rf"不是\s*([A-Z0-9]+)\s*腔{CORRECTION_SEPARATOR}([A-Z0-9]+)\s*腔",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "product",
+        re.compile(
+            rf"不是\s*(P-[A-Z0-9][A-Z0-9-]*)"
+            rf"{CORRECTION_SEPARATOR}(P-[A-Z0-9][A-Z0-9-]*)",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "recipe_version",
+        re.compile(
+            rf"不是\s*(V\d+(?:\.\d+)+){CORRECTION_SEPARATOR}(V\d+(?:\.\d+)+)",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "time_range",
+        re.compile(
+            rf"不是\s*((?:最近|过去)?\s*\d+\s*(?:小时|天|周))"
+            rf"{CORRECTION_SEPARATOR}((?:最近|过去)?\s*\d+\s*(?:小时|天|周))",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "lot_id",
+        re.compile(
+            rf"不是\s*(LOT[-_ ]?[A-Z0-9-]+)"
+            rf"{CORRECTION_SEPARATOR}(LOT[-_ ]?[A-Z0-9-]+)",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "case_id",
+        re.compile(
+            rf"不是\s*(CASE[-_ ][A-Z0-9-]+)"
+            rf"{CORRECTION_SEPARATOR}(CASE[-_ ][A-Z0-9-]+)",
+            re.IGNORECASE,
+        ),
+    ),
 )
 HISTORY_RECALL_PATTERN = re.compile(
     r"^\s*(?:请)?(?:告诉我|帮我回忆一下|复述一下)?\s*(?:我)?"
@@ -185,6 +245,13 @@ class _RawUnderstanding(BaseModel):
 class UnderstandingResult:
     understanding: ConversationUnderstanding
     metadata: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class ParsedSlotCorrection:
+    slot_name: str
+    old_value: str
+    new_value: str
 
 
 class ConversationUnderstandingService:
@@ -829,15 +896,13 @@ class ConversationUnderstandingService:
                 AgentRoute.CHAT_DIRECT,
             )
             return value.model_copy(update={"cancel_scope": scope})
-        correction = CORRECTION_PATTERN.search(content)
+        correction = self._extract_slot_correction(content)
         if correction:
-            old, new = correction.groups()
-            slot_name = "tool_id"
-            explicit = {slot_name: new.upper()}
+            explicit = {correction.slot_name: correction.new_value}
             operation = SlotOperation(
                 operation=SlotOperationKind.CORRECT,
-                slot_name=slot_name,
-                value=new.upper(),
+                slot_name=correction.slot_name,
+                value=correction.new_value,
             )
             value = self._direct_understanding(
                 InteractionMode.CONTROL,
@@ -850,7 +915,10 @@ class ConversationUnderstandingService:
                 update={
                     "explicit_slots": explicit,
                     "slot_operations": [operation],
-                    "standalone_query": f"correct {old.upper()} to {new.upper()}",
+                    "standalone_query": (
+                        f"correct {correction.slot_name} "
+                        f"from {correction.old_value} to {correction.new_value}"
+                    ),
                 }
             )
         if (
@@ -1056,20 +1124,51 @@ class ConversationUnderstandingService:
             confidence=0.99,
         )
 
-    @staticmethod
-    def extract_explicit_slots(request: str) -> dict[str, str]:
+    @classmethod
+    def extract_explicit_slots(cls, request: str) -> dict[str, str]:
         slots: dict[str, str] = {}
+        correction = cls._extract_slot_correction(request)
+        if correction is not None:
+            slots[correction.slot_name] = correction.new_value
         for name, pattern in ENTITY_PATTERNS.items():
             match = pattern.search(request)
-            if match:
+            if match and name not in slots:
                 slots[name] = match.group(0).replace(" ", "-").upper()
         chamber = CHAMBER_PATTERN.search(request)
-        if chamber:
+        if chamber and "chamber" not in slots:
             slots["chamber"] = chamber.group(1).upper()
         time_range = TIME_PATTERN.search(request)
-        if time_range:
+        if time_range and "time_range" not in slots:
             slots["time_range"] = time_range.group(0).strip()
         return slots
+
+    @classmethod
+    def _extract_slot_correction(cls, request: str) -> ParsedSlotCorrection | None:
+        for slot_name, pattern in SLOT_CORRECTION_PATTERNS:
+            match = pattern.search(request)
+            if match is None:
+                continue
+            old_value = cls._normalize_correction_value(slot_name, match.group(1))
+            new_value = cls._normalize_correction_value(slot_name, match.group(2))
+            if old_value and new_value and old_value.casefold() != new_value.casefold():
+                return ParsedSlotCorrection(slot_name, old_value, new_value)
+        return None
+
+    @staticmethod
+    def _normalize_correction_value(slot_name: str, value: str) -> str:
+        normalized = value.strip()
+        if slot_name == "time_range":
+            return re.sub(r"\s+", "", normalized)
+        if slot_name in {
+            "product",
+            "tool_id",
+            "chamber",
+            "recipe_version",
+            "lot_id",
+            "case_id",
+        }:
+            return normalized.replace(" ", "-").upper()
+        return normalized
 
     @staticmethod
     def _infer_tasks(request: str, primary: PrimaryIntent) -> list[IntentTaskItem]:
@@ -1327,16 +1426,22 @@ class ConversationUnderstandingService:
         normalized_request = re.sub(r"\s+", "", request).lower()
         return bool(normalized_value and normalized_value in normalized_request)
 
-    @staticmethod
-    def _slot_value_is_grounded(slot_name: str, value: str, request: str) -> bool:
+    @classmethod
+    def _slot_value_is_grounded(cls, slot_name: str, value: str, request: str) -> bool:
+        correction = cls._extract_slot_correction(request)
+        if correction is not None and correction.slot_name == slot_name:
+            candidate = cls._normalize_correction_value(slot_name, value)
+            return candidate.casefold() == correction.new_value.casefold()
         if not ConversationUnderstandingService._value_is_grounded(value, request):
             return False
         candidate = value.strip()
         if slot_name in ENTITY_PATTERNS:
             return ENTITY_PATTERNS[slot_name].fullmatch(candidate) is not None
         if slot_name == "chamber":
-            match = CHAMBER_PATTERN.search(request)
-            return match is not None and match.group(1).casefold() == candidate.casefold()
+            return any(
+                match.group(1).casefold() == candidate.casefold()
+                for match in CHAMBER_PATTERN.finditer(request)
+            )
         if slot_name == "time_range":
             return any(
                 match.group(0).strip().casefold() == candidate.casefold()
