@@ -1,0 +1,161 @@
+{
+  "verification": "T9-4.3.3d-controlled-task-combinations",
+  "actor_user_id": "t9433d_acceptance_20260814131154571598",
+  "cases": [
+    {
+      "case_id": "partial_success",
+      "interaction_mode": "mixed",
+      "route_decision": "tool_only",
+      "task_results": [
+        {
+          "task_id": "task_1",
+          "status": "completed",
+          "route": "tool_only",
+          "reason_code": "route_contract_satisfied",
+          "message": "查询 FDC 数据已完成，并通过 tool_only 路由校验。",
+          "evidence_ids": [],
+          "tool_fact_ids": [
+            "tool:get_fdc_alarms",
+            "tool:get_recipe_change_history"
+          ],
+          "external_evidence_ids": [],
+          "validation_warnings": []
+        },
+        {
+          "task_id": "task_2",
+          "status": "refused",
+          "route": "refuse",
+          "reason_code": "controlled_write_not_allowed",
+          "message": "Recipe 修改未执行：智库只提供受控只读分析，不能修改 Recipe。",
+          "evidence_ids": [],
+          "tool_fact_ids": [],
+          "external_evidence_ids": [],
+          "validation_warnings": []
+        },
+        {
+          "task_id": "task_3",
+          "status": "deferred",
+          "route": null,
+          "reason_code": "report_generation_not_enabled",
+          "message": "生成报告已延后，本轮没有静默执行该任务。",
+          "evidence_ids": [],
+          "tool_fact_ids": [],
+          "external_evidence_ids": [],
+          "validation_warnings": []
+        }
+      ],
+      "trace_present": false,
+      "tool_fact_count": 2,
+      "internal_evidence_count": 0,
+      "external_evidence_count": 0,
+      "persistence_verified": true,
+      "persisted_task_result_count": 3,
+      "assistant_presentation_mode": "structured_card"
+    },
+    {
+      "case_id": "rag_and_tool",
+      "interaction_mode": "mixed",
+      "route_decision": "rag_and_tool",
+      "task_results": [
+        {
+          "task_id": "task_1",
+          "status": "completed",
+          "route": "rag_and_tool",
+          "reason_code": "route_contract_satisfied",
+          "message": "查询 FDC 数据已完成，并通过 rag_and_tool 路由校验。",
+          "evidence_ids": [
+            "chunk:SOP-ETCH-03-R2-003",
+            "chunk:SOP-ETCH-03-R2-002",
+            "chunk:CASE-FA-2026-004-R1-002"
+          ],
+          "tool_fact_ids": [
+            "tool:get_fdc_alarms"
+          ],
+          "external_evidence_ids": [],
+          "validation_warnings": []
+        },
+        {
+          "task_id": "task_2",
+          "status": "completed",
+          "route": "rag_and_tool",
+          "reason_code": "route_contract_satisfied",
+          "message": "分析报警信息已完成，并通过 rag_and_tool 路由校验。",
+          "evidence_ids": [
+            "chunk:SOP-ETCH-03-R2-003",
+            "chunk:SOP-ETCH-03-R2-002",
+            "chunk:CASE-FA-2026-004-R1-002"
+          ],
+          "tool_fact_ids": [
+            "tool:get_fdc_alarms"
+          ],
+          "external_evidence_ids": [],
+          "validation_warnings": []
+        },
+        {
+          "task_id": "task_3",
+          "status": "completed",
+          "route": "rag_and_tool",
+          "reason_code": "route_contract_satisfied",
+          "message": "查询 SOP 已完成，并通过 rag_and_tool 路由校验。",
+          "evidence_ids": [
+            "chunk:SOP-ETCH-03-R2-003",
+            "chunk:SOP-ETCH-03-R2-002",
+            "chunk:CASE-FA-2026-004-R1-002"
+          ],
+          "tool_fact_ids": [
+            "tool:get_fdc_alarms"
+          ],
+          "external_evidence_ids": [],
+          "validation_warnings": []
+        }
+      ],
+      "trace_present": true,
+      "tool_fact_count": 1,
+      "internal_evidence_count": 5,
+      "external_evidence_count": 0,
+      "persistence_verified": true,
+      "persisted_task_result_count": 3,
+      "assistant_presentation_mode": "structured_card"
+    },
+    {
+      "case_id": "history_and_rag",
+      "interaction_mode": "mixed",
+      "route_decision": "internal_rag",
+      "task_results": [
+        {
+          "task_id": "task_1",
+          "status": "completed",
+          "route": "chat_direct",
+          "reason_code": "route_contract_satisfied",
+          "message": "回顾上一条用户问题已完成，并通过 chat_direct 路由校验。",
+          "evidence_ids": [],
+          "tool_fact_ids": [],
+          "external_evidence_ids": [],
+          "validation_warnings": []
+        },
+        {
+          "task_id": "task_2",
+          "status": "completed",
+          "route": "internal_rag",
+          "reason_code": "route_contract_satisfied",
+          "message": "查询 SOP 已完成，并通过 internal_rag 路由校验。",
+          "evidence_ids": [
+            "chunk:CASE-FA-2026-004-R1-001",
+            "chunk:SPC-ETCH-PRESSURE-R1-002",
+            "chunk:SOP-ETCH-03-R2-001"
+          ],
+          "tool_fact_ids": [],
+          "external_evidence_ids": [],
+          "validation_warnings": []
+        }
+      ],
+      "trace_present": true,
+      "tool_fact_count": 0,
+      "internal_evidence_count": 5,
+      "external_evidence_count": 0,
+      "persistence_verified": true,
+      "persisted_task_result_count": 2,
+      "assistant_presentation_mode": "structured_card"
+    }
+  ]
+}

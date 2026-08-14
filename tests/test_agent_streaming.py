@@ -90,6 +90,8 @@ def test_stream_api_emits_ordered_events_and_persists_before_completed() -> None
 
     validate_stream_event_sequence(events)
     assert events[0].event is AgentStreamEventType.ACCEPTED
+    task_events = [event for event in events if event.event is AgentStreamEventType.TASK_STATUS]
+    assert [event.data.status for event in task_events] == ["queued", "running", "completed"]
     assert any(event.event is AgentStreamEventType.EVIDENCE for event in events)
     assert any(event.event is AgentStreamEventType.ANSWER_DELTA for event in events)
     completed = events[-1]
@@ -99,6 +101,7 @@ def test_stream_api_emits_ordered_events_and_persists_before_completed() -> None
     assert persisted["messages"][-1]["request_id"] == "req_stream_api_001"
     assert persisted["messages"][-1]["presentation"]["mode"] == "structured_card"
     assert persisted["messages"][-1]["presentation"]["route_decision"] == "internal_rag"
+    assert persisted["messages"][-1]["presentation"]["task_results"][0]["status"] == "completed"
 
     _stream_events(
         client,
@@ -111,6 +114,42 @@ def test_stream_api_emits_ordered_events_and_persists_before_completed() -> None
     assert refreshed["messages"][-1]["presentation"]["mode"] == "bubble"
     assert refreshed["messages"][-1]["presentation"]["route_decision"] == "chat_direct"
     assert refreshed["messages"][-3]["presentation"]["mode"] == "structured_card"
+
+
+def test_mixed_task_stream_reports_every_terminal_task_state() -> None:
+    client, headers = _authenticated_client()
+    thread_id = client.post(
+        "/api/v1/threads",
+        json={"title": "mixed task stream"},
+        headers=headers,
+    ).json()["thread_id"]
+
+    events = _stream_events(
+        client,
+        headers,
+        thread_id,
+        "req_stream_mixed_001",
+        "查 P-ALPHA ETCH-03 最近24小时 FDC 报警、修改 Recipe、生成报告",
+    )
+
+    task_events = [event for event in events if event.event is AgentStreamEventType.TASK_STATUS]
+    terminal = {
+        event.data.task_id: event.data.status
+        for event in task_events
+        if event.data.status in {"completed", "clarify", "refused", "deferred", "failed"}
+    }
+    completed = events[-1].data.result
+
+    assert terminal == {
+        "task_1": "completed",
+        "task_2": "refused",
+        "task_3": "deferred",
+    }
+    assert [item.status for item in completed.task_results] == [
+        "completed",
+        "refused",
+        "deferred",
+    ]
 
 
 def test_stream_api_validates_authentication_and_thread_before_sse_headers() -> None:

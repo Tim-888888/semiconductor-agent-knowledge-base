@@ -56,12 +56,12 @@ class RoutePolicy:
                 reason = "controlled_write_not_allowed"
             elif task.target_type is IntentTarget.REPORT and task.action is IntentTaskAction.GENERATE:
                 decision = TaskExecutionDecision.DEFER
-                reason = "report_execution_deferred_to_t9433"
+                reason = "report_generation_not_enabled"
             elif scope_error:
                 decision = TaskExecutionDecision.REFUSE
                 reason = scope_error
             elif decision is TaskExecutionDecision.DEFER:
-                reason = "execution_deferred_to_t9433"
+                reason = "task_deferred_by_policy"
             elif decision is TaskExecutionDecision.REFUSE:
                 reason = (
                     "outside_semikb_capability"
@@ -80,6 +80,10 @@ class RoutePolicy:
                     reason_code=reason,
                 )
             )
+
+        task_decisions, candidate_routes = self._enforce_predefined_combination(
+            task_decisions
+        )
 
         executable = [item for item in task_decisions if item.decision is TaskExecutionDecision.EXECUTE]
         if not executable and any(
@@ -246,6 +250,72 @@ class RoutePolicy:
             if item is not AgentRoute.CHAT_DIRECT
         ]
         return non_direct[0] if non_direct else routes[0]
+
+    @staticmethod
+    def _enforce_predefined_combination(
+        decisions: list[RouteTaskDecision],
+    ) -> tuple[list[RouteTaskDecision], list[AgentRoute]]:
+        """Defer incompatible tasks instead of inventing a free-form execution graph."""
+
+        executable = [
+            item
+            for item in decisions
+            if item.decision is TaskExecutionDecision.EXECUTE and item.route is not None
+        ]
+        non_direct = [
+            item for item in executable if item.route is not AgentRoute.CHAT_DIRECT
+        ]
+        routes = {item.route for item in non_direct}
+        allowed = (
+            len(routes) <= 1
+            or routes.issubset(
+                {
+                    AgentRoute.INTERNAL_RAG,
+                    AgentRoute.TOOL_ONLY,
+                    AgentRoute.RAG_AND_TOOL,
+                }
+            )
+            or routes.issubset({AgentRoute.INTERNAL_RAG, AgentRoute.RAG_AND_WEB})
+        )
+        if allowed:
+            return decisions, [item.route for item in executable if item.route is not None]
+
+        primary = non_direct[0].route if non_direct else AgentRoute.CHAT_DIRECT
+        adjusted: list[RouteTaskDecision] = []
+        for item in decisions:
+            compatible = (
+                item.route in {None, AgentRoute.CHAT_DIRECT, primary}
+                or primary in {
+                    AgentRoute.INTERNAL_RAG,
+                    AgentRoute.TOOL_ONLY,
+                    AgentRoute.RAG_AND_TOOL,
+                }
+                and item.route
+                in {
+                    AgentRoute.INTERNAL_RAG,
+                    AgentRoute.TOOL_ONLY,
+                    AgentRoute.RAG_AND_TOOL,
+                }
+                or primary in {AgentRoute.INTERNAL_RAG, AgentRoute.RAG_AND_WEB}
+                and item.route in {AgentRoute.INTERNAL_RAG, AgentRoute.RAG_AND_WEB}
+            )
+            if item.decision is TaskExecutionDecision.EXECUTE and not compatible:
+                adjusted.append(
+                    item.model_copy(
+                        update={
+                            "decision": TaskExecutionDecision.DEFER,
+                            "route": None,
+                            "reason_code": "unsupported_route_combination_deferred",
+                        }
+                    )
+                )
+            else:
+                adjusted.append(item)
+        return adjusted, [
+            item.route
+            for item in adjusted
+            if item.decision is TaskExecutionDecision.EXECUTE and item.route is not None
+        ]
 
     @staticmethod
     def _required_missing(

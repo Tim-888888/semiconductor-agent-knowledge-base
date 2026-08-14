@@ -233,6 +233,7 @@ class MongoConversationRepository:
                     "route_confidence": None,
                     "task_items": [],
                     "task_decisions": [],
+                    "task_results": [],
                     "context_message_ids": [],
                     "standalone_query": "",
                     "retrieval_skipped_reason": None,
@@ -495,6 +496,9 @@ class MongoConversationRepository:
                     "task_items": [item.model_dump(mode="python") for item in record.task_items],
                     "task_decisions": [
                         item.model_dump(mode="python") for item in record.task_decisions
+                    ],
+                    "task_results": [
+                        item.model_dump(mode="python") for item in record.task_results
                     ],
                     "context_message_ids": record.context_message_ids,
                     "standalone_query": record.standalone_query,

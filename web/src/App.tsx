@@ -234,7 +234,8 @@ function App() {
       internalEvidenceCount: 0,
       externalEvidenceCount: 0,
       elapsedMs: 0,
-      retryable: false
+      retryable: false,
+      tasks: []
     });
     if (optimistic) {
       setThread({
@@ -271,6 +272,19 @@ function App() {
                 ...current,
                 internalEvidenceCount: streamEvent.data.internal_count ?? 0,
                 externalEvidenceCount: streamEvent.data.external_count ?? 0
+              };
+            }
+            if (streamEvent.event === "task_status" && streamEvent.data.task_id && streamEvent.data.status) {
+              const task = {
+                taskId: streamEvent.data.task_id,
+                status: streamEvent.data.status,
+                route: streamEvent.data.route,
+                message: streamEvent.data.message ?? "任务状态已更新"
+              };
+              return {
+                ...current,
+                tasks: [...current.tasks.filter((item) => item.taskId !== task.taskId), task]
+                  .sort((left, right) => left.taskId.localeCompare(right.taskId))
               };
             }
             if (streamEvent.event === "answer_delta") {

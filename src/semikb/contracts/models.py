@@ -264,6 +264,7 @@ class MessagePresentation(BaseModel):
     answer: AgentAnswer | None = None
     trace_id: str | None = None
     verification_warnings: list[str] = Field(default_factory=list)
+    task_results: list[TaskExecutionResult] = Field(default_factory=list, max_length=3)
 
 
 class ChatMessage(BaseModel):
@@ -385,6 +386,14 @@ class TaskExecutionDecision(StrEnum):
     DEFER = "defer"
 
 
+class TaskExecutionStatus(StrEnum):
+    COMPLETED = "completed"
+    CLARIFY = "clarify"
+    REFUSED = "refused"
+    DEFERRED = "deferred"
+    FAILED = "failed"
+
+
 class SlotOperationKind(StrEnum):
     SET = "set"
     INHERIT = "inherit"
@@ -468,6 +477,20 @@ class RouteTaskDecision(BaseModel):
     reason_code: str
 
 
+class TaskExecutionResult(BaseModel):
+    """Terminal, user-safe result for one planned task item."""
+
+    task_id: str = Field(pattern=r"^task_[1-3]$")
+    status: TaskExecutionStatus
+    route: AgentRoute | None = None
+    reason_code: str = Field(min_length=1, max_length=128)
+    message: str = Field(min_length=1, max_length=500)
+    evidence_ids: list[str] = Field(default_factory=list, max_length=64)
+    tool_fact_ids: list[str] = Field(default_factory=list, max_length=32)
+    external_evidence_ids: list[str] = Field(default_factory=list, max_length=32)
+    validation_warnings: list[str] = Field(default_factory=list, max_length=16)
+
+
 class RoutePlan(BaseModel):
     """Deterministic policy output persisted for audit and later controlled execution."""
 
@@ -545,6 +568,7 @@ class SendMessageResponse(BaseModel):
     route_confidence: float | None = Field(default=None, ge=0, le=1)
     task_items: list[IntentTaskItem] = Field(default_factory=list, max_length=3)
     task_decisions: list[RouteTaskDecision] = Field(default_factory=list, max_length=3)
+    task_results: list[TaskExecutionResult] = Field(default_factory=list, max_length=3)
     retrieval_skipped_reason: str | None = None
 
 

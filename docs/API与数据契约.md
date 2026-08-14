@@ -134,12 +134,17 @@ T9-4.3.3a 已实现：Prompt 固定加载指定 `catalog_version` 中全部 `sta
 
 `SendMessageResponse` 和 SSE `completed.data.result` 已以可选、向后兼容字段返回
 `interaction_mode`、`route_decision`、`route_confidence`、`task_items`、`task_decisions` 和
-`retrieval_skipped_reason`。`agent_message_requests` 保存同一组路由审计信息，以及上下文消息 ID、
+`retrieval_skipped_reason`。T9-4.3.3d 继续增加可选 `task_results`，逐项保存 `task_id`、终态
+`completed/clarify/refused/deferred/failed`、实际路由、稳定原因码、用户可见状态文案和按路由隔离的
+内部证据、工具事实、外部证据 ID。`task_decisions` 是执行前策略决定，`task_results` 是执行后终态，
+两者不得混用。`agent_message_requests` 保存同一组路由审计信息，以及上下文消息 ID、
 独立查询、槽位操作、继承值、失效引用、取消范围、有限情绪枚举和脱敏理解审计。T9-4.3.3c 新增可选
 `direct_reply_audit`，仅保存 `reply_kind`、Provider/模型、生成模式、时延、验证单元数、上下文消息数、
 告警码和 Token 用量；不保存 Prompt、完整意图卡、原始历史正文或密钥。MongoDB 终态更新和失败重试
 都会显式写入或清空该字段，避免旧尝试的审计信息污染新尝试。`stage` 只报告实际执行的上下文、
-检索或工具步骤，不输出隐藏推理。前端用户可见路由标签和逐任务最终结果属于尚未开发的 T9-4.3.3d。详细规则见
+检索或工具步骤，不输出隐藏推理。SSE 新增 `task_status`，只发送 `queued/running` 和上述终态；
+`completed.data.result.task_results`、请求台账及助手消息 `presentation.task_results` 必须一致。前端按消息
+展示服务端决定的最终路由和逐任务状态，不从文案猜测路由。详细规则见
 `docs/T9-4.3通用会话记忆与按需路由设计.md`。
 
 ## 长期记忆

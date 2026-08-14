@@ -14,7 +14,7 @@ import {
   SearchCheck,
   Square
 } from "lucide-react";
-import type { AgentResponse, AssetAccess, EvidenceLedgerEntry, MessagePresentation, StreamUiState, Thread } from "../types";
+import type { AgentResponse, AssetAccess, EvidenceLedgerEntry, MessagePresentation, StreamUiState, TaskExecutionResult, Thread } from "../types";
 import { StatusPill } from "./Common";
 
 type Props = {
@@ -102,7 +102,12 @@ export function Workbench({
         {thread?.messages.length ? thread.messages.map((message) => <article className={`message ${message.role}`} key={message.message_id}>
           <div className="message-avatar">{message.role === "assistant" ? <Bot size={17} /> : "E"}</div>
           <div className="message-body">
-            <div className="message-role">{message.role === "assistant" ? "SEMIKB" : "ENGINEER"}</div>
+            <div className="message-meta">
+              <div className="message-role">{message.role === "assistant" ? "SEMIKB" : "ENGINEER"}</div>
+              {message.role === "assistant" && message.presentation?.route_decision && <span className="route-badge">
+                {routeLabel(message.presentation.route_decision)}
+              </span>}
+            </div>
             <p>{message.content}</p>
             {(message.citations ?? []).length > 0 && <div className="citation-row">
               {message.citations.map((citation, index) => <button
@@ -116,6 +121,7 @@ export function Workbench({
                 {citation.page_or_section ? ` · ${citation.page_or_section}` : ""}
               </button>)}
             </div>}
+            {message.role === "assistant" && (message.presentation?.task_results ?? []).length > 0 && <TaskResults results={message.presentation!.task_results} />}
             {message.role === "assistant"
               && message.presentation?.mode === "structured_card"
               && message.presentation.answer
@@ -204,12 +210,34 @@ function StreamMessage({
       {(stream.internalEvidenceCount > 0 || stream.externalEvidenceCount > 0) && <div className="stream-evidence-count" data-testid="stream-evidence-count">
         受控证据 {stream.internalEvidenceCount} · 外部证据 {stream.externalEvidenceCount}
       </div>}
+      {stream.tasks.length > 0 && <div className="stream-task-list" data-testid="stream-task-list">
+        {stream.tasks.map((task) => <div className="stream-task" key={task.taskId}>
+          <StatusPill value={task.status} />
+          <span>{task.taskId.replace("task_", "任务 ")}</span>
+          {task.route && <small>{routeLabel(task.route)}</small>}
+          <p>{task.message}</p>
+        </div>)}
+      </div>}
       <p className={`stream-answer ${stream.partialAnswer ? "has-content" : ""}`} data-testid="streaming-answer">
         {stream.partialAnswer || (running ? stageLabel(stream.stage) : "本次未保存不完整回答。")}
       </p>
       {stream.elapsedMs >= 1000 && <small className="stream-elapsed">已等待 {Math.floor(stream.elapsedMs / 1000)} 秒</small>}
     </div>
   </article>;
+}
+
+function TaskResults({ results }: { results: TaskExecutionResult[] }) {
+  return <section className="task-results" data-testid="task-results" aria-label="逐任务执行结果">
+    <div className="task-results-heading"><ListChecks size={15} /><strong>任务执行结果</strong></div>
+    {results.map((result) => <div className="task-result" key={result.task_id}>
+      <div>
+        <span>{result.task_id.replace("task_", "任务 ")}</span>
+        {result.route && <small>{routeLabel(result.route)}</small>}
+      </div>
+      <StatusPill value={result.status} />
+      <p>{result.message}</p>
+    </div>)}
+  </section>;
 }
 
 function stageLabel(stage?: StreamUiState["stage"]): string {
@@ -263,4 +291,18 @@ function EvidenceDetail({ evidence }: { evidence: EvidenceLedgerEntry }) {
 
 function sourceLabel(value: string): string {
   return ({ internal_chunk: "受控文档", tool: "只读工具", external: "外部资料" } as Record<string, string>)[value] ?? value;
+}
+
+function routeLabel(value: string): string {
+  return ({
+    history_direct: "历史兼容",
+    chat_direct: "直接对话",
+    reuse_evidence: "复用已验证证据",
+    internal_rag: "内部知识检索",
+    tool_only: "只读制造数据",
+    rag_and_tool: "知识 + 制造数据",
+    rag_and_web: "知识 + 受控 Web",
+    clarify: "澄清",
+    refuse: "拒绝"
+  } as Record<string, string>)[value] ?? value;
 }

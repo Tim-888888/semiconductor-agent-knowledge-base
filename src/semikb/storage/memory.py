@@ -428,6 +428,7 @@ class DemoStore:
             existing.route_confidence = None
             existing.task_items = []
             existing.task_decisions = []
+            existing.task_results = []
             existing.context_message_ids = []
             existing.standalone_query = ""
             existing.retrieval_skipped_reason = None
@@ -573,6 +574,7 @@ class DemoStore:
             current.route_confidence = record.route_confidence
             current.task_items = list(record.task_items)
             current.task_decisions = list(record.task_decisions)
+            current.task_results = list(record.task_results)
             current.context_message_ids = list(record.context_message_ids)
             current.standalone_query = record.standalone_query
             current.retrieval_skipped_reason = record.retrieval_skipped_reason

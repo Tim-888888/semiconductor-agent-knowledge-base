@@ -21,6 +21,10 @@ from semikb.agent_runtime.llm_gateway import OpenAICompatibleLLMGateway
 from semikb.agent_runtime.memory import MemoryService
 from semikb.agent_runtime.routing import RoutePolicy
 from semikb.agent_runtime.streaming_answer import StreamingAnswerAssembler, format_answer
+from semikb.agent_runtime.task_execution import (
+    TaskExecutionCoordinator,
+    route_generation_contract,
+)
 from semikb.agent_runtime.tools import ManufacturingToolbox
 from semikb.agent_runtime.understanding import ConversationUnderstandingService
 from semikb.agent_runtime.web_search import AliyunWebSearchGateway
@@ -34,8 +38,10 @@ from semikb.contracts.models import (
     Chunk,
     ConversationUnderstanding,
     EvidenceLedgerEntry,
+    IntentTaskItem,
     RetrievalConstraints,
     RoutePlan,
+    TaskExecutionDecision,
 )
 from semikb.storage.conversations import ConversationRepository
 
@@ -52,6 +58,9 @@ class CaseState(TypedDict, total=False):
     route_decision: str
     route_confidence: float
     task_items: list[dict[str, Any]]
+    task_results: list[dict[str, Any]]
+    task_outputs: dict[str, str]
+    combined_direct_text: str
     slot_operations: list[dict[str, Any]]
     inherited_slots: dict[str, str]
     context_message_ids: list[str]
@@ -110,6 +119,7 @@ class ConversationGraph:
         self.understanding = ConversationUnderstandingService(settings, self.llm)
         self.route_policy = RoutePolicy()
         self.direct_reply = DirectReplyGenerator(settings, self.llm)
+        self.task_execution = TaskExecutionCoordinator()
 
         workflow = StateGraph(CaseState)
         workflow.add_node("ingest_request", self._ingest_request)
@@ -120,11 +130,13 @@ class ConversationGraph:
         workflow.add_node("clarify_missing_fields", self._clarify_missing_fields)
         workflow.add_node("direct_answer", self._direct_answer)
         workflow.add_node("refuse_request", self._refuse_request)
+        workflow.add_node("execute_combination_prelude", self._execute_combination_prelude)
         workflow.add_node("retrieve_evidence", self._retrieve_evidence)
         workflow.add_node("build_evidence_ledger", self._build_evidence_ledger)
         workflow.add_node("generate_answer", self._generate_answer)
         workflow.add_node("verify_answer", self._verify_answer)
         workflow.add_node("insufficient_information", self._insufficient_information)
+        workflow.add_node("finalize_task_results", self._finalize_task_results)
         workflow.add_node("audit", self._audit)
 
         workflow.add_edge(START, "ingest_request")
@@ -138,19 +150,21 @@ class ConversationGraph:
                 "clarify": "prepare_clarification_reply",
                 "direct": "direct_answer",
                 "refuse": "refuse_request",
-                "retrieve": "retrieve_evidence",
+                "retrieve": "execute_combination_prelude",
                 "insufficient": "insufficient_information",
             },
         )
         workflow.add_edge("prepare_clarification_reply", "clarify_missing_fields")
         workflow.add_edge("clarify_missing_fields", "classify_and_extract")
-        workflow.add_edge("direct_answer", "audit")
-        workflow.add_edge("refuse_request", "audit")
+        workflow.add_edge("direct_answer", "finalize_task_results")
+        workflow.add_edge("refuse_request", "finalize_task_results")
+        workflow.add_edge("execute_combination_prelude", "retrieve_evidence")
         workflow.add_edge("retrieve_evidence", "build_evidence_ledger")
         workflow.add_edge("build_evidence_ledger", "generate_answer")
         workflow.add_edge("generate_answer", "verify_answer")
-        workflow.add_edge("verify_answer", "audit")
-        workflow.add_edge("insufficient_information", "audit")
+        workflow.add_edge("verify_answer", "finalize_task_results")
+        workflow.add_edge("insufficient_information", "finalize_task_results")
+        workflow.add_edge("finalize_task_results", "audit")
         workflow.add_edge("audit", END)
         self.compiled = workflow.compile(checkpointer=checkpointer, store=memory_service.store)
 
@@ -175,6 +189,9 @@ class ConversationGraph:
             "route_decision": AgentRoute.CLARIFY.value,
             "route_confidence": 0.0,
             "task_items": [],
+            "task_results": [],
+            "task_outputs": {},
+            "combined_direct_text": "",
             "slot_operations": [],
             "inherited_slots": {},
             "context_message_ids": [],
@@ -251,6 +268,26 @@ class ConversationGraph:
             if plan.route in {AgentRoute.TOOL_ONLY, AgentRoute.RAG_AND_TOOL}
             else "low"
         )
+        for decision in plan.task_decisions:
+            if decision.decision is TaskExecutionDecision.EXECUTE:
+                progress = "queued"
+                message = "任务已进入受控执行队列"
+            elif decision.decision is TaskExecutionDecision.CLARIFY:
+                progress = "clarify"
+                message = "任务需要补充关键信息"
+            elif decision.decision is TaskExecutionDecision.REFUSE:
+                progress = "refused"
+                message = "任务已由服务端策略拒绝"
+            else:
+                progress = "deferred"
+                message = "任务已明确延后，本轮不会静默执行"
+            self._emit_stream(
+                "task_status",
+                task_id=decision.task_id,
+                status=progress,
+                route=decision.route.value if decision.route else None,
+                message=message,
+            )
         return {
             "intent": intent,
             "risk_level": risk,
@@ -438,7 +475,12 @@ class ConversationGraph:
         )
         metadata = dict(state.get("model_metadata", {}))
         metadata["direct_reply_audit"] = result.audit.model_dump(mode="json")
-        return {"answer_text": result.text, "model_metadata": metadata}
+        task_results = self._final_task_results(state, answer_text=result.text)
+        return {
+            "answer_text": result.text,
+            "model_metadata": metadata,
+            "task_results": task_results,
+        }
 
     @staticmethod
     def _clarify_missing_fields(state: CaseState) -> CaseState:
@@ -498,6 +540,7 @@ class ConversationGraph:
             stage="generating_answer",
             message="正在生成受控的自然回复",
         )
+        self._emit_running_tasks(state, routes={AgentRoute.CHAT_DIRECT})
         result = await self.direct_reply.generate(
             DirectReplyRequest(
                 kind=kind,
@@ -569,6 +612,62 @@ class ConversationGraph:
             "model_metadata": metadata,
         }
 
+    async def _execute_combination_prelude(self, state: CaseState) -> CaseState:
+        """Execute the direct-history part of a predefined direct + business route."""
+
+        understanding = ConversationUnderstanding.model_validate(state["understanding"])
+        plan = RoutePlan.model_validate(state["route_plan"])
+        tasks = {item.task_id: item for item in understanding.task_items}
+        outputs: dict[str, str] = {}
+        audits: list[dict[str, Any]] = []
+        for decision in plan.task_decisions:
+            if (
+                decision.decision is not TaskExecutionDecision.EXECUTE
+                or decision.route is not AgentRoute.CHAT_DIRECT
+            ):
+                continue
+            task = tasks.get(decision.task_id)
+            if task is None or task.target_type.value not in {
+                "previous_user_message",
+                "previous_answer",
+            }:
+                continue
+            self._emit_stream(
+                "task_status",
+                task_id=decision.task_id,
+                status="running",
+                route=AgentRoute.CHAT_DIRECT.value,
+                message="正在处理服务端选中的历史消息",
+            )
+            if outputs:
+                self._emit_stream("answer_delta", delta="\n\n")
+            kind = (
+                DirectReplyKind.HISTORY_RECALL
+                if task.action.value == "recall"
+                else DirectReplyKind.HISTORY_TRANSFORM
+            )
+            generated = await self.direct_reply.generate(
+                DirectReplyRequest(
+                    kind=kind,
+                    user_request=state["request"],
+                    conversation_context=state.get("conversation_context", {}),
+                    context_message_ids=tuple(understanding.context_message_ids),
+                    action=task.action.value,
+                ),
+                self._emit_direct_delta,
+            )
+            outputs[decision.task_id] = generated.text
+            audits.append(generated.audit.model_dump(mode="json"))
+
+        metadata = dict(state.get("model_metadata", {}))
+        if audits:
+            metadata["combined_direct_reply_audits"] = audits
+        return {
+            "task_outputs": outputs,
+            "combined_direct_text": "\n\n".join(outputs.values()),
+            "model_metadata": metadata,
+        }
+
     @staticmethod
     def _emit_direct_delta(
         delta: str,
@@ -586,6 +685,16 @@ class ConversationGraph:
         actor_scope = ActorScope.model_validate(state["user_scope"])
         constraints = self._retrieval_constraints(state.get("constraints", {}))
         route = AgentRoute(str(state["route_decision"]))
+        self._emit_running_tasks(
+            state,
+            routes={
+                AgentRoute.REUSE_EVIDENCE,
+                AgentRoute.INTERNAL_RAG,
+                AgentRoute.TOOL_ONLY,
+                AgentRoute.RAG_AND_TOOL,
+                AgentRoute.RAG_AND_WEB,
+            },
+        )
         evidence: list[Chunk] = []
         trace = None
 
@@ -771,6 +880,8 @@ class ConversationGraph:
             message="正在依据证据生成回答",
         )
         ledger = [EvidenceLedgerEntry.model_validate(item) for item in state.get("evidence_ledger", [])]
+        if state.get("combined_direct_text"):
+            self._emit_stream("answer_delta", delta="\n\n")
         if not ledger:
             answer = AgentAnswer(
                 unknowns=["当前权限、版本和有效期范围内没有足以支持结论的证据。"],
@@ -806,6 +917,7 @@ class ConversationGraph:
                             "role": "system",
                             "content": (
                                 "You are a semiconductor investigation assistant. Use only the supplied evidence ledger. "
+                                f"Route contract: {route_generation_contract(state.get('route_decision'))} "
                                 "Internal controlled evidence outranks external evidence. Simulated live data must remain "
                                 "labeled simulated. Do not declare a root cause; hypotheses must be testable. Stream compact "
                                 "JSON objects, one object per line, with no array, prose, or markdown fence. Emit zero or more "
@@ -994,9 +1106,12 @@ class ConversationGraph:
                 for citation in claim.citation_ids
             }
         ]
+        formatted = ConversationGraph._format_answer(verified)
+        if state.get("combined_direct_text"):
+            formatted = f"{state['combined_direct_text']}\n\n{formatted}"
         return {
             "answer": verified.model_dump(mode="json"),
-            "answer_text": ConversationGraph._format_answer(verified),
+            "answer_text": formatted,
             "citations": citations,
             "status": "completed",
             "verification_warnings": warnings,
@@ -1053,6 +1168,7 @@ class ConversationGraph:
                 "route_decision": state.get("route_decision"),
                 "route_confidence": state.get("route_confidence"),
                 "task_decisions": state.get("route_plan", {}).get("task_decisions", []),
+                "task_results": state.get("task_results", []),
                 "retrieval_skipped_reason": state.get("retrieval_skipped_reason"),
                 "invalidated_context_refs": state.get("invalidated_context_refs", []),
                 "cancel_scope": state.get("cancel_scope"),
@@ -1066,6 +1182,77 @@ class ConversationGraph:
         )
         self.repository.append_audit(event)
         return {}
+
+    def _finalize_task_results(self, state: CaseState) -> CaseState:
+        task_results = self._final_task_results(
+            state,
+            answer_text=str(state.get("answer_text", "")),
+        )
+        for item in task_results:
+            self._emit_stream(
+                "task_status",
+                task_id=str(item["task_id"]),
+                status=str(item["status"]),
+                route=item.get("route"),
+                message=str(item["message"]),
+            )
+        return {"task_results": task_results}
+
+    def _final_task_results(
+        self,
+        state: CaseState,
+        *,
+        answer_text: str,
+    ) -> list[dict[str, Any]]:
+        plan = RoutePlan.model_validate(state.get("route_plan", {}))
+        tasks = [IntentTaskItem.model_validate(item) for item in state.get("task_items", [])]
+        ledger = [
+            EvidenceLedgerEntry.model_validate(item)
+            for item in state.get("evidence_ledger", [])
+        ]
+        route = AgentRoute(str(state.get("route_decision", plan.route.value)))
+        results = self.task_execution.finalize(
+            route_plan=plan,
+            task_items=tasks,
+            actual_route=route,
+            answer_text=answer_text,
+            task_outputs={
+                str(key): str(value)
+                for key, value in state.get("task_outputs", {}).items()
+            },
+            evidence_ledger=ledger,
+            cited_evidence_ids=[
+                str(item.get("evidence_id"))
+                for item in state.get("citations", [])
+                if isinstance(item, dict) and item.get("evidence_id")
+            ],
+            external_evidence=state.get("external_evidence", []),
+            missing_fields=state.get("missing_required_fields", []),
+            authorization_errors=state.get("authorization_errors", []),
+        )
+        return [item.model_dump(mode="json") for item in results]
+
+    @staticmethod
+    def _emit_running_tasks(
+        state: CaseState,
+        *,
+        routes: set[AgentRoute],
+    ) -> None:
+        for item in state.get("route_plan", {}).get("task_decisions", []):
+            if not isinstance(item, dict):
+                continue
+            if item.get("decision") != TaskExecutionDecision.EXECUTE.value:
+                continue
+            route_value = item.get("route")
+            if route_value not in {route.value for route in routes}:
+                continue
+            ConversationGraph._emit_stream(
+                "task_status",
+                task_id=str(item["task_id"]),
+                status="running",
+                route=str(route_value),
+                message="正在执行该任务的受控下游步骤",
+            )
 
     @staticmethod
     def _emit_stream(kind: str, **payload: Any) -> None:

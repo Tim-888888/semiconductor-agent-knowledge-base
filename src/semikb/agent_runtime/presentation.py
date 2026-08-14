@@ -9,6 +9,7 @@ from semikb.contracts.models import (
     AgentRoute,
     MessagePresentation,
     MessageRenderMode,
+    TaskExecutionResult,
 )
 
 STRUCTURED_CARD_ROUTES = frozenset(
@@ -29,6 +30,7 @@ def build_message_presentation(
     status: str | None,
     trace_id: str | None,
     verification_warnings: list[str] | None = None,
+    task_results: list[TaskExecutionResult | dict[str, Any]] | None = None,
 ) -> MessagePresentation:
     """Choose presentation deterministically; the model never controls this decision."""
 
@@ -63,4 +65,5 @@ def build_message_presentation(
         answer=parsed_answer if structured else None,
         trace_id=trace_id if structured else None,
         verification_warnings=list(verification_warnings or []) if structured else [],
+        task_results=[TaskExecutionResult.model_validate(item) for item in task_results or []],
     )

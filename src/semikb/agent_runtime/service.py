@@ -32,6 +32,7 @@ from semikb.contracts.models import (
     RouteTaskDecision,
     SendMessageResponse,
     SlotOperation,
+    TaskExecutionResult,
     ThreadRecord,
     new_id,
 )
@@ -56,6 +57,8 @@ from semikb.contracts.streaming import (
     StreamHeartbeatEvent,
     StreamStageData,
     StreamStageEvent,
+    StreamTaskStatusData,
+    StreamTaskStatusEvent,
     UnderstandingAudit,
 )
 from semikb.storage.conversations import ConversationRepository
@@ -533,6 +536,7 @@ class ConversationService:
                     status="waiting_for_clarification",
                     trace_id=None,
                     verification_warnings=list(result.get("verification_warnings", [])),
+                    task_results=list(result.get("task_results", [])),
                 ),
             )
             model = SendMessageResponse(
@@ -567,6 +571,7 @@ class ConversationService:
                 status=str(result.get("status", "completed")),
                 trace_id=result.get("trace_id"),
                 verification_warnings=list(result.get("verification_warnings", [])),
+                task_results=list(result.get("task_results", [])),
             ),
         )
         model = SendMessageResponse(
@@ -599,6 +604,7 @@ class ConversationService:
             "route_confidence": result.get("route_confidence"),
             "task_items": result.get("task_items", []),
             "task_decisions": result.get("route_plan", {}).get("task_decisions", []),
+            "task_results": result.get("task_results", []),
             "retrieval_skipped_reason": result.get("retrieval_skipped_reason"),
         }
 
@@ -620,6 +626,10 @@ class ConversationService:
         record.task_decisions = [
             RouteTaskDecision.model_validate(item)
             for item in route_plan.get("task_decisions", [])
+        ]
+        record.task_results = [
+            TaskExecutionResult.model_validate(item)
+            for item in result.get("task_results", [])
         ]
         record.context_message_ids = [str(item) for item in result.get("context_message_ids", [])]
         record.standalone_query = str(result.get("standalone_query", ""))
@@ -693,6 +703,7 @@ class ConversationService:
                 verification_warnings=[
                     str(item) for item in payload.get("verification_warnings", [])
                 ],
+                task_results=list(payload.get("task_results", record.task_results)),
             )
         return hydrated
 
@@ -713,6 +724,16 @@ class ConversationService:
                 **common,
                 data=StreamStageData(
                     stage=AgentStreamStage(str(payload["stage"])),
+                    message=str(payload["message"]),
+                ),
+            )
+        if kind == "task_status":
+            return StreamTaskStatusEvent(
+                **common,
+                data=StreamTaskStatusData(
+                    task_id=str(payload["task_id"]),
+                    status=str(payload["status"]),
+                    route=payload.get("route"),
                     message=str(payload["message"]),
                 ),
             )

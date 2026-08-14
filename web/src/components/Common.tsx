@@ -20,7 +20,7 @@ export function StatusPill({ value }: { value: string }) {
   const normalized = value.toLowerCase();
   const tone = ["completed", "published", "selected", "active"].includes(normalized)
     ? "good"
-    : ["failed", "regressed", "excluded", "insufficient_information"].includes(normalized)
+    : ["failed", "refused", "regressed", "excluded", "insufficient_information"].includes(normalized)
       ? "bad"
       : ["queued", "running", "parsing", "embedding", "waiting_for_clarification"].includes(normalized)
         ? "active"
@@ -68,6 +68,9 @@ function labelForStatus(value: string): string {
     excluded: "排除",
     active: "活动",
     waiting_for_clarification: "等待补充",
+    clarify: "待澄清",
+    refused: "已拒绝",
+    deferred: "已延后",
     insufficient_information: "信息不足",
     improved: "提升",
     regressed: "回退",

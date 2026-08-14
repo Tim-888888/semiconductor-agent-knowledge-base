@@ -89,6 +89,7 @@ export type MessagePresentation = {
   answer?: AgentAnswer | null;
   trace_id?: string | null;
   verification_warnings: string[];
+  task_results: TaskExecutionResult[];
 };
 
 export type IntentTaskItem = {
@@ -105,6 +106,20 @@ export type RouteTaskDecision = {
   decision: "execute" | "clarify" | "refuse" | "defer";
   route?: AgentRoute | null;
   reason_code: string;
+};
+
+export type TaskExecutionStatus = "completed" | "clarify" | "refused" | "deferred" | "failed";
+
+export type TaskExecutionResult = {
+  task_id: string;
+  status: TaskExecutionStatus;
+  route?: AgentRoute | null;
+  reason_code: string;
+  message: string;
+  evidence_ids: string[];
+  tool_fact_ids: string[];
+  external_evidence_ids: string[];
+  validation_warnings: string[];
 };
 
 export type EvidenceLedgerEntry = {
@@ -150,6 +165,7 @@ export type AgentResponse = {
   route_confidence?: number | null;
   task_items?: IntentTaskItem[];
   task_decisions?: RouteTaskDecision[];
+  task_results?: TaskExecutionResult[];
   retrieval_skipped_reason?: string | null;
 };
 
@@ -170,7 +186,7 @@ export type AgentStreamEvent = {
   thread_id: string;
   sequence: number;
   emitted_at: string;
-  event: "accepted" | "stage" | "evidence" | "answer_delta" | "heartbeat" | "completed" | "error";
+  event: "accepted" | "stage" | "task_status" | "evidence" | "answer_delta" | "heartbeat" | "completed" | "error";
   data: Record<string, unknown> & {
     message_id?: string;
     run_id?: string;
@@ -178,6 +194,9 @@ export type AgentStreamEvent = {
     replayed?: boolean;
     stage?: AgentStreamStage;
     message?: string;
+    task_id?: string;
+    status?: TaskProgressStatus;
+    route?: AgentRoute | null;
     trace_id?: string | null;
     evidence_ids?: string[];
     image_asset_ids?: string[];
@@ -193,6 +212,15 @@ export type AgentStreamEvent = {
   };
 };
 
+export type TaskProgressStatus = "queued" | "running" | TaskExecutionStatus;
+
+export type TaskProgress = {
+  taskId: string;
+  status: TaskProgressStatus;
+  route?: AgentRoute | null;
+  message: string;
+};
+
 export type StreamUiState = {
   requestId: string;
   content: string;
@@ -204,6 +232,7 @@ export type StreamUiState = {
   externalEvidenceCount: number;
   elapsedMs: number;
   retryable: boolean;
+  tasks: TaskProgress[];
 };
 
 export type IngestionEvent = {

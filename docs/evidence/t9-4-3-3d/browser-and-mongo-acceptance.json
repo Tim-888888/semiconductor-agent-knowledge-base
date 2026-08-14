@@ -1,0 +1,110 @@
+{
+  "verification": "T9-4.3.3d-browser-and-mongodb-acceptance",
+  "completed_at": "2026-08-14T21:29:39+08:00",
+  "public_url": "http://112.74.99.143/",
+  "partial_success": {
+    "prompt": "查 P-ALPHA ETCH-03 最近24小时 FDC 报警、修改 Recipe、生成报告",
+    "route_label": "只读制造数据",
+    "task_statuses": [
+      "completed",
+      "refused",
+      "deferred"
+    ],
+    "structured_card_visible": true,
+    "horizontal_overflow": false,
+    "screenshot": "desktop-partial-success.png"
+  },
+  "rag_and_tool": {
+    "prompt": "查 P-ALPHA ETCH-03 最近24小时 FDC 报警，再对照 SOP 给排查建议",
+    "streaming_task_statuses": [
+      "running",
+      "running",
+      "running"
+    ],
+    "final_task_statuses": [
+      "completed",
+      "completed",
+      "completed"
+    ],
+    "route_label": "知识 + 制造数据",
+    "internal_evidence_count": 5,
+    "tool_fact_count": 1,
+    "active_evidence_count": 1,
+    "horizontal_overflow": false,
+    "streaming_screenshot": "desktop-rag-tool-streaming.png",
+    "completed_screenshot": "desktop-rag-tool-completed.png"
+  },
+  "history_and_rag": {
+    "thread_id": "thread_b04b1630a52c40f29d5f2735fc1822a4",
+    "previous_question": "ETCH-03 Chamber B 清腔后首片异常，当前 SOP 怎么要求？",
+    "prompt": "我刚才问了什么，再查一下当前 ETCH-03 SOP",
+    "streaming_tasks": [
+      {
+        "route": "chat_direct",
+        "status": "running"
+      },
+      {
+        "route": "internal_rag",
+        "status": "queued"
+      }
+    ],
+    "final_tasks": [
+      {
+        "route": "chat_direct",
+        "status": "completed"
+      },
+      {
+        "route": "internal_rag",
+        "status": "completed"
+      }
+    ],
+    "previous_question_preserved": true,
+    "refresh_same_thread": true,
+    "refresh_task_results_equal": true,
+    "refresh_previous_question_preserved": true,
+    "structured_card_visible": true,
+    "horizontal_overflow": false,
+    "desktop_screenshot": "desktop-history-and-rag.png",
+    "refresh_screenshot": "desktop-history-refresh.png",
+    "mobile_screenshot": "mobile-390x844-history-task-results.png",
+    "mobile_screenshot_dimensions": [
+      390,
+      844
+    ]
+  },
+  "mongodb": {
+    "thread_status": "active",
+    "message_count": 4,
+    "request_count": 2,
+    "last_route_decision": "internal_rag",
+    "last_interaction_mode": "mixed",
+    "last_trace_present": true,
+    "task_results_equal_across_ledger_payload_and_message": true,
+    "task_result_count": 2,
+    "task_statuses": [
+      "completed",
+      "completed"
+    ],
+    "task_routes": [
+      "chat_direct",
+      "internal_rag"
+    ],
+    "presentation_mode": "structured_card",
+    "assistant_request_id_matches": true
+  },
+  "browser_console": {
+    "error_count": 0,
+    "warning_count": 0
+  },
+  "containers": {
+    "api": "7575c3874b78",
+    "worker": "c14722a17fe6",
+    "web": "1a1b7442aa5c",
+    "mongodb": "e6bd110ad320",
+    "milvus": "2f6827ca640e",
+    "milvus_minio": "6c9133e777d2",
+    "business_minio": "54dab754141e",
+    "etcd": "9deab8ba1805",
+    "redis": "ada0a643b6a6"
+  }
+}

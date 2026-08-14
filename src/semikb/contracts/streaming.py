@@ -17,6 +17,7 @@ from semikb.contracts.models import (
     RouteTaskDecision,
     SendMessageResponse,
     SlotOperation,
+    TaskExecutionResult,
     new_id,
     utc_now,
 )
@@ -27,6 +28,7 @@ REQUEST_ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$"
 class AgentStreamEventType(StrEnum):
     ACCEPTED = "accepted"
     STAGE = "stage"
+    TASK_STATUS = "task_status"
     EVIDENCE = "evidence"
     ANSWER_DELTA = "answer_delta"
     HEARTBEAT = "heartbeat"
@@ -67,6 +69,16 @@ class AgentMessageRequestStatus(StrEnum):
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
+
+
+class TaskProgressStatus(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    CLARIFY = "clarify"
+    REFUSED = "refused"
+    DEFERRED = "deferred"
+    FAILED = "failed"
 
 
 class StreamMessageRequest(BaseModel):
@@ -138,6 +150,7 @@ class AgentMessageRequestRecord(BaseModel):
     route_confidence: float | None = Field(default=None, ge=0, le=1)
     task_items: list[IntentTaskItem] = Field(default_factory=list, max_length=3)
     task_decisions: list[RouteTaskDecision] = Field(default_factory=list, max_length=3)
+    task_results: list[TaskExecutionResult] = Field(default_factory=list, max_length=3)
     context_message_ids: list[str] = Field(default_factory=list, max_length=8)
     standalone_query: str = Field(default="", max_length=8000)
     retrieval_skipped_reason: str | None = None
@@ -164,6 +177,13 @@ class StreamAcceptedData(BaseModel):
 class StreamStageData(BaseModel):
     stage: AgentStreamStage
     message: str = Field(min_length=1, max_length=240)
+
+
+class StreamTaskStatusData(BaseModel):
+    task_id: str = Field(pattern=r"^task_[1-3]$")
+    status: TaskProgressStatus
+    route: AgentRoute | None = None
+    message: str = Field(min_length=1, max_length=500)
 
 
 class StreamEvidenceData(BaseModel):
@@ -215,6 +235,11 @@ class StreamStageEvent(AgentStreamEventBase):
     data: StreamStageData
 
 
+class StreamTaskStatusEvent(AgentStreamEventBase):
+    event: Literal[AgentStreamEventType.TASK_STATUS] = AgentStreamEventType.TASK_STATUS
+    data: StreamTaskStatusData
+
+
 class StreamEvidenceEvent(AgentStreamEventBase):
     event: Literal[AgentStreamEventType.EVIDENCE] = AgentStreamEventType.EVIDENCE
     data: StreamEvidenceData
@@ -243,6 +268,7 @@ class StreamErrorEvent(AgentStreamEventBase):
 AgentStreamEvent = Annotated[
     StreamAcceptedEvent
     | StreamStageEvent
+    | StreamTaskStatusEvent
     | StreamEvidenceEvent
     | StreamAnswerDeltaEvent
     | StreamHeartbeatEvent

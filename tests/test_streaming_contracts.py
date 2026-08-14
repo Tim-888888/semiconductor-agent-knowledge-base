@@ -5,7 +5,13 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from semikb.contracts.models import SendMessageResponse, ThreadRecord
+from semikb.contracts.models import (
+    AgentRoute,
+    SendMessageResponse,
+    TaskExecutionResult,
+    TaskExecutionStatus,
+    ThreadRecord,
+)
 from semikb.contracts.streaming import (
     AgentMessageRequestRecord,
     AgentMessageRequestStatus,
@@ -24,6 +30,8 @@ from semikb.contracts.streaming import (
     StreamMessageRequest,
     StreamStageData,
     StreamStageEvent,
+    StreamTaskStatusData,
+    StreamTaskStatusEvent,
     agent_stream_event_adapter,
     validate_stream_event_sequence,
 )
@@ -86,6 +94,15 @@ def test_mongo_terminal_transition_persists_direct_reply_audit() -> None:
             verified_unit_count=2,
             context_message_count=1,
         ),
+        task_results=[
+            TaskExecutionResult(
+                task_id="task_1",
+                status=TaskExecutionStatus.COMPLETED,
+                route=AgentRoute.CHAT_DIRECT,
+                reason_code="route_contract_satisfied",
+                message="历史回顾已完成。",
+            )
+        ],
     )
 
     class MessageRequests:
@@ -112,10 +129,35 @@ def test_mongo_terminal_transition_persists_direct_reply_audit() -> None:
     )
 
     assert terminal.direct_reply_audit == record.direct_reply_audit
+    assert terminal.task_results == record.task_results
     assert repository.message_requests.update is not None
     assert repository.message_requests.update["$set"]["direct_reply_audit"]["reply_kind"] == (
         "history_recall"
     )
+    assert repository.message_requests.update["$set"]["task_results"][0]["status"] == (
+        TaskExecutionStatus.COMPLETED
+    )
+
+
+def test_task_status_event_is_part_of_the_discriminated_stream_contract() -> None:
+    event = StreamTaskStatusEvent(
+        event_id="sse_task_1",
+        request_id=REQUEST_ID,
+        thread_id=THREAD_ID,
+        sequence=2,
+        emitted_at=NOW,
+        data=StreamTaskStatusData(
+            task_id="task_1",
+            status="running",
+            route=AgentRoute.INTERNAL_RAG,
+            message="正在检索受控知识",
+        ),
+    )
+
+    parsed = agent_stream_event_adapter.validate_python(event.model_dump(mode="json"))
+
+    assert parsed.event is AgentStreamEventType.TASK_STATUS
+    assert parsed.data.task_id == "task_1"
 
 
 def test_discriminated_event_adapter_rejects_mismatched_payload() -> None:

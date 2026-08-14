@@ -137,6 +137,10 @@ PREVIOUS_ANSWER_PATTERN = re.compile(
 PREVIOUS_ANSWER_PREFIX_ACTION_PATTERN = re.compile(
     r"(?:总结|翻译|简化|改写).{0,8}(?:刚才|上一轮|上面|之前).{0,5}(?:回答|答案)"
 )
+HISTORY_RECALL_CLAUSE_PATTERN = re.compile(
+    r"(?:我)?(?:刚才|刚刚|上一轮|上一个|前面|之前).{0,10}"
+    r"(?:问|说|输入|提到).{0,8}(?:什么|啥|哪一句|哪句话|哪个问题)"
+)
 CANCEL_PATTERN = re.compile(r"^(?:别查了|取消(?:这次|本次)?(?:查询|任务)?|放弃本轮追问|停止生成)[。！! ]*$")
 GREETING_PATTERN = re.compile(r"^(?:你好|您好|嗨|hello|hi|谢谢|感谢|明白了|收到)[。！!,.， ]*$", re.IGNORECASE)
 CAPABILITY_PATTERN = re.compile(
@@ -694,12 +698,35 @@ class ConversationUnderstandingService:
             ),
             None,
         )
+        history_answer_task = next(
+            (
+                item
+                for item in tasks
+                if item.target_type is IntentTarget.PREVIOUS_ANSWER
+                and item.action
+                in {
+                    IntentTaskAction.RECALL,
+                    IntentTaskAction.SIMPLIFY,
+                    IntentTaskAction.SUMMARIZE,
+                    IntentTaskAction.TRANSLATE,
+                }
+            ),
+            None,
+        )
         history_recall_only = history_recall_task is not None and len(tasks) == 1
         if history_recall_only:
             primary = PrimaryIntent.CONVERSATION
             tasks = [history_recall_task.model_copy(update={"primary_intent": primary})]
             previous_user = self._last_substantive_user_message_id(context)
             context_ids = [previous_user] if previous_user else []
+        elif history_recall_task is not None:
+            previous_user = self._last_substantive_user_message_id(context)
+            if previous_user:
+                context_ids = list(dict.fromkeys([previous_user, *context_ids]))[:8]
+        if history_answer_task is not None:
+            previous_answer = self._last_message_id(context, "assistant")
+            if previous_answer:
+                context_ids = list(dict.fromkeys([previous_answer, *context_ids]))[:8]
         has_protected_task = any(term in request.lower() for term in MUTATION_TERMS) or any(
             term in request.lower() for term in ("生成报告", "写报告", "整理报告")
         )
@@ -856,7 +883,10 @@ class ConversationUnderstandingService:
                 AgentRoute.CHAT_DIRECT,
                 context_message_ids=[previous_user] if previous_user else [],
             )
-        if PREVIOUS_ANSWER_PATTERN.search(content) or PREVIOUS_ANSWER_PREFIX_ACTION_PATTERN.search(content):
+        if (
+            PREVIOUS_ANSWER_PATTERN.search(content)
+            or PREVIOUS_ANSWER_PREFIX_ACTION_PATTERN.search(content)
+        ) and not self._contains_business_task(content):
             action = IntentTaskAction.SIMPLIFY
             if "总结" in content:
                 action = IntentTaskAction.SUMMARIZE
@@ -970,7 +1000,7 @@ class ConversationUnderstandingService:
         )
         if clarification_pending:
             mode = InteractionMode.CLARIFICATION_ANSWER
-        elif has_greeting and has_business:
+        elif (has_greeting or HISTORY_RECALL_CLAUSE_PATTERN.search(request)) and has_business:
             mode = InteractionMode.MIXED
         elif FEEDBACK_PATTERN.search(request):
             mode = InteractionMode.FEEDBACK
@@ -1045,6 +1075,16 @@ class ConversationUnderstandingService:
             context_ids = list(
                 dict.fromkeys(item["source_message_id"] for item in valid_context.values())
             )[:8]
+        if any(
+            item.target_type is IntentTarget.PREVIOUS_USER_MESSAGE for item in tasks
+        ):
+            previous_user = self._last_substantive_user_message_id(context)
+            if previous_user:
+                context_ids = list(dict.fromkeys([previous_user, *context_ids]))[:8]
+        if any(item.target_type is IntentTarget.PREVIOUS_ANSWER for item in tasks):
+            previous_answer = self._last_message_id(context, "assistant")
+            if previous_answer:
+                context_ids = list(dict.fromkeys([previous_answer, *context_ids]))[:8]
         confidence = 0.82 if tasks else 0.65
         return ConversationUnderstanding(
             classifier_source="deterministic_fallback",
@@ -1175,6 +1215,16 @@ class ConversationUnderstandingService:
         lowered = request.lower()
         candidates: list[tuple[PrimaryIntent, IntentTarget, IntentTaskAction, TaskExecutionDecision]] = []
 
+        if HISTORY_RECALL_CLAUSE_PATTERN.search(request):
+            candidates.append(
+                (
+                    PrimaryIntent.CONVERSATION,
+                    IntentTarget.PREVIOUS_USER_MESSAGE,
+                    IntentTaskAction.RECALL,
+                    TaskExecutionDecision.EXECUTE,
+                )
+            )
+
         if any(term in lowered for term in MUTATION_TERMS) and not any(
             term in lowered for term in ("查", "查询", "看", "分析", "并且", "然后", "、")
         ):
@@ -1284,6 +1334,27 @@ class ConversationUnderstandingService:
                 )
             )
         return tasks
+
+    @staticmethod
+    def _contains_business_task(content: str) -> bool:
+        lowered = content.lower()
+        return any(
+            term in lowered
+            for term in (
+                "sop",
+                "recipe",
+                "fdc",
+                "spc",
+                "报警",
+                "alarm",
+                "良率",
+                "缺陷",
+                "lot",
+                "wafer",
+                "晶圆",
+                "制造数据",
+            )
+        )
 
     @staticmethod
     def _suggest_route(

@@ -19,11 +19,15 @@ from semikb.contracts.models import (
     ChatMessage,
     ContextEvidenceRef,
     ContextSlot,
+    ConversationUnderstanding,
     IntentTarget,
+    IntentTaskAction,
+    IntentTaskItem,
     InteractionMode,
     MessageRenderMode,
     PrimaryIntent,
     TaskExecutionDecision,
+    TaskExecutionStatus,
 )
 
 
@@ -394,8 +398,82 @@ async def test_mixed_task_keeps_three_items_and_refuses_only_recipe_write(seeded
         TaskExecutionDecision.REFUSE,
         TaskExecutionDecision.DEFER,
     ]
+    assert [item["status"] for item in result["task_results"]] == [
+        TaskExecutionStatus.COMPLETED,
+        TaskExecutionStatus.REFUSED,
+        TaskExecutionStatus.DEFERRED,
+    ]
+    assert [item["task_id"] for item in result["task_results"]] == [
+        "task_1",
+        "task_2",
+        "task_3",
+    ]
+    assert [item.model_dump(mode="python") for item in ledger.task_results] == result[
+        "task_results"
+    ]
+    assert result["thread"]["messages"][-1]["presentation"]["task_results"] == result[
+        "task_results"
+    ]
     assert retrieval.search_calls == 0
     assert toolbox.query_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_history_plus_new_rag_task_executes_both_without_silent_omission(
+    seeded_services,
+) -> None:
+    _, service, retrieval, toolbox, web = _service(seeded_services)
+    scope = ActorScope()
+    thread = service.create_thread("history-plus-rag", scope)
+    previous = "ETCH-03 Chamber B 清腔后首片异常，当前 SOP 怎么要求？"
+
+    await service.send_message(thread.thread_id, previous, scope)
+    search_calls = retrieval.search_calls
+    result = await service.send_message(
+        thread.thread_id,
+        "我刚才问了什么，再查一下当前 ETCH-03 SOP",
+        scope,
+    )
+
+    assert result["interaction_mode"] is InteractionMode.MIXED
+    assert result["route_decision"] is AgentRoute.INTERNAL_RAG
+    assert previous in result["response"]
+    assert [item["status"] for item in result["task_results"]] == [
+        TaskExecutionStatus.COMPLETED,
+        TaskExecutionStatus.COMPLETED,
+    ]
+    assert [item["route"] for item in result["task_results"]] == [
+        AgentRoute.CHAT_DIRECT,
+        AgentRoute.INTERNAL_RAG,
+    ]
+    assert result["task_results"][0]["evidence_ids"] == []
+    assert result["task_results"][0]["tool_fact_ids"] == []
+    assert retrieval.search_calls == search_calls + 1
+    assert toolbox.query_calls == 0
+    assert web.search_calls == 0
+
+
+@pytest.mark.asyncio
+async def test_rag_and_tool_tasks_each_finish_with_matching_evidence(seeded_services) -> None:
+    _, service, retrieval, toolbox, web = _service(seeded_services)
+    thread = service.create_thread("rag-tool", ActorScope())
+
+    result = await service.send_message(
+        thread.thread_id,
+        "查 P-ALPHA ETCH-03 最近24小时 FDC 报警，再对照 SOP 给排查建议",
+    )
+
+    assert result["route_decision"] is AgentRoute.RAG_AND_TOOL
+    assert result["task_results"]
+    assert all(
+        item["status"] is TaskExecutionStatus.COMPLETED
+        for item in result["task_results"]
+    )
+    assert any(item["evidence_ids"] for item in result["task_results"])
+    assert any(item["tool_fact_ids"] for item in result["task_results"])
+    assert retrieval.search_calls == 1
+    assert toolbox.query_calls == 1
+    assert web.search_calls == 0
 
 
 @pytest.mark.asyncio
@@ -789,3 +867,47 @@ async def test_protected_mixed_tasks_override_unsafe_model_labels() -> None:
             TaskExecutionDecision.DEFER: 1,
         }
     )
+
+
+def test_unsupported_tool_and_web_combination_defers_incompatible_task() -> None:
+    understanding = ConversationUnderstanding(
+        classifier_source="deterministic_fallback",
+        interaction_mode=InteractionMode.MIXED,
+        primary_intent=PrimaryIntent.DATA_QUERY,
+        task_items=[
+            IntentTaskItem(
+                task_id="task_1",
+                primary_intent=PrimaryIntent.DATA_QUERY,
+                target_type=IntentTarget.FDC,
+                action=IntentTaskAction.LOOKUP,
+            ),
+            IntentTaskItem(
+                task_id="task_2",
+                primary_intent=PrimaryIntent.KNOWLEDGE_QUERY,
+                target_type=IntentTarget.GENERAL,
+                action=IntentTaskAction.LOOKUP,
+            ),
+        ],
+        explicit_slots={
+            "product": "P-ALPHA",
+            "tool_id": "ETCH-03",
+            "time_range": "最近24小时",
+        },
+        standalone_query="查 FDC 并搜索外部公开资料",
+        suggested_route=AgentRoute.TOOL_ONLY,
+        confidence=0.95,
+    )
+
+    plan = RoutePolicy().decide(
+        understanding,
+        ActorScope(),
+        {},
+        "查 P-ALPHA ETCH-03 最近24小时 FDC 并搜索外部公开资料",
+    )
+
+    assert plan.route is AgentRoute.TOOL_ONLY
+    assert [item.decision for item in plan.task_decisions] == [
+        TaskExecutionDecision.EXECUTE,
+        TaskExecutionDecision.DEFER,
+    ]
+    assert plan.task_decisions[1].reason_code == "unsupported_route_combination_deferred"
