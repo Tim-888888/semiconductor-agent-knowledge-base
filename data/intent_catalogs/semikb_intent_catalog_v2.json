@@ -1,0 +1,463 @@
+{
+  "catalog_version": "semikb-intent-catalog-v2",
+  "source_kind": "reviewed_semiconductor_governance",
+  "description": "半导体 Agent 智库 T9-4.3.3c 意图共同真相。新历史请求统一走 chat_direct；通用能力边界由一张活动卡识别。",
+  "capacity_gates": {
+    "max_active_cards": 24,
+    "max_prompt_tokens": 12000,
+    "max_p95_latency_ms": 5000
+  },
+  "cards": [
+    {
+      "card_id": "conversation.general",
+      "display_name": "普通交流与能力咨询",
+      "status": "active",
+      "primary_intent": "conversation",
+      "handles": [
+        "无需外部事实的问候、致谢和自然交流",
+        "询问智库能做什么、使用方式或模型身份"
+      ],
+      "excludes": [
+        "需要查询内部受控知识或实时制造数据",
+        "请求执行写操作或设备控制"
+      ],
+      "confused_with": ["knowledge.external_lookup", "action.out_of_scope"],
+      "positive_examples": ["先简单介绍一下你擅长协助哪些工程问题", "今天先聊到这里，谢谢"],
+      "hard_negative_examples": ["请查一下当前清腔规范", "联网找设备厂商的新公告"],
+      "required_slots": [],
+      "allowed_routes": ["chat_direct"],
+      "risk_level": "low",
+      "task_signatures": [
+        {
+          "primary_intent": "conversation",
+          "target_type": "general",
+          "action": "explain",
+          "execution_policy": "execute"
+        }
+      ]
+    },
+    {
+      "card_id": "conversation.history_recall",
+      "display_name": "历史用户消息回顾",
+      "status": "active",
+      "primary_intent": "conversation",
+      "handles": ["复述当前线程中服务端选定的上一条实质性用户消息"],
+      "excludes": ["查询最新 SOP、Recipe 或实时状态", "总结或改写上一条助手回答"],
+      "confused_with": ["knowledge.sop_lookup"],
+      "positive_examples": ["帮我回忆前一轮提问的原话", "之前我提到的是哪个异常"],
+      "hard_negative_examples": ["现行 SOP 的版本号是什么", "把前面的答案压缩成三句话"],
+      "required_slots": [],
+      "allowed_routes": ["chat_direct", "clarify"],
+      "risk_level": "low",
+      "task_signatures": [
+        {
+          "primary_intent": "conversation",
+          "target_type": "previous_user_message",
+          "action": "recall",
+          "execution_policy": "execute"
+        }
+      ]
+    },
+    {
+      "card_id": "conversation.feedback",
+      "display_name": "对回答的反馈",
+      "status": "active",
+      "primary_intent": "conversation",
+      "handles": ["表达回答过长、过慢、复杂或看不懂等反馈，但尚未提出明确变换动作"],
+      "excludes": ["明确要求总结、简化、翻译或改写历史回答"],
+      "confused_with": ["conversation.previous_answer_transform"],
+      "positive_examples": ["刚才那段解释有点难懂", "这个答复的信息量太大了"],
+      "hard_negative_examples": ["把上一段简化成三句话", "翻译前面的结论"],
+      "required_slots": [],
+      "allowed_routes": ["chat_direct"],
+      "risk_level": "low",
+      "task_signatures": [
+        {
+          "primary_intent": "conversation",
+          "target_type": "previous_answer",
+          "action": "explain",
+          "execution_policy": "execute"
+        }
+      ]
+    },
+    {
+      "card_id": "conversation.previous_answer_transform",
+      "display_name": "历史回答变换",
+      "status": "active",
+      "primary_intent": "content_task",
+      "handles": ["总结、简化、翻译或改写服务端选定的历史助手回答"],
+      "excludes": ["生成新的调查报告", "重新查询最新事实"],
+      "confused_with": ["conversation.feedback", "content.report_generation"],
+      "positive_examples": ["请把上一段答复改成更容易理解的说法", "把前面的结论翻成英文"],
+      "hard_negative_examples": ["按这次排查结果生成正式报告", "重新查询当前有效规范"],
+      "required_slots": [],
+      "allowed_routes": ["chat_direct", "clarify"],
+      "risk_level": "low",
+      "task_signatures": [
+        {
+          "primary_intent": "content_task",
+          "target_type": "previous_answer",
+          "action": "summarize",
+          "execution_policy": "execute"
+        },
+        {
+          "primary_intent": "content_task",
+          "target_type": "previous_answer",
+          "action": "simplify",
+          "execution_policy": "execute"
+        },
+        {
+          "primary_intent": "content_task",
+          "target_type": "previous_answer",
+          "action": "translate",
+          "execution_policy": "execute"
+        }
+      ]
+    },
+    {
+      "card_id": "knowledge.sop_lookup",
+      "display_name": "SOP 受控知识查询",
+      "status": "active",
+      "primary_intent": "knowledge_query",
+      "handles": ["查询、解释或比较当前有权限访问的 SOP 与作业规范"],
+      "excludes": ["异常根因诊断", "复述用户刚才说过的话"],
+      "confused_with": ["conversation.history_recall", "investigation.anomaly_diagnosis"],
+      "positive_examples": ["请说明清腔后首片检查规范", "对比两版作业指导书的放行条件"],
+      "hard_negative_examples": ["为什么清腔后边缘缺陷突然增加", "复述我前一轮的问题"],
+      "required_slots": [],
+      "allowed_routes": ["internal_rag", "reuse_evidence", "rag_and_web", "clarify"],
+      "risk_level": "medium",
+      "task_signatures": [
+        {
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "lookup",
+          "execution_policy": "execute"
+        },
+        {
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "compare",
+          "execution_policy": "execute"
+        },
+        {
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "explain",
+          "execution_policy": "execute"
+        }
+      ]
+    },
+    {
+      "card_id": "knowledge.recipe_read",
+      "display_name": "Recipe 只读知识查询",
+      "status": "active",
+      "primary_intent": "knowledge_query",
+      "handles": ["只读查询、解释或比较 Recipe 版本规则与受控记录"],
+      "excludes": ["修改、下发或写入 Recipe", "控制生产设备"],
+      "confused_with": ["action.prohibited_write"],
+      "positive_examples": ["解释这套配方的版本审批规则", "比较两个 Recipe 修订版的差异"],
+      "hard_negative_examples": ["把新配方直接下发到机台", "替我改掉当前温度参数"],
+      "required_slots": [],
+      "allowed_routes": ["internal_rag", "reuse_evidence", "clarify"],
+      "risk_level": "medium",
+      "task_signatures": [
+        {
+          "primary_intent": "knowledge_query",
+          "target_type": "recipe",
+          "action": "lookup",
+          "execution_policy": "execute"
+        },
+        {
+          "primary_intent": "knowledge_query",
+          "target_type": "recipe",
+          "action": "compare",
+          "execution_policy": "execute"
+        },
+        {
+          "primary_intent": "knowledge_query",
+          "target_type": "recipe",
+          "action": "explain",
+          "execution_policy": "execute"
+        }
+      ]
+    },
+    {
+      "card_id": "knowledge.alarm_explanation",
+      "display_name": "报警知识解释",
+      "status": "active",
+      "primary_intent": "knowledge_query",
+      "handles": ["解释报警代码、控制规则或文档定义，不查询某时间窗的实时记录"],
+      "excludes": ["查询具体设备某时间段报警记录", "分析报警增多的根因"],
+      "confused_with": ["data.manufacturing_lookup"],
+      "positive_examples": ["解释 pressure interlock 代码的规范含义", "这个 RF match 告警在手册里怎么定义"],
+      "hard_negative_examples": ["拉取昨晚八小时的告警明细", "分析最近报警突增原因"],
+      "required_slots": [],
+      "allowed_routes": ["internal_rag", "clarify"],
+      "risk_level": "medium",
+      "task_signatures": [
+        {
+          "primary_intent": "knowledge_query",
+          "target_type": "alarm",
+          "action": "explain",
+          "execution_policy": "execute"
+        }
+      ]
+    },
+    {
+      "card_id": "data.manufacturing_lookup",
+      "display_name": "制造数据只读查询",
+      "status": "active",
+      "primary_intent": "data_query",
+      "handles": ["按产品、设备和时间范围查询 FDC、SPC、Lot、Wafer 或报警数据"],
+      "excludes": ["解释报警规范含义", "跨证据进行异常根因诊断"],
+      "confused_with": ["knowledge.alarm_explanation", "investigation.anomaly_diagnosis"],
+      "positive_examples": ["拉取 P-ALPHA ETCH-03 昨天的 FDC 明细", "查看本周 SPC 控制趋势"],
+      "hard_negative_examples": ["这个报警代码代表什么规则", "判断良率下降最可能的根因"],
+      "required_slots": ["product", "time_range"],
+      "allowed_routes": ["tool_only", "clarify", "refuse"],
+      "risk_level": "medium",
+      "task_signatures": [
+        {
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute"
+        },
+        {
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute"
+        },
+        {
+          "primary_intent": "data_query",
+          "target_type": "wafer_map",
+          "action": "lookup",
+          "execution_policy": "execute"
+        },
+        {
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute"
+        },
+        {
+          "primary_intent": "data_query",
+          "target_type": "alarm",
+          "action": "lookup",
+          "execution_policy": "execute"
+        },
+        {
+          "primary_intent": "data_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute"
+        }
+      ]
+    },
+    {
+      "card_id": "investigation.anomaly_diagnosis",
+      "display_name": "异常调查与根因诊断",
+      "status": "active",
+      "primary_intent": "investigation",
+      "handles": ["结合受控知识和制造数据调查缺陷、良率或设备异常"],
+      "excludes": ["只查询原始数据", "只查询 SOP 条文"],
+      "confused_with": ["knowledge.sop_lookup", "data.manufacturing_lookup"],
+      "positive_examples": ["分析首片 CD 漂移和腔体状态的可能关联", "诊断边缘环状缺陷的证据链"],
+      "hard_negative_examples": ["只给我最近一天的 FDC 记录", "清腔作业规范有哪些步骤"],
+      "required_slots": ["product", "time_range"],
+      "allowed_routes": ["rag_and_tool", "clarify", "refuse"],
+      "risk_level": "high",
+      "task_signatures": [
+        {
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute"
+        },
+        {
+          "primary_intent": "investigation",
+          "target_type": "wafer_map",
+          "action": "diagnose",
+          "execution_policy": "execute"
+        },
+        {
+          "primary_intent": "investigation",
+          "target_type": "alarm",
+          "action": "diagnose",
+          "execution_policy": "execute"
+        },
+        {
+          "primary_intent": "investigation",
+          "target_type": "general",
+          "action": "diagnose",
+          "execution_policy": "execute"
+        }
+      ]
+    },
+    {
+      "card_id": "knowledge.external_lookup",
+      "display_name": "受控外部知识查询",
+      "status": "active",
+      "primary_intent": "knowledge_query",
+      "handles": ["明确要求查询白名单范围内公开网页、厂商资料或官方公告"],
+      "excludes": ["普通聊天和能力咨询", "仅查询内部受控资料"],
+      "confused_with": ["conversation.general", "action.out_of_scope"],
+      "positive_examples": ["搜索设备供应商公开发布的维护公告", "联网核对行业协会最新通知"],
+      "hard_negative_examples": ["你可以帮工程师做哪些事", "查询内部批准的现行 SOP"],
+      "required_slots": [],
+      "allowed_routes": ["rag_and_web", "clarify", "refuse"],
+      "risk_level": "medium",
+      "task_signatures": [
+        {
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute"
+        }
+      ]
+    },
+    {
+      "card_id": "conversation.control",
+      "display_name": "会话控制与槽位纠正",
+      "status": "active",
+      "primary_intent": "conversation",
+      "handles": ["取消当前任务、停止生成、纠正或清除当前线程中的上下文槽位"],
+      "excludes": ["修改生产 Recipe、删除制造数据或控制设备"],
+      "confused_with": ["action.prohibited_write"],
+      "positive_examples": ["停止当前查询但保留聊天记录", "把上下文里的机台改成 ETCH-04"],
+      "hard_negative_examples": ["把 ETCH-04 的 Recipe 写入设备", "删除昨天的报警数据"],
+      "required_slots": [],
+      "allowed_routes": ["chat_direct"],
+      "risk_level": "low",
+      "task_signatures": [
+        {
+          "primary_intent": "conversation",
+          "target_type": "general",
+          "action": "execute",
+          "execution_policy": "execute"
+        }
+      ]
+    },
+    {
+      "card_id": "action.out_of_scope",
+      "display_name": "超出智库能力范围",
+      "status": "active",
+      "primary_intent": "action_request",
+      "handles": [
+        "不属于半导体知识、制造数据、异常调查、当前线程处理或智库公开能力的任意请求",
+        "要求智库对能力边界外主题进行内容生成、建议、事实查询、分析或执行"
+      ],
+      "excludes": ["普通问候与智库能力咨询", "受支持的半导体知识、制造数据和异常调查任务"],
+      "confused_with": ["conversation.general", "knowledge.external_lookup"],
+      "positive_examples": ["替我完成一个与半导体制造无关的外部任务", "执行智库没有提供的通用服务"],
+      "hard_negative_examples": ["你能协助哪些半导体工程问题", "查询当前批准的清腔 SOP"],
+      "required_slots": [],
+      "allowed_routes": ["refuse"],
+      "risk_level": "medium",
+      "task_signatures": [
+        {
+          "primary_intent": "action_request",
+          "target_type": "general",
+          "action": "explain",
+          "execution_policy": "refuse"
+        }
+      ]
+    },
+    {
+      "card_id": "action.prohibited_write",
+      "display_name": "禁止写入与设备控制",
+      "status": "active",
+      "primary_intent": "action_request",
+      "handles": ["修改或下发 Recipe、删除制造数据、停机或控制设备等禁止自动执行的请求"],
+      "excludes": ["只读查询 Recipe 规则", "只读查询制造数据"],
+      "confused_with": ["knowledge.recipe_read", "conversation.control"],
+      "positive_examples": ["直接把新配方写入生产设备", "删除这批异常报警记录"],
+      "hard_negative_examples": ["查看配方审批记录", "查询报警明细但不要修改数据"],
+      "required_slots": [],
+      "allowed_routes": ["refuse"],
+      "risk_level": "high",
+      "task_signatures": [
+        {
+          "primary_intent": "action_request",
+          "target_type": "recipe",
+          "action": "execute",
+          "execution_policy": "refuse"
+        },
+        {
+          "primary_intent": "action_request",
+          "target_type": "general",
+          "action": "execute",
+          "execution_policy": "refuse"
+        }
+      ]
+    },
+    {
+      "card_id": "content.report_generation",
+      "display_name": "调查报告生成",
+      "status": "active",
+      "primary_intent": "content_task",
+      "handles": ["根据当前调查结果准备结构化报告或检查清单"],
+      "excludes": ["总结已有助手回答", "在缺少证据时编造正式结论"],
+      "confused_with": ["conversation.previous_answer_transform"],
+      "positive_examples": ["基于这次证据生成异常调查报告草稿", "把调查结论整理成检查清单"],
+      "hard_negative_examples": ["把上一个答案缩短一点", "没有证据也直接写最终根因"],
+      "required_slots": [],
+      "allowed_routes": ["chat_direct", "clarify", "refuse"],
+      "risk_level": "medium",
+      "task_signatures": [
+        {
+          "primary_intent": "content_task",
+          "target_type": "report",
+          "action": "generate",
+          "execution_policy": "defer"
+        }
+      ]
+    },
+    {
+      "card_id": "visual.image_similarity",
+      "display_name": "图像相似检索预留",
+      "status": "draft",
+      "primary_intent": "data_query",
+      "handles": ["未来按视觉特征检索相似晶圆图"],
+      "excludes": ["当前文本到图注的图片召回"],
+      "confused_with": [],
+      "positive_examples": ["查找与这张晶圆图视觉分布相似的历史图"],
+      "hard_negative_examples": ["根据图片图注查询对应原图"],
+      "required_slots": [],
+      "allowed_routes": ["clarify"],
+      "risk_level": "medium",
+      "task_signatures": [
+        {
+          "primary_intent": "data_query",
+          "target_type": "wafer_map",
+          "action": "compare",
+          "execution_policy": "defer"
+        }
+      ]
+    },
+    {
+      "card_id": "legacy.catch_all",
+      "display_name": "旧版兜底标签",
+      "status": "deprecated",
+      "primary_intent": "knowledge_query",
+      "handles": ["仅用于解释旧记录中的宽泛知识标签"],
+      "excludes": ["所有新请求"],
+      "confused_with": [],
+      "positive_examples": ["旧系统未知知识请求"],
+      "hard_negative_examples": ["任何可由活动卡表达的新请求"],
+      "required_slots": [],
+      "allowed_routes": ["clarify"],
+      "risk_level": "high",
+      "task_signatures": [
+        {
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "explain",
+          "execution_policy": "defer"
+        }
+      ]
+    }
+  ]
+}

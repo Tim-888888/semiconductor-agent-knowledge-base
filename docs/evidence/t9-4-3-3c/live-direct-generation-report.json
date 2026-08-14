@@ -1,0 +1,111 @@
+{
+  "verification": "T9-4.3.3c-live-direct-generation",
+  "live_stream_count": 5,
+  "cases": [
+    {
+      "reply_kind": "general_chat",
+      "response": "你好！我是 SEMIKB 半导体 Agent 智库，可以查询有权限的 SOP、Recipe 和历史 Case，读取明确标记的模拟制造数据，并结合证据协助异常排查。我不能修改或下发 Recipe、控制设备、删除数据，也不能替代工程师确认根因或绕过权限与版本治理。",
+      "delta_count": 2,
+      "audit": {
+        "reply_kind": "general_chat",
+        "generation_mode": "llm_stream",
+        "provider": "closeai",
+        "model": "gpt-5.6-luna-2026-07-09",
+        "fallback_used": false,
+        "latency_ms": 2293.509,
+        "verified_unit_count": 2,
+        "context_message_count": 2,
+        "warning_codes": [],
+        "usage": {
+          "completion_tokens": 98,
+          "prompt_tokens": 373,
+          "total_tokens": 471
+        }
+      }
+    },
+    {
+      "reply_kind": "history_recall",
+      "response": "你上一条提出了一个问题。\n\nETCH-03 Chamber B 清腔后首片异常，当前 SOP 怎么要求？",
+      "delta_count": 1,
+      "audit": {
+        "reply_kind": "history_recall",
+        "generation_mode": "llm_stream",
+        "provider": "closeai",
+        "model": "gpt-5.6-luna-2026-07-09",
+        "fallback_used": false,
+        "latency_ms": 5707.762,
+        "verified_unit_count": 1,
+        "context_message_count": 1,
+        "warning_codes": [],
+        "usage": {
+          "completion_tokens": 31,
+          "prompt_tokens": 330,
+          "total_tokens": 361
+        }
+      }
+    },
+    {
+      "reply_kind": "history_transform",
+      "response": "先暂停后续 lot 放行，检查 chamber pressure 和 RF match。",
+      "delta_count": 1,
+      "audit": {
+        "reply_kind": "history_transform",
+        "generation_mode": "llm_stream",
+        "provider": "closeai",
+        "model": "gpt-5.6-luna-2026-07-09",
+        "fallback_used": false,
+        "latency_ms": 4590.798,
+        "verified_unit_count": 1,
+        "context_message_count": 1,
+        "warning_codes": [],
+        "usage": {
+          "completion_tokens": 32,
+          "prompt_tokens": 328,
+          "total_tokens": 360
+        }
+      }
+    },
+    {
+      "reply_kind": "clarification",
+      "response": "为了准确处理这个问题，我还需要确认：\n- 受影响的 Product 是什么？\n- 需要查询哪个时间范围？",
+      "delta_count": 2,
+      "audit": {
+        "reply_kind": "clarification",
+        "generation_mode": "llm_stream",
+        "provider": "closeai",
+        "model": "gpt-5.6-luna-2026-07-09",
+        "fallback_used": false,
+        "latency_ms": 1981.712,
+        "verified_unit_count": 2,
+        "context_message_count": 2,
+        "warning_codes": [],
+        "usage": {
+          "completion_tokens": 47,
+          "prompt_tokens": 311,
+          "total_tokens": 358
+        }
+      }
+    },
+    {
+      "reply_kind": "refusal",
+      "response": "SEMIKB 仅支持受控的半导体知识查询、模拟数据只读分析及异常排查，不能代办无关的外部任务。\n\n我可以协助查询有权限的 SOP、Recipe、历史 Case 或分析半导体异常。",
+      "delta_count": 2,
+      "audit": {
+        "reply_kind": "refusal",
+        "generation_mode": "llm_stream",
+        "provider": "closeai",
+        "model": "gpt-5.6-luna-2026-07-09",
+        "fallback_used": false,
+        "latency_ms": 3889.886,
+        "verified_unit_count": 2,
+        "context_message_count": 2,
+        "warning_codes": [],
+        "usage": {
+          "completion_tokens": 99,
+          "prompt_tokens": 326,
+          "total_tokens": 425
+        }
+      }
+    }
+  ]
+}

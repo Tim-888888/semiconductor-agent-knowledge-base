@@ -217,7 +217,7 @@ function stageLabel(stage?: StreamUiState["stage"]): string {
     retrieving_evidence: "正在检索受控知识库…",
     searching_external: "正在查询允许的外部资料…",
     reranking_evidence: "正在重排并选择证据…",
-    generating_answer: "证据已就绪，正在生成回答…",
+    generating_answer: "正在生成并校验回答…",
     verifying_answer: "正在校验引用和结论边界…",
     persisting_result: "正在保存最终结果…"
   } as Record<string, string>)[stage ?? ""] ?? "请求处理中…";

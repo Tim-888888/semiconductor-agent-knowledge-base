@@ -364,10 +364,10 @@ async def test_production_graph_streams_multiple_verified_answer_units(seeded_se
     assert events[-1].data.result.model_metadata["answer_streamed"] is True
     ledger = store.get_message_request(thread.thread_id, scope.user_id, prepared.record.request_id)
     assert ledger is not None
-    assert ledger.understanding_audit.intent_catalog_version == "semikb-intent-catalog-v1"
+    assert ledger.understanding_audit.intent_catalog_version == "semikb-intent-catalog-v2"
     assert ledger.understanding_audit.intent_catalog_hash
-    assert ledger.understanding_audit.active_intent_card_count == 13
+    assert ledger.understanding_audit.active_intent_card_count == 14
     assert ledger.understanding_audit.intent_card_selection == "all_active"
-    assert ledger.understanding_audit.intent_cards_in_prompt == 13
+    assert ledger.understanding_audit.intent_cards_in_prompt == 14
     assert ledger.understanding_audit.intent_prompt_tokens > 0
     assert set(ledger.understanding_audit.model_dump()).isdisjoint({"prompt", "cards", "api_key"})

@@ -1,0 +1,67 @@
+{
+  "verification": "T9-4.3.3c",
+  "mode": "deterministic_frozen_regression",
+  "catalog": {
+    "version": "semikb-intent-catalog-v2",
+    "hash": "6db8759477fb7cb0a7d7de4ffedde07e702b019136bba0b10f28183e87cd786e",
+    "raw_file_sha256": "1c2a5bd5623720e6d10835ee21def586ee3ab804a3e8f8fde05a9308fb34be33",
+    "total_cards": 16,
+    "active_cards": 14
+  },
+  "datasets": [
+    {
+      "dataset_version": "semikb-intent-v1",
+      "raw_file_sha256": "99eb281471a702b086031c000c9954f0d63d36729832a052663f9ce1c8d023ee",
+      "canonical_dataset_hash": "01caa8a4fa2180e2dea19df3ea04da2cb80512f10bf10076d47c42dbce53b228",
+      "evaluated_cases": 96,
+      "route_accuracy": 1.0,
+      "context_reference_accuracy": 1.0,
+      "dangerous_execution_miss_rate": 0.0,
+      "deprecated_history_direct_emission_rate": 0.0,
+      "route_migration": {
+        "overlay_version": "semikb-route-migration-history-to-chat-v1",
+        "overlay_hash": "f83f09397c3d0789af27f3a9a3fe5c102073daf8d514b10a191da02831fc169e",
+        "applied": true,
+        "migrated_expectation_count": 16,
+        "frozen_dataset_unchanged": true
+      },
+      "warnings": []
+    },
+    {
+      "dataset_version": "semikb-intent-v2",
+      "raw_file_sha256": "afde7fb43f241b6b0bfbace1a6b32ef7b45da29c9f57c551136961c27213adbb",
+      "canonical_dataset_hash": "ad13bb6b49ff604f5e25eb1b27e85c6db2a7b455ee7b1d24fbcd9d85641b95be",
+      "evaluated_cases": 99,
+      "route_accuracy": 1.0,
+      "context_reference_accuracy": 1.0,
+      "dangerous_execution_miss_rate": 0.0,
+      "deprecated_history_direct_emission_rate": 0.0,
+      "route_migration": {
+        "overlay_version": "semikb-route-migration-history-to-chat-v1",
+        "overlay_hash": "f83f09397c3d0789af27f3a9a3fe5c102073daf8d514b10a191da02831fc169e",
+        "applied": true,
+        "migrated_expectation_count": 19,
+        "frozen_dataset_unchanged": true
+      },
+      "warnings": []
+    },
+    {
+      "dataset_version": "semikb-intent-v3",
+      "raw_file_sha256": "a99eaa63da2bbbcd4ea5053488962f725cab6113ab600bf90e595df5d7fc966b",
+      "canonical_dataset_hash": "e5f2f689655e0eccd945bb25eec49e167c2dc07db5436c6dc4d360fc38976679",
+      "evaluated_cases": 108,
+      "route_accuracy": 1.0,
+      "context_reference_accuracy": 1.0,
+      "dangerous_execution_miss_rate": 0.0,
+      "deprecated_history_direct_emission_rate": 0.0,
+      "route_migration": {
+        "overlay_version": "semikb-route-migration-history-to-chat-v1",
+        "overlay_hash": "f83f09397c3d0789af27f3a9a3fe5c102073daf8d514b10a191da02831fc169e",
+        "applied": true,
+        "migrated_expectation_count": 19,
+        "frozen_dataset_unchanged": true
+      },
+      "warnings": []
+    }
+  ]
+}

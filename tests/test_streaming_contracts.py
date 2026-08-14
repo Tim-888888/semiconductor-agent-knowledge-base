@@ -12,6 +12,7 @@ from semikb.contracts.streaming import (
     AgentStreamErrorCode,
     AgentStreamEventType,
     AgentStreamStage,
+    DirectReplyAudit,
     StreamAcceptedData,
     StreamAcceptedEvent,
     StreamAnswerDeltaData,
@@ -26,6 +27,7 @@ from semikb.contracts.streaming import (
     agent_stream_event_adapter,
     validate_stream_event_sequence,
 )
+from semikb.storage.conversations import MongoConversationRepository
 
 NOW = datetime(2026, 8, 12, tzinfo=UTC)
 REQUEST_ID = "req_12345678"
@@ -64,6 +66,56 @@ def test_request_ledger_stores_a_hash_instead_of_duplicate_message_content() -> 
     dumped = record.model_dump(mode="json")
     assert dumped["content_sha256"] == "a" * 64
     assert "content" not in dumped
+
+
+def test_mongo_terminal_transition_persists_direct_reply_audit() -> None:
+    record = AgentMessageRequestRecord(
+        request_id=REQUEST_ID,
+        thread_id=THREAD_ID,
+        actor_user_id="demo_engineer",
+        content_sha256="a" * 64,
+        user_message_id="msg_user",
+        run_id="run_1",
+        status=AgentMessageRequestStatus.RUNNING,
+        direct_reply_audit=DirectReplyAudit(
+            reply_kind="history_recall",
+            generation_mode="llm_stream",
+            provider="test",
+            model="test-model",
+            latency_ms=12.5,
+            verified_unit_count=2,
+            context_message_count=1,
+        ),
+    )
+
+    class MessageRequests:
+        def __init__(self) -> None:
+            self.update: dict[str, object] | None = None
+
+        def find_one_and_update(self, query, update, **kwargs):
+            self.update = update
+            document = record.model_dump(mode="python")
+            document.update(update["$set"])
+            return document
+
+    class Threads:
+        def update_one(self, *args, **kwargs):
+            return None
+
+    repository = object.__new__(MongoConversationRepository)
+    repository.message_requests = MessageRequests()
+    repository.threads = Threads()
+
+    terminal = repository.mark_message_request_terminal(
+        record,
+        AgentMessageRequestStatus.COMPLETED,
+    )
+
+    assert terminal.direct_reply_audit == record.direct_reply_audit
+    assert repository.message_requests.update is not None
+    assert repository.message_requests.update["$set"]["direct_reply_audit"]["reply_kind"] == (
+        "history_recall"
+    )
 
 
 def test_discriminated_event_adapter_rejects_mismatched_payload() -> None:

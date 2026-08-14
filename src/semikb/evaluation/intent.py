@@ -176,7 +176,64 @@ class IntentEvaluationResult(BaseModel):
     confusion_matrices: dict[str, dict[str, dict[str, int]]] = Field(default_factory=dict)
     per_class_metrics: dict[str, dict[str, dict[str, float]]] = Field(default_factory=dict)
     capacity: dict[str, Any] = Field(default_factory=dict)
+    route_migration: dict[str, Any] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
+
+
+class RouteExpectationOverlay(BaseModel):
+    """Versioned view over frozen route expectations; source datasets stay untouched."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    overlay_version: str
+    description: str
+    applies_to_dataset_versions: list[str]
+    source_catalog_versions: list[str]
+    target_catalog_version: str
+    route_map: dict[str, str]
+
+    @property
+    def overlay_hash(self) -> str:
+        payload = json.dumps(
+            self.model_dump(mode="json"),
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        return hashlib.sha256(payload.encode()).hexdigest()
+
+    @classmethod
+    def load(cls, path: Path) -> RouteExpectationOverlay:
+        return cls.model_validate_json(path.read_text(encoding="utf-8"))
+
+    def applies_to(
+        self,
+        dataset: IntentEvaluationDataset,
+        active_catalog_version: str,
+    ) -> bool:
+        return (
+            dataset.dataset_version in self.applies_to_dataset_versions
+            and active_catalog_version == self.target_catalog_version
+            and (
+                dataset.catalog_version is None
+                or dataset.catalog_version in self.source_catalog_versions
+            )
+        )
+
+    def expected_route(
+        self,
+        dataset: IntentEvaluationDataset,
+        active_catalog_version: str,
+        route: AgentRoute,
+    ) -> AgentRoute:
+        if not self.applies_to(dataset, active_catalog_version):
+            return route
+        return AgentRoute(self.route_map.get(route.value, route.value))
+
+
+DEFAULT_ROUTE_OVERLAY_PATH = Path(
+    "data/intent_sets/route_migrations/semikb_history_to_chat_v1.json"
+)
 
 
 class IntentEvaluationRunner:
@@ -184,10 +241,14 @@ class IntentEvaluationRunner:
         self,
         understanding: ConversationUnderstandingService,
         policy: RoutePolicy | None = None,
+        route_overlay: RouteExpectationOverlay | None = None,
     ) -> None:
         self.understanding = understanding
         self.policy = policy or RoutePolicy()
         self.catalog: IntentCatalog = understanding.intent_catalog
+        self.route_overlay = route_overlay or RouteExpectationOverlay.load(
+            DEFAULT_ROUTE_OVERLAY_PATH
+        )
 
     async def run(
         self,
@@ -196,7 +257,15 @@ class IntentEvaluationRunner:
         limit: int | None = None,
         offset: int = 0,
     ) -> IntentEvaluationResult:
-        if dataset.catalog_version and dataset.catalog_version != self.catalog.catalog_version:
+        overlay_applies = self.route_overlay.applies_to(
+            dataset,
+            self.catalog.catalog_version,
+        )
+        if (
+            dataset.catalog_version
+            and dataset.catalog_version != self.catalog.catalog_version
+            and not overlay_applies
+        ):
             raise ValueError("evaluation dataset and active intent catalog versions do not match")
         selected = dataset.cases[offset:]
         cases = selected[:limit] if limit else selected
@@ -258,6 +327,7 @@ class IntentEvaluationRunner:
         latencies_ms: list[float] = []
         llm_cases = 0
         all_active_injected = 0
+        migrated_route_expectations = 0
         provider_calls = 0
         few_shot_embedding_calls = 0
         few_shot_embedding_input_tokens_estimate = 0
@@ -269,6 +339,12 @@ class IntentEvaluationRunner:
         }
 
         for case in cases:
+            expected_route = self.route_overlay.expected_route(
+                dataset,
+                self.catalog.catalog_version,
+                case.expected_route,
+            )
+            migrated_route_expectations += int(expected_route is not case.expected_route)
             result = await self.understanding.understand(
                 case.utterance,
                 case.context,
@@ -318,19 +394,19 @@ class IntentEvaluationRunner:
 
             mode_ok = interpreted.interaction_mode is case.expected_interaction_mode
             intent_ok = interpreted.primary_intent is case.expected_primary_intent
-            route_ok = plan.route is case.expected_route
+            route_ok = plan.route is expected_route
             context_reference_ok = (
                 not case.expected_context_message_ids
                 or interpreted.context_message_ids == case.expected_context_message_ids
             )
             correct_mode += int(mode_ok)
             correct_intent += int(intent_ok)
-            expected_routes[case.expected_route] += 1
+            expected_routes[expected_route] += 1
             actual_routes[plan.route] += 1
-            true_routes[case.expected_route] += int(route_ok)
+            true_routes[expected_route] += int(route_ok)
             expected_primary_labels.append(case.expected_primary_intent.value)
             actual_primary_labels.append(interpreted.primary_intent.value)
-            expected_route_labels.append(case.expected_route.value)
+            expected_route_labels.append(expected_route.value)
             actual_route_labels.append(plan.route.value)
             if case.expected_context_message_ids:
                 context_reference_cases += 1
@@ -340,7 +416,7 @@ class IntentEvaluationRunner:
             actual_tasks += len(interpreted.task_items)
             missed_tasks += max(case.expected_task_count - len(interpreted.task_items), 0)
             spurious_tasks += max(len(interpreted.task_items) - case.expected_task_count, 0)
-            if case.expected_route in {
+            if expected_route in {
                 AgentRoute.HISTORY_DIRECT,
                 AgentRoute.CHAT_DIRECT,
                 AgentRoute.TOOL_ONLY,
@@ -351,8 +427,8 @@ class IntentEvaluationRunner:
                 unnecessary_retrieval += int(plan.route in retrieval_routes)
             if plan.route is AgentRoute.REUSE_EVIDENCE:
                 reuse_predictions += 1
-                wrong_reuse += int(case.expected_route is not AgentRoute.REUSE_EVIDENCE)
-            if case.expected_route is not AgentRoute.CLARIFY:
+                wrong_reuse += int(expected_route is not AgentRoute.REUSE_EVIDENCE)
+            if expected_route is not AgentRoute.CLARIFY:
                 non_clarify_expected += 1
                 wrong_clarify += int(plan.route is AgentRoute.CLARIFY)
             if case.expected_slot_operation is not None:
@@ -450,7 +526,8 @@ class IntentEvaluationRunner:
                         "expected": {
                             "interaction_mode": case.expected_interaction_mode,
                             "primary_intent": case.expected_primary_intent,
-                            "route": case.expected_route,
+                            "route": expected_route,
+                            "frozen_route": case.expected_route,
                             "task_count": case.expected_task_count,
                             "intent_card_ids": expected_cards,
                             "tasks": [item.model_dump(mode="json") for item in case.expected_tasks],
@@ -542,6 +619,9 @@ class IntentEvaluationRunner:
                 if context_reference_cases == 0
                 else 1 - context_reference_failures / context_reference_cases
             ),
+            "deprecated_history_direct_emission_rate": (
+                actual_routes[AgentRoute.HISTORY_DIRECT] / total
+            ),
         }
         prompt_p50 = self._percentile(prompt_tokens, 50)
         prompt_p95 = self._percentile(prompt_tokens, 95)
@@ -561,6 +641,8 @@ class IntentEvaluationRunner:
             prompt_tokens=int(prompt_p95),
             p95_latency_ms=latency_p95,
         )
+        if actual_routes[AgentRoute.HISTORY_DIRECT]:
+            warnings.append("deprecated_history_direct_emitted")
         profile = self.understanding.experiment_profile
         bank = profile.example_bank
         capacity = {
@@ -630,6 +712,13 @@ class IntentEvaluationRunner:
                 "intent_card": card_per_class,
             },
             capacity=capacity,
+            route_migration={
+                "overlay_version": self.route_overlay.overlay_version,
+                "overlay_hash": self.route_overlay.overlay_hash,
+                "applied": overlay_applies,
+                "migrated_expectation_count": migrated_route_expectations,
+                "frozen_dataset_unchanged": True,
+            },
             warnings=warnings,
         )
 

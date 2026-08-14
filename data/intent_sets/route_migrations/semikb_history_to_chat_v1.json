@@ -1,0 +1,14 @@
+{
+  "overlay_version": "semikb-route-migration-history-to-chat-v1",
+  "description": "T9-4.3.3c 评测覆盖层：冻结集中的历史 history_direct 期望映射为当前 chat_direct；原文件不改写。",
+  "applies_to_dataset_versions": [
+    "semikb-intent-v1",
+    "semikb-intent-v2",
+    "semikb-intent-v3"
+  ],
+  "source_catalog_versions": ["semikb-intent-catalog-v1"],
+  "target_catalog_version": "semikb-intent-catalog-v2",
+  "route_map": {
+    "history_direct": "chat_direct"
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "verification": "T9-4.3.3c-public-browser",
+  "tested_at": "2026-08-14",
+  "public_url": "http://112.74.99.143/",
+  "intent_catalog": {
+    "version": "semikb-intent-catalog-v2",
+    "canonical_hash": "874be41b06f1759f899ff33478b816fbe0f2230f992e3f9bbefa2f2bc2a6d426",
+    "raw_file_sha256": "0f32c2ed357aad2488adfd9c72de4b1da9db35224e15d3a30861f6329ca20989",
+    "selection": "all_active",
+    "few_shot_enabled": false
+  },
+  "streaming": {
+    "transport": "SSE + fetch ReadableStream",
+    "verified": true,
+    "sampled_message": "你好，你是谁？你能帮助我做什么？",
+    "observed_changes": [
+      {"elapsed_ms": 187, "state": "analyzing_request"},
+      {"elapsed_ms": 2873, "state": "generating_verified_reply"},
+      {"elapsed_ms": 5830, "state": "first_verified_text_unit"},
+      {"elapsed_ms": 6021, "state": "completed_text"}
+    ],
+    "browser_text_equal_to_persisted_text": true
+  },
+  "browser_cases": [
+    {
+      "case": "general_chat_and_capability",
+      "route": "chat_direct",
+      "trace_id": null,
+      "retrieval_skipped_reason": "answer_available_without_external_retrieval",
+      "result": "passed"
+    },
+    {
+      "case": "two_consecutive_history_recalls",
+      "route": "chat_direct",
+      "questions": ["我刚才说什么？", "我之前说了什么？"],
+      "selected_source": "你好，你是谁？你能帮助我做什么？",
+      "self_reference_observed": false,
+      "trace_id": null,
+      "result": "passed"
+    },
+    {
+      "case": "history_simplification",
+      "route": "chat_direct",
+      "reply": "你是谁，能帮我做什么？",
+      "trace_id": null,
+      "result": "passed"
+    },
+    {
+      "case": "missing_slot_clarification_and_resume",
+      "first_route": "clarify",
+      "asked_slots": ["product", "time_range", "tool_or_chamber"],
+      "first_trace_id": null,
+      "resume_completed_original_investigation": true,
+      "result": "passed"
+    },
+    {
+      "case": "generic_capability_boundary",
+      "route": "refuse",
+      "request": "帮我写一首关于晚风的诗。",
+      "trace_id": null,
+      "retrieval_skipped_reason": "request_refused_before_retrieval",
+      "rendered_as_plain_chat_bubble": true,
+      "result": "passed_after_browser-found_boundary_fix"
+    },
+    {
+      "case": "prohibited_recipe_write",
+      "route": "refuse",
+      "trace_id": null,
+      "retrieval_skipped_reason": "request_refused_before_retrieval",
+      "rendered_as_plain_chat_bubble": true,
+      "result": "passed"
+    }
+  ],
+  "mongo_audit": {
+    "general_request_id": "web_mssptawe_3351e6095e51d29e4e3a6044b5688a9b",
+    "general_reply_kind": "general_chat",
+    "history_request_id": "web_msspttp6_6980830bd7e94833087094093bcabebe",
+    "history_reply_kind": "history_recall",
+    "refusal_request_id": "web_mssq7rw1_6eef63ffd86acba526c0a26474441e37",
+    "refusal_reply_kind": "refusal",
+    "generation_mode": "llm_stream",
+    "provider": "closeai",
+    "model": "gpt-5.6-luna-2026-07-09",
+    "prompt_or_raw_context_persisted": false,
+    "result": "passed_after_mongo_terminal_mapping_fix"
+  },
+  "refresh_recovery": {
+    "messages_before": 4,
+    "messages_after": 4,
+    "last_message_equal": true,
+    "result": "passed"
+  },
+  "responsive": {
+    "desktop": {"width": 1440, "height": 900, "result": "passed"},
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "document_scroll_width": 375,
+      "overlap_observed": false,
+      "result": "passed"
+    },
+    "console_errors": []
+  },
+  "screenshots": [
+    "docs/evidence/t9-4-3-3c/public-workbench-desktop.png",
+    "docs/evidence/t9-4-3-3c/public-workbench-history-recall.png",
+    "docs/evidence/t9-4-3-3c/public-workbench-mobile-390x844.png"
+  ],
+  "runtime_after_deploy": {
+    "api": "9277ef752200",
+    "worker": "3aa52d91d3e4",
+    "web": "c7d27bed981a",
+    "runtime_file_hash_match": "13/13",
+    "health": "ok",
+    "worker_ping": "pong"
+  },
+  "data_service_ids_unchanged": {
+    "mongodb": "e6bd110ad320",
+    "milvus": "2f6827ca640e",
+    "milvus_minio": "6c9133e777d2",
+    "minio": "54dab754141e",
+    "etcd": "9deab8ba1805",
+    "redis": "ada0a643b6a6"
+  }
+}

@@ -19,7 +19,9 @@ from semikb.contracts.models import (
     ChatMessage,
     ContextEvidenceRef,
     ContextSlot,
+    IntentTarget,
     InteractionMode,
+    PrimaryIntent,
     TaskExecutionDecision,
 )
 
@@ -194,6 +196,47 @@ class MisleadingHistoryLLM:
         )
 
 
+class MisclassifiedOutOfScopeLLM:
+    async def complete(self, *args, **kwargs):
+        payload = {
+            "interaction_mode": "conversation",
+            "primary_intent": "conversation",
+            "task_items": [
+                {
+                    "task_id": "task_1",
+                    "primary_intent": "conversation",
+                    "target_type": "general",
+                    "action": "explain",
+                    "depends_on": [],
+                    "execution_policy": "execute",
+                }
+            ],
+            "affect": {
+                "sentiment": "neutral",
+                "urgency": "normal",
+                "complaint_signal": False,
+            },
+            "slot_operations": [],
+            "explicit_slots": [],
+            "inherited_slot_names": [],
+            "missing_slots": [],
+            "context_message_ids": [],
+            "standalone_query": "帮我写一首关于晚风的诗。",
+            "cancel_scope": None,
+            "suggested_route": "chat_direct",
+            "confidence": 0.94,
+        }
+        return LLMCompletion(
+            content=json.dumps(payload, ensure_ascii=False),
+            provider="test",
+            requested_model="test",
+            reported_model="test",
+            fallback_used=False,
+            attempted_providers=("test",),
+            usage={},
+        )
+
+
 def _service(seeded_services):
     store, _, retrieval, _, _ = seeded_services
     counting_retrieval = CountingRetrieval(retrieval)
@@ -222,7 +265,7 @@ async def test_history_recall_uses_exact_message_and_skips_all_downstream(seeded
     result = await service.send_message(thread.thread_id, "我刚才问什么了？", scope)
 
     assert first["route_decision"] is AgentRoute.INTERNAL_RAG
-    assert result["route_decision"] is AgentRoute.HISTORY_DIRECT
+    assert result["route_decision"] is AgentRoute.CHAT_DIRECT
     assert result["interaction_mode"] is InteractionMode.CONVERSATION
     assert first_question in result["response"]
     assert result["citations"] == []
@@ -248,7 +291,7 @@ async def test_repeated_history_recall_skips_meta_question_and_returns_business_
     second_recall = await service.send_message(thread.thread_id, "我刚刚说了什么?", scope)
 
     for result in (first_recall, second_recall):
-        assert result["route_decision"] is AgentRoute.HISTORY_DIRECT
+        assert result["route_decision"] is AgentRoute.CHAT_DIRECT
         assert result["interaction_mode"] is InteractionMode.CONVERSATION
         assert first_question in result["response"]
         assert "我刚刚说什么" not in result["response"]
@@ -412,6 +455,78 @@ async def test_out_of_scope_tool_is_refused_before_downstream(seeded_services) -
 
 
 @pytest.mark.asyncio
+async def test_empty_history_target_clarifies_without_downstream_calls(seeded_services) -> None:
+    store, service, retrieval, toolbox, web = _service(seeded_services)
+    scope = ActorScope()
+    thread = service.create_thread("empty-history", scope)
+
+    result = await service.send_message(thread.thread_id, "我刚才说什么？", scope)
+
+    assert result["route_decision"] is AgentRoute.CLARIFY
+    assert result["missing_fields"] == ["history_reference"]
+    assert result["clarification_required"] is True
+    assert retrieval.search_calls == 0
+    assert toolbox.query_calls == 0
+    assert web.search_calls == 0
+    request_id = result["thread"]["messages"][-1]["request_id"]
+    record = store.get_message_request(thread.thread_id, scope.user_id, request_id)
+    assert record is not None
+    assert record.direct_reply_audit is not None
+    assert record.direct_reply_audit.reply_kind == "clarification"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "utterance",
+    [
+        "替我完成一个无关的外部任务",
+        "帮我写一首关于晚风的诗。",
+    ],
+)
+async def test_generic_out_of_scope_request_is_plain_refusal_without_downstream(
+    seeded_services,
+    utterance: str,
+) -> None:
+    store, service, retrieval, toolbox, web = _service(seeded_services)
+    scope = ActorScope()
+    thread = service.create_thread("generic-boundary", scope)
+
+    result = await service.send_message(thread.thread_id, utterance, scope)
+
+    assert result["route_decision"] is AgentRoute.REFUSE
+    assert result["status"] == "refused"
+    assert result["answer"] is None
+    assert "能力范围" in result["response"]
+    assert retrieval.search_calls == 0
+    assert toolbox.query_calls == 0
+    assert web.search_calls == 0
+    request_id = result["thread"]["messages"][-1]["request_id"]
+    record = store.get_message_request(thread.thread_id, scope.user_id, request_id)
+    assert record is not None
+    assert record.direct_reply_audit is not None
+    assert record.direct_reply_audit.reply_kind == "refusal"
+
+
+@pytest.mark.asyncio
+async def test_llm_cannot_relabel_generic_out_of_scope_task_as_conversation() -> None:
+    settings = Settings(_env_file=None, demo_mode=False)
+    understanding_service = ConversationUnderstandingService(
+        settings,
+        MisclassifiedOutOfScopeLLM(),
+    )
+
+    result = await understanding_service.understand(
+        "帮我写一首关于晚风的诗。",
+        {},
+    )
+
+    assert result.understanding.primary_intent is PrimaryIntent.ACTION_REQUEST
+    assert result.understanding.task_items[0].target_type is IntentTarget.GENERAL
+    assert result.understanding.task_items[0].execution_policy is TaskExecutionDecision.REFUSE
+    assert result.understanding.suggested_route is AgentRoute.REFUSE
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "utterance",
     [
@@ -437,7 +552,7 @@ async def test_l0_history_rule_never_calls_llm(utterance: str) -> None:
     result = await service.understand(utterance, context)
 
     assert result.understanding.classifier_source == "l0"
-    assert result.understanding.suggested_route is AgentRoute.HISTORY_DIRECT
+    assert result.understanding.suggested_route is AgentRoute.CHAT_DIRECT
     assert result.metadata["understanding_calls"] == 0
 
 
@@ -463,8 +578,8 @@ async def test_semantic_history_task_overrides_model_route_and_meta_context() ->
     assert result.understanding.primary_intent.value == "conversation"
     assert result.understanding.interaction_mode is InteractionMode.CONVERSATION
     assert result.understanding.context_message_ids == ["msg_business"]
-    assert result.understanding.suggested_route is AgentRoute.HISTORY_DIRECT
-    assert plan.route is AgentRoute.HISTORY_DIRECT
+    assert result.understanding.suggested_route is AgentRoute.CHAT_DIRECT
+    assert plan.route is AgentRoute.CHAT_DIRECT
 
 
 @pytest.mark.asyncio

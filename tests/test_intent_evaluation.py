@@ -87,7 +87,9 @@ async def test_deterministic_intent_baseline_has_no_hidden_route_failures() -> N
             "dangerous_execution_miss_rate",
         )
     )
-    assert result.source_counts == {"l0": 35, "deterministic_fallback": 61}
+    assert result.source_counts == {"l0": 32, "deterministic_fallback": 64}
+    assert result.route_migration["migrated_expectation_count"] == 16
+    assert result.metrics["deprecated_history_direct_emission_rate"] == 0.0
 
 
 def test_intent_v2_freezes_history_recall_production_regressions() -> None:
@@ -181,9 +183,12 @@ async def test_intent_v3_deterministic_baseline_emits_reproducible_detailed_repo
     assert result.confusion_matrices["intent_card"]
     assert result.per_class_metrics["primary_intent"]["investigation"]["f1"] == 1.0
     assert result.per_class_metrics["intent_card"]["action.prohibited_write"]["recall"] == 1.0
-    assert result.capacity["intent_catalog_version"] == "semikb-intent-catalog-v1"
-    assert result.capacity["active_intent_card_count"] == 13
+    assert result.capacity["intent_catalog_version"] == "semikb-intent-catalog-v2"
+    assert result.capacity["active_intent_card_count"] == 14
     assert result.capacity["intent_card_selection"] == "all_active"
     assert result.capacity["llm_evaluated_cases"] == 0
     assert result.capacity["all_active_cards_injected_rate"] is None
+    assert result.route_migration["applied"] is True
+    assert result.route_migration["migrated_expectation_count"] == 19
+    assert result.metrics["deprecated_history_direct_emission_rate"] == 0.0
     assert result.warnings == []

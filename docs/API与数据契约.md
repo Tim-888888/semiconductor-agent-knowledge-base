@@ -88,13 +88,13 @@ T9-4.3.1 上下文基础和 T9-4.3.2 意图/路由契约已经实现。现有消
   "context_message_ids": ["msg_xxx"],
   "standalone_query": "",
   "cancel_scope": null,
-  "suggested_route": "history_direct",
+  "suggested_route": "chat_direct",
   "confidence": 0.99
 }
 ```
 
-上例是当前 T9-4.3.2 已部署契约。T9-4.3.3c 迁移后，同一语义的新请求把 `suggested_route` 和最终
-`route_decision` 写为 `chat_direct`，继续保留相同的 `context_message_ids` 作为历史约束。
+上例是 T9-4.3.3c 已部署契约。同一语义的新请求把 `suggested_route` 和最终 `route_decision` 写为
+`chat_direct`，继续保留相同的 `context_message_ids` 作为历史约束。
 
 `interaction_mode` 固定为 `task`、`conversation`、`feedback`、`control`、
 `clarification_answer` 和 `mixed`。一级意图固定为 `conversation`、`knowledge_query`、
@@ -115,7 +115,7 @@ T9-4.3.1 上下文基础和 T9-4.3.2 意图/路由契约已经实现。现有消
 `RoutePolicy` 根据权限、风险、槽位、上下文和证据有效性作最终决定。历史回顾和普通聊天不调用 T5；
 查询最新版本或实时状态不得直接复用旧证据。
 
-T9-4.3.3c 完成后，新历史请求统一产生 `chat_direct`，并以 `context_message_ids` 和稳定 reason code
+T9-4.3.3c 已完成：新历史请求统一产生 `chat_direct`，并以 `context_message_ids` 和稳定 reason code
 区分普通聊天、历史回顾和历史变换。服务端先验证消息属于当前用户与线程，再把选中的精确消息和有界
 最近历史交给生成器；生成器不得自行选择历史目标。模型失败时使用确定性精确回退。旧
 `history_direct` 不立即删除，避免旧 MongoDB 记录、评估快照和 Trace 反序列化失败。
@@ -135,8 +135,11 @@ T9-4.3.3a 已实现：Prompt 固定加载指定 `catalog_version` 中全部 `sta
 `SendMessageResponse` 和 SSE `completed.data.result` 已以可选、向后兼容字段返回
 `interaction_mode`、`route_decision`、`route_confidence`、`task_items`、`task_decisions` 和
 `retrieval_skipped_reason`。`agent_message_requests` 保存同一组路由审计信息，以及上下文消息 ID、
-独立查询、槽位操作、继承值、失效引用、取消范围、有限情绪枚举和脱敏理解审计。`stage` 只报告实际执行的上下文、
-检索或工具步骤，不输出隐藏推理。前端用户可见路由标签和逐任务最终结果属于 T9-4.3.3。详细规则见
+独立查询、槽位操作、继承值、失效引用、取消范围、有限情绪枚举和脱敏理解审计。T9-4.3.3c 新增可选
+`direct_reply_audit`，仅保存 `reply_kind`、Provider/模型、生成模式、时延、验证单元数、上下文消息数、
+告警码和 Token 用量；不保存 Prompt、完整意图卡、原始历史正文或密钥。MongoDB 终态更新和失败重试
+都会显式写入或清空该字段，避免旧尝试的审计信息污染新尝试。`stage` 只报告实际执行的上下文、
+检索或工具步骤，不输出隐藏推理。前端用户可见路由标签和逐任务最终结果属于尚未开发的 T9-4.3.3d。详细规则见
 `docs/T9-4.3通用会话记忆与按需路由设计.md`。
 
 ## 长期记忆

@@ -236,6 +236,7 @@ class MongoConversationRepository:
                     "cancel_scope": None,
                     "affect": AffectSignals().model_dump(mode="python"),
                     "understanding_audit": UnderstandingAudit().model_dump(mode="python"),
+                    "direct_reply_audit": None,
                     "error_code": None,
                 },
                 "$inc": {"attempt": 1},
@@ -489,6 +490,11 @@ class MongoConversationRepository:
                     "cancel_scope": record.cancel_scope,
                     "affect": record.affect.model_dump(mode="python"),
                     "understanding_audit": record.understanding_audit.model_dump(mode="python"),
+                    "direct_reply_audit": (
+                        record.direct_reply_audit.model_dump(mode="python")
+                        if record.direct_reply_audit is not None
+                        else None
+                    ),
                     "error_code": error_code,
                     "updated_at": now,
                     "finished_at": now,

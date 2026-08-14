@@ -22,7 +22,6 @@ EXTERNAL_TERMS = ("外部", "互联网", "网上", "web", "公开资料", "行�
 MUTATION_ACTIONS = {IntentTaskAction.EXECUTE}
 MUTATION_TARGETS = {IntentTarget.RECIPE}
 ROUTE_THRESHOLDS = {
-    AgentRoute.HISTORY_DIRECT: 0.55,
     AgentRoute.CHAT_DIRECT: 0.50,
     AgentRoute.REUSE_EVIDENCE: 0.82,
     AgentRoute.INTERNAL_RAG: 0.58,
@@ -64,7 +63,12 @@ class RoutePolicy:
             elif decision is TaskExecutionDecision.DEFER:
                 reason = "execution_deferred_to_t9433"
             elif decision is TaskExecutionDecision.REFUSE:
-                reason = "model_flagged_unsafe"
+                reason = (
+                    "outside_semikb_capability"
+                    if task.primary_intent is PrimaryIntent.ACTION_REQUEST
+                    and task.target_type is IntentTarget.GENERAL
+                    else "model_flagged_unsafe"
+                )
             else:
                 route = self._task_route(task, understanding, context, request)
                 candidate_routes.append(route)
@@ -90,7 +94,12 @@ class RoutePolicy:
                 invalidated_context_refs=self._invalidated_refs(understanding, context),
             )
 
-        route = self._combine_routes(candidate_routes, understanding.suggested_route)
+        suggested_route = (
+            AgentRoute.CHAT_DIRECT
+            if understanding.suggested_route is AgentRoute.HISTORY_DIRECT
+            else understanding.suggested_route
+        )
+        route = self._combine_routes(candidate_routes, suggested_route)
         missing = self._required_missing(understanding, combined_slots, route)
         if missing:
             reasons.append("required_slots_missing")
@@ -145,7 +154,7 @@ class RoutePolicy:
             reasons.append("server_policy_overrode_suggested_route")
         reasons.append("route_whitelist_match")
         skipped = None
-        if route in {AgentRoute.HISTORY_DIRECT, AgentRoute.CHAT_DIRECT}:
+        if route is AgentRoute.CHAT_DIRECT:
             skipped = "answer_available_without_external_retrieval"
         elif route is AgentRoute.TOOL_ONLY:
             skipped = "manufacturing_data_only_no_vector_retrieval"
@@ -172,14 +181,14 @@ class RoutePolicy:
             task.target_type is IntentTarget.PREVIOUS_USER_MESSAGE
             and task.action is IntentTaskAction.RECALL
         ):
-            return AgentRoute.HISTORY_DIRECT
+            return AgentRoute.CHAT_DIRECT
         if task.target_type is IntentTarget.PREVIOUS_ANSWER and task.action in {
             IntentTaskAction.RECALL,
             IntentTaskAction.SIMPLIFY,
             IntentTaskAction.SUMMARIZE,
             IntentTaskAction.TRANSLATE,
         }:
-            return AgentRoute.HISTORY_DIRECT
+            return AgentRoute.CHAT_DIRECT
         if understanding.primary_intent is PrimaryIntent.INVESTIGATION and task.primary_intent in {
             PrimaryIntent.INVESTIGATION,
             PrimaryIntent.DATA_QUERY,
@@ -200,7 +209,7 @@ class RoutePolicy:
                 IntentTarget.PREVIOUS_USER_MESSAGE,
                 IntentTarget.PREVIOUS_ANSWER,
             }:
-                return AgentRoute.HISTORY_DIRECT
+                return AgentRoute.CHAT_DIRECT
             return AgentRoute.CHAT_DIRECT
         if task.primary_intent is PrimaryIntent.DATA_QUERY:
             return AgentRoute.TOOL_ONLY
@@ -234,7 +243,7 @@ class RoutePolicy:
         non_direct = [
             item
             for item in routes
-            if item not in {AgentRoute.HISTORY_DIRECT, AgentRoute.CHAT_DIRECT}
+            if item is not AgentRoute.CHAT_DIRECT
         ]
         return non_direct[0] if non_direct else routes[0]
 
@@ -264,7 +273,20 @@ class RoutePolicy:
                 missing.append("time_range")
             if not (slots.get("tool_id") or slots.get("chamber")):
                 missing.append("tool_or_chamber")
-        if route is AgentRoute.HISTORY_DIRECT and not understanding.context_message_ids:
+        history_task = any(
+            item.target_type in {
+                IntentTarget.PREVIOUS_USER_MESSAGE,
+                IntentTarget.PREVIOUS_ANSWER,
+            }
+            and item.action in {
+                IntentTaskAction.RECALL,
+                IntentTaskAction.SIMPLIFY,
+                IntentTaskAction.SUMMARIZE,
+                IntentTaskAction.TRANSLATE,
+            }
+            for item in understanding.task_items
+        )
+        if history_task and not understanding.context_message_ids:
             missing.append("history_reference")
         return missing[:3]
 

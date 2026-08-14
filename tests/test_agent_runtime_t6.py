@@ -10,6 +10,16 @@ from semikb.config import Settings
 from semikb.contracts.models import ActorScope, CreateMemoryRequest, SendMessageResponse
 
 
+class CountingDirectReply:
+    def __init__(self, delegate) -> None:
+        self.delegate = delegate
+        self.calls = 0
+
+    async def generate(self, *args, **kwargs):
+        self.calls += 1
+        return await self.delegate.generate(*args, **kwargs)
+
+
 @pytest.mark.asyncio
 async def test_interrupted_graph_resumes_after_service_recreation(seeded_services) -> None:
     store, _, retrieval, service, _ = seeded_services
@@ -43,6 +53,33 @@ async def test_interrupted_graph_resumes_after_service_recreation(seeded_service
 
 
 @pytest.mark.asyncio
+async def test_clarification_reply_generation_is_not_repeated_when_checkpoint_resumes(
+    seeded_services,
+) -> None:
+    store, _, _, service, _ = seeded_services
+    counter = CountingDirectReply(service.graph.direct_reply)
+    service.graph.direct_reply = counter
+    thread = service.create_thread("Clarification generation boundary", ActorScope())
+
+    first = await service.send_message(thread.thread_id, "最近蚀刻良率下降，帮我调查根因")
+    assert first["clarification_required"] is True
+    assert counter.calls == 1
+
+    second = await service.send_message(
+        thread.thread_id,
+        "P-ALPHA 最近24小时 ETCH-03 Chamber B 出现 pressure alarm。",
+    )
+
+    assert second["clarification_required"] is False
+    assert counter.calls == 1
+    request_id = first["thread"]["messages"][-1]["request_id"]
+    record = store.get_message_request(thread.thread_id, thread.actor_scope.user_id, request_id)
+    assert record is not None
+    assert record.direct_reply_audit is not None
+    assert record.direct_reply_audit.reply_kind == "clarification"
+
+
+@pytest.mark.asyncio
 async def test_two_clarification_rounds_stop_without_retrieval(seeded_services) -> None:
     store, _, _, service, _ = seeded_services
     thread = service.create_thread("Bounded clarification", ActorScope())
@@ -70,8 +107,9 @@ async def test_out_of_scope_constraints_do_not_retrieve(seeded_services) -> None
         actor,
     )
 
-    assert result["status"] == "insufficient_information"
-    assert "超出当前用户权限" in result["response"]
+    assert result["status"] == "refused"
+    assert "无权访问" in result["response"]
+    assert result["answer"] is None
     assert result["trace_id"] is None
     assert store.traces == {}
 

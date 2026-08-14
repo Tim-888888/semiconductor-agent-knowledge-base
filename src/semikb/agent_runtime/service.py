@@ -40,6 +40,7 @@ from semikb.contracts.streaming import (
     AgentStreamErrorCode,
     AgentStreamEvent,
     AgentStreamStage,
+    DirectReplyAudit,
     StreamAcceptedData,
     StreamAcceptedEvent,
     StreamAnswerDeltaData,
@@ -513,9 +514,11 @@ class ConversationService:
         interrupt_payload = self._interrupt_payload(result)
         if interrupt_payload is not None:
             questions = [str(question) for question in interrupt_payload.get("questions", [])]
-            response = "为避免猜测 Tool、Product 或时间范围，请补充：\n" + "\n".join(
-                f"- {question}" for question in questions
-            )
+            response = str(interrupt_payload.get("response") or "").strip()
+            if not response:
+                response = "为了准确处理这个问题，我还需要确认：\n" + "\n".join(
+                    f"- {question}" for question in questions
+                )
             pending_fields = [str(field) for field in interrupt_payload.get("missing_fields", [])]
             clarification_round = int(interrupt_payload.get("round", 1))
             assistant = ChatMessage(
@@ -530,6 +533,8 @@ class ConversationService:
                 clarification_required=True,
                 missing_fields=pending_fields,
                 clarification_round=clarification_round,
+                model_metadata=dict(result.get("model_metadata", {})),
+                verification_warnings=list(result.get("verification_warnings", [])),
                 **self._response_route_metadata(result),
             )
             return model, assistant, {
@@ -622,6 +627,9 @@ class ConversationService:
             record.understanding_audit = UnderstandingAudit.model_validate(
                 {key: metadata[key] for key in allowed if key in metadata}
             )
+            direct_audit = metadata.get("direct_reply_audit")
+            if isinstance(direct_audit, dict):
+                record.direct_reply_audit = DirectReplyAudit.model_validate(direct_audit)
 
     def _replayed_response(self, record: AgentMessageRequestRecord) -> SendMessageResponse:
         thread = self.repository.get_thread(record.thread_id)

@@ -12,6 +12,11 @@ from langgraph.config import get_stream_writer
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 
+from semikb.agent_runtime.direct_reply import (
+    DirectReplyGenerator,
+    DirectReplyKind,
+    DirectReplyRequest,
+)
 from semikb.agent_runtime.llm_gateway import OpenAICompatibleLLMGateway
 from semikb.agent_runtime.memory import MemoryService
 from semikb.agent_runtime.routing import RoutePolicy
@@ -104,12 +109,14 @@ class ConversationGraph:
         self.toolbox = toolbox or ManufacturingToolbox()
         self.understanding = ConversationUnderstandingService(settings, self.llm)
         self.route_policy = RoutePolicy()
+        self.direct_reply = DirectReplyGenerator(settings, self.llm)
 
         workflow = StateGraph(CaseState)
         workflow.add_node("ingest_request", self._ingest_request)
         workflow.add_node("authorize_scope", self._authorize_scope)
         workflow.add_node("classify_and_extract", self._classify_and_extract)
         workflow.add_node("validate_required_fields", self._validate_required_fields)
+        workflow.add_node("prepare_clarification_reply", self._prepare_clarification_reply)
         workflow.add_node("clarify_missing_fields", self._clarify_missing_fields)
         workflow.add_node("direct_answer", self._direct_answer)
         workflow.add_node("refuse_request", self._refuse_request)
@@ -128,13 +135,14 @@ class ConversationGraph:
             "validate_required_fields",
             self._route_after_validation,
             {
-                "clarify": "clarify_missing_fields",
+                "clarify": "prepare_clarification_reply",
                 "direct": "direct_answer",
                 "refuse": "refuse_request",
                 "retrieve": "retrieve_evidence",
                 "insufficient": "insufficient_information",
             },
         )
+        workflow.add_edge("prepare_clarification_reply", "clarify_missing_fields")
         workflow.add_edge("clarify_missing_fields", "classify_and_extract")
         workflow.add_edge("direct_answer", "audit")
         workflow.add_edge("refuse_request", "audit")
@@ -412,18 +420,34 @@ class ConversationGraph:
             return "insufficient"
         return "clarify"
 
-    @staticmethod
-    def _clarify_missing_fields(state: CaseState) -> CaseState:
-        ConversationGraph._emit_stream(
+    async def _prepare_clarification_reply(self, state: CaseState) -> CaseState:
+        self._emit_stream(
             "stage",
             stage="awaiting_clarification",
             message="关键信息不足，正在生成澄清问题",
         )
+        result = await self.direct_reply.generate(
+            DirectReplyRequest(
+                kind=DirectReplyKind.CLARIFICATION,
+                user_request=state["request"],
+                conversation_context=state.get("conversation_context", {}),
+                missing_slots=tuple(state.get("missing_required_fields", [])),
+                clarification_questions=tuple(state.get("clarification_questions", [])),
+            ),
+            self._emit_direct_delta,
+        )
+        metadata = dict(state.get("model_metadata", {}))
+        metadata["direct_reply_audit"] = result.audit.model_dump(mode="json")
+        return {"answer_text": result.text, "model_metadata": metadata}
+
+    @staticmethod
+    def _clarify_missing_fields(state: CaseState) -> CaseState:
         payload = {
             "kind": "clarification",
             "round": state.get("clarification_round", 0) + 1,
             "missing_fields": state.get("missing_required_fields", []),
             "questions": state.get("clarification_questions", []),
+            "response": state.get("answer_text", ""),
         }
         response = interrupt(payload)
         merged = f"{state['request']}\n用户补充：{response}"
@@ -434,72 +458,66 @@ class ConversationGraph:
         }
 
     async def _direct_answer(self, state: CaseState) -> CaseState:
-        route = AgentRoute(str(state["route_decision"]))
         understanding = ConversationUnderstanding.model_validate(state["understanding"])
         context = state.get("conversation_context", {})
-        response = ""
-        if route is AgentRoute.HISTORY_DIRECT:
-            target = self._context_message(context, understanding.context_message_ids)
-            task = understanding.task_items[0] if understanding.task_items else None
-            if target is None:
-                response = "当前线程没有可精确引用的上一轮消息，请明确要处理的内容。"
-            elif task and task.action.value == "recall":
-                label = "上一条用户问题" if target.get("role") == "user" else "上一条回答"
-                response = f"{label}是：\n\n{target['content']}"
-            elif task and task.action.value in {"simplify", "summarize", "translate"}:
-                response = await self._transform_history(str(target["content"]), task.action.value)
-            else:
-                response = str(target["content"])
+        history_task = next(
+            (
+                item
+                for item in understanding.task_items
+                if item.target_type.value in {"previous_user_message", "previous_answer"}
+            ),
+            None,
+        )
+        action = history_task.action.value if history_task else None
+        if history_task and action == "recall":
+            kind = DirectReplyKind.HISTORY_RECALL
+        elif history_task and action in {"simplify", "summarize", "translate"}:
+            kind = DirectReplyKind.HISTORY_TRANSFORM
+        elif understanding.cancel_scope or understanding.slot_operations:
+            kind = DirectReplyKind.CONTROL_ACK
+        elif understanding.interaction_mode.value == "feedback":
+            kind = DirectReplyKind.FEEDBACK
         else:
-            request = state["request"]
-            if understanding.cancel_scope:
-                response = "已记录本次取消范围；会话历史仍会保留。"
-            elif understanding.slot_operations:
-                changes = [
-                    f"{item.slot_name}={item.value}"
-                    for item in understanding.slot_operations
-                    if item.value
-                ]
-                response = f"已更新当前会话条件：{'，'.join(changes)}。依赖旧条件的上下文将失效。"
-            elif understanding.interaction_mode.value == "feedback":
-                response = "收到。我会缩短表达、先给结论，再补必要依据。"
-            elif request.strip().lower() == "/help":
-                response = "我可以查询受控 SOP/Recipe、分析异常、读取模拟制造数据，并处理当前会话历史。"
-            elif request.strip().lower() == "/new":
-                response = "请使用工作台的新建按钮创建独立调查；当前线程不会被自动清空。"
-            else:
-                response = "你好。请告诉我需要查询的半导体知识、制造数据或异常场景。"
-        self._emit_stream("answer_delta", delta=response)
+            kind = DirectReplyKind.GENERAL_CHAT
+
+        control_summary = None
+        if understanding.cancel_scope:
+            control_summary = "已记录本次取消范围；会话历史仍会保留。"
+        elif understanding.slot_operations:
+            changes = [
+                f"{item.slot_name}={item.value}"
+                for item in understanding.slot_operations
+                if item.value
+            ]
+            control_summary = (
+                f"已更新当前会话条件：{'，'.join(changes)}。依赖旧条件的上下文将失效。"
+            )
+
+        self._emit_stream(
+            "stage",
+            stage="generating_answer",
+            message="正在生成受控的自然回复",
+        )
+        result = await self.direct_reply.generate(
+            DirectReplyRequest(
+                kind=kind,
+                user_request=state["request"],
+                conversation_context=context,
+                context_message_ids=tuple(understanding.context_message_ids),
+                action=action,
+                control_summary=control_summary,
+            ),
+            self._emit_direct_delta,
+        )
+        metadata = dict(state.get("model_metadata", {}))
+        metadata["direct_reply_audit"] = result.audit.model_dump(mode="json")
         return {
-            "answer_text": response,
+            "answer_text": result.text,
             "answer": {},
             "citations": [],
             "status": "completed",
+            "model_metadata": metadata,
         }
-
-    async def _transform_history(self, content: str, action: str) -> str:
-        if self.settings.demo_mode:
-            prefix = {
-                "simplify": "简单来说：",
-                "summarize": "总结：",
-                "translate": "待翻译内容：",
-            }.get(action, "")
-            compact = " ".join(content.split())
-            return f"{prefix}{compact[:600]}"
-        instruction = {
-            "simplify": "用更简单的中文重述，不增加新事实。",
-            "summarize": "用三点以内中文总结，不增加新事实。",
-            "translate": "把内容翻译成中文；如果已经是中文则翻译成英文。不增加新事实。",
-        }.get(action, "重述内容，不增加新事实。")
-        completion = await self.llm.complete(
-            [
-                {"role": "system", "content": instruction},
-                {"role": "user", "content": content[:8000]},
-            ],
-            temperature=0,
-            max_output_tokens=700,
-        )
-        return completion.content.strip()
 
     @staticmethod
     def _context_message(
@@ -512,21 +530,57 @@ class ConversationGraph:
                 return item
         return None
 
-    @staticmethod
-    def _refuse_request(state: CaseState) -> CaseState:
-        if state.get("authorization_errors"):
-            response = "请求中的 Product 或 Tool 超出当前用户权限范围，系统未调用检索或工具。"
-            status = "insufficient_information"
-        else:
-            response = "当前请求包含不允许自动执行的写操作或设备控制；系统未调用下游服务。"
-            status = "refused"
-        ConversationGraph._emit_stream("answer_delta", delta=response)
+    async def _refuse_request(self, state: CaseState) -> CaseState:
+        task_reasons = [
+            str(item.get("reason_code"))
+            for item in state.get("route_plan", {}).get("task_decisions", [])
+            if isinstance(item, dict) and item.get("reason_code")
+        ]
+        reason_codes = tuple(
+            dict.fromkeys([*state.get("authorization_errors", []), *task_reasons])
+        ) or ("outside_semikb_capability",)
+        alternatives = (
+            ("authorized_scope_help", "read_only_semiconductor_help")
+            if state.get("authorization_errors")
+            else ("read_only_semiconductor_help", "capability_guidance")
+        )
+        self._emit_stream(
+            "stage",
+            stage="generating_answer",
+            message="正在说明能力边界与可用替代方案",
+        )
+        result = await self.direct_reply.generate(
+            DirectReplyRequest(
+                kind=DirectReplyKind.REFUSAL,
+                user_request=state["request"],
+                conversation_context=state.get("conversation_context", {}),
+                reason_codes=reason_codes,
+                alternative_codes=alternatives,
+            ),
+            self._emit_direct_delta,
+        )
+        metadata = dict(state.get("model_metadata", {}))
+        metadata["direct_reply_audit"] = result.audit.model_dump(mode="json")
         return {
-            "answer_text": response,
-            "answer": AgentAnswer(unknowns=[response], confidence="low").model_dump(mode="json"),
+            "answer_text": result.text,
+            "answer": {},
             "citations": [],
-            "status": status,
+            "status": "refused",
+            "model_metadata": metadata,
         }
+
+    @staticmethod
+    def _emit_direct_delta(
+        delta: str,
+        provider: str | None,
+        model: str | None,
+    ) -> None:
+        ConversationGraph._emit_stream(
+            "answer_delta",
+            delta=delta,
+            provider=provider,
+            model=model,
+        )
 
     async def _retrieve_evidence(self, state: CaseState) -> CaseState:
         actor_scope = ActorScope.model_validate(state["user_scope"])

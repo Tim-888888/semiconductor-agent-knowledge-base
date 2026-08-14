@@ -100,6 +100,23 @@ class UnderstandingAudit(BaseModel):
     understanding_latency_ms: float = Field(default=0, ge=0)
 
 
+class DirectReplyAudit(BaseModel):
+    """Credential-safe evidence for controlled direct-reply generation."""
+
+    reply_kind: str = Field(min_length=1, max_length=64)
+    generation_mode: str = Field(
+        pattern="^(llm_stream|deterministic_fallback|partial_fallback)$"
+    )
+    provider: str | None = Field(default=None, max_length=128)
+    model: str | None = Field(default=None, max_length=128)
+    fallback_used: bool = False
+    latency_ms: float = Field(default=0, ge=0)
+    verified_unit_count: int = Field(default=0, ge=0, le=32)
+    context_message_count: int = Field(default=0, ge=0, le=24)
+    warning_codes: list[str] = Field(default_factory=list, max_length=16)
+    usage: dict[str, int] = Field(default_factory=dict)
+
+
 class AgentMessageRequestRecord(BaseModel):
     """Persistent idempotency ledger; message content remains in the thread only."""
 
@@ -130,6 +147,7 @@ class AgentMessageRequestRecord(BaseModel):
     cancel_scope: CancelScope | None = None
     affect: AffectSignals = Field(default_factory=AffectSignals)
     understanding_audit: UnderstandingAudit = Field(default_factory=UnderstandingAudit)
+    direct_reply_audit: DirectReplyAudit | None = None
     error_code: AgentStreamErrorCode | None = None
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)

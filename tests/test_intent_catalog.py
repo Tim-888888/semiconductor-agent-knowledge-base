@@ -14,6 +14,7 @@ from semikb.evaluation.intent import IntentEvaluationDataset
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG_PATH = ROOT / "data" / "intent_catalogs" / "semikb_intent_catalog_v1.json"
+CATALOG_V2_PATH = ROOT / "data" / "intent_catalogs" / "semikb_intent_catalog_v2.json"
 EXAMPLE_BANK_PATH = ROOT / "data" / "intent_examples" / "intent_example_bank_v1.json"
 V3_PATH = ROOT / "data" / "intent_sets" / "semikb_intent_v3.json"
 
@@ -90,6 +91,25 @@ def test_catalog_rejects_unknown_confusion_reference() -> None:
 
     with pytest.raises(ValidationError, match="unknown confused_with"):
         IntentCatalog.model_validate(payload)
+
+
+def test_catalog_v2_migrates_history_routes_and_adds_one_generic_boundary_card() -> None:
+    catalog = IntentCatalog.load(CATALOG_V2_PATH)
+    history_cards = {
+        card.card_id: card
+        for card in catalog.active_cards
+        if card.card_id in {
+            "conversation.history_recall",
+            "conversation.previous_answer_transform",
+        }
+    }
+
+    assert catalog.catalog_version == "semikb-intent-catalog-v2"
+    assert len(catalog.cards) == 16
+    assert len(catalog.active_cards) == 14
+    assert "action.out_of_scope" in {card.card_id for card in catalog.active_cards}
+    assert all("history_direct" not in card.allowed_routes for card in history_cards.values())
+    assert all("chat_direct" in card.allowed_routes for card in history_cards.values())
 
 
 @pytest.mark.asyncio

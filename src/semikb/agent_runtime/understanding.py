@@ -79,13 +79,54 @@ PREVIOUS_ANSWER_PREFIX_ACTION_PATTERN = re.compile(
 )
 CANCEL_PATTERN = re.compile(r"^(?:别查了|取消(?:这次|本次)?(?:查询|任务)?|放弃本轮追问|停止生成)[。！! ]*$")
 GREETING_PATTERN = re.compile(r"^(?:你好|您好|嗨|hello|hi|谢谢|感谢|明白了|收到)[。！!,.， ]*$", re.IGNORECASE)
+CAPABILITY_PATTERN = re.compile(
+    r"^(?:你|这个智库|系统)?(?:能|可以|会)?(?:做什么|干什么|帮我什么|有哪些能力|怎么使用)|"
+    r"^(?:你|系统)?(?:用的|使用的|是)?(?:什么|哪个)模型",
+    re.IGNORECASE,
+)
+GENERIC_TASK_REQUEST_PATTERN = re.compile(
+    r"^\s*(?:请|麻烦|帮我|替我|给我|请你|能否|能不能|可以(?:帮我)?|"
+    r"我想(?:请你|让你|要你)|我要|写|生成|创建|推荐|规划|搜索|查询|分析|"
+    r"完成|制作|设计)",
+    re.IGNORECASE,
+)
 FEEDBACK_PATTERN = re.compile(r"(?:回答|答复).*(?:太复杂|太长|不清楚|太慢|看不懂)|(?:太复杂|太长|看不懂)了")
-OOD_PATTERN = re.compile(r"(?:写(?:一首)?诗|订机票|股票|荐股|彩票|医学处方|法律诉讼|玩游戏|讲个笑话)")
 REFERENCE_TERMS = ("它", "这个", "该", "刚才", "上一轮", "继续", "基于之前", "上面")
 LATEST_TERMS = ("最新", "当前版本", "现行", "实时", "现在", "today", "latest")
 EXTERNAL_TERMS = ("外部", "互联网", "网上", "web", "公开资料", "行业最新", "官方公告")
 MUTATION_TERMS = ("修改", "下发", "写入", "删除", "停机", "执行变更", "调整recipe", "调整 recipe")
 ALARM_TERMS = ("报警", "告警", "alarm", "interlock")
+SEMICONDUCTOR_SCOPE_TERMS = (
+    "半导体",
+    "晶圆",
+    "wafer",
+    "fab",
+    "sop",
+    "recipe",
+    "fdc",
+    "spc",
+    "lot",
+    "etch",
+    "cvd",
+    "pvd",
+    "cmp",
+    "photo",
+    "litho",
+    "良率",
+    "缺陷",
+    "报警",
+    "告警",
+    "工艺",
+    "机台",
+    "腔体",
+    "制造数据",
+    "作业指导书",
+    "受控",
+    "异常",
+    "pressure",
+    "interlock",
+    "证据",
+)
 
 
 class _RawAffect(BaseModel):
@@ -379,7 +420,9 @@ class ConversationUnderstandingService:
                         "Preserve up to three explicit tasks. Separate emotion from task intent. Never invent Product, "
                         "Tool, Chamber, Recipe, Lot, Case, or time values. Use inherited_slot_names only for valid "
                         "context values needed by a pronoun or omitted reference. Recipe mutation, equipment control, "
-                        "data deletion, and out-of-scope actions must use execution_policy=refuse. The suggested route "
+                        "data deletion, and out-of-scope actions must use execution_policy=refuse. Ordinary conversation "
+                        "covers social exchange, Agent capability, feedback, control, and grounded history only; a request "
+                        "to create, advise, look up, analyze, or execute outside that capability is out of scope. The suggested route "
                         "is advisory; server policy makes the final decision. Do not include reasoning or prose."
                     ),
                 },
@@ -403,7 +446,9 @@ class ConversationUnderstandingService:
             "Preserve up to three explicit tasks. Separate emotion from task intent. Never invent Product, "
             "Tool, Chamber, Recipe, Lot, Case, or time values. Use inherited_slot_names only for valid "
             "context values needed by a pronoun or omitted reference. Recipe mutation, equipment control, "
-            "data deletion, and out-of-scope actions must use execution_policy=refuse. The suggested route "
+            "data deletion, and out-of-scope actions must use execution_policy=refuse. Ordinary conversation "
+            "covers social exchange, Agent capability, feedback, control, and grounded history only; a request "
+            "to create, advise, look up, analyze, or execute outside that capability is out of scope. The suggested route "
             "is advisory; server policy makes the final decision. For each task, compare against every active "
             "intent card supplied by the server and use a legal task signature from the closest matching card. "
             "The complete active catalog is authoritative; do not invent another intent. Do not include "
@@ -595,6 +640,24 @@ class ConversationUnderstandingService:
             not tasks or primary is not raw.primary_intent or has_protected_task
         ):
             tasks = self._infer_tasks(request, primary)
+        enforce_capability_boundary = self._requires_capability_boundary(
+            request,
+            primary,
+            clarification_pending=clarification_pending,
+            has_context_target=bool(context_ids),
+        )
+        if enforce_capability_boundary:
+            primary = PrimaryIntent.ACTION_REQUEST
+            tasks = [
+                IntentTaskItem(
+                    task_id="task_1",
+                    primary_intent=PrimaryIntent.ACTION_REQUEST,
+                    target_type=IntentTarget.GENERAL,
+                    action=IntentTaskAction.EXPLAIN,
+                    execution_policy=TaskExecutionDecision.REFUSE,
+                )
+            ]
+            context_ids = []
         query = self._standalone_query(raw.standalone_query or request, request, inherited)
         return ConversationUnderstanding(
             classifier_source="llm",
@@ -612,13 +675,19 @@ class ConversationUnderstandingService:
             slot_operations=operations,
             explicit_slots=explicit,
             inherited_slots=inherited,
-            missing_slots=[item for item in raw.missing_slots if item in SLOT_NAMES][:3],
+            missing_slots=(
+                []
+                if enforce_capability_boundary
+                else [item for item in raw.missing_slots if item in SLOT_NAMES][:3]
+            ),
             context_message_ids=context_ids,
             standalone_query=query,
             cancel_scope=raw.cancel_scope,
             suggested_route=(
-                AgentRoute.HISTORY_DIRECT
-                if history_recall_only
+                AgentRoute.REFUSE
+                if enforce_capability_boundary
+                else AgentRoute.CHAT_DIRECT
+                if history_recall_only or raw.suggested_route is AgentRoute.HISTORY_DIRECT
                 else raw.suggested_route
             ),
             confidence=raw.confidence,
@@ -717,7 +786,7 @@ class ConversationUnderstandingService:
                 PrimaryIntent.CONVERSATION,
                 IntentTarget.PREVIOUS_USER_MESSAGE,
                 IntentTaskAction.RECALL,
-                AgentRoute.HISTORY_DIRECT,
+                AgentRoute.CHAT_DIRECT,
                 context_message_ids=[previous_user] if previous_user else [],
             )
         if PREVIOUS_ANSWER_PATTERN.search(content) or PREVIOUS_ANSWER_PREFIX_ACTION_PATTERN.search(content):
@@ -731,7 +800,7 @@ class ConversationUnderstandingService:
                 PrimaryIntent.CONTENT_TASK,
                 IntentTarget.PREVIOUS_ANSWER,
                 action,
-                AgentRoute.HISTORY_DIRECT,
+                AgentRoute.CHAT_DIRECT,
                 context_message_ids=[previous_answer] if previous_answer else [],
             )
         if FEEDBACK_PATTERN.search(content):
@@ -784,30 +853,17 @@ class ConversationUnderstandingService:
                     "standalone_query": f"correct {old.upper()} to {new.upper()}",
                 }
             )
-        if GREETING_PATTERN.fullmatch(content) or normalized in {"/help", "/new"}:
+        if (
+            GREETING_PATTERN.fullmatch(content)
+            or CAPABILITY_PATTERN.search(content)
+            or normalized in {"/help", "/new"}
+        ):
             return self._direct_understanding(
                 InteractionMode.CONVERSATION,
                 PrimaryIntent.CONVERSATION,
                 IntentTarget.GENERAL,
                 IntentTaskAction.EXPLAIN,
                 AgentRoute.CHAT_DIRECT,
-            )
-        if OOD_PATTERN.search(content):
-            value = self._direct_understanding(
-                InteractionMode.TASK,
-                PrimaryIntent.ACTION_REQUEST,
-                IntentTarget.GENERAL,
-                IntentTaskAction.EXECUTE,
-                AgentRoute.REFUSE,
-            )
-            return value.model_copy(
-                update={
-                    "task_items": [
-                        value.task_items[0].model_copy(
-                            update={"execution_policy": TaskExecutionDecision.REFUSE}
-                        )
-                    ]
-                }
             )
         return None
 
@@ -880,7 +936,28 @@ class ConversationUnderstandingService:
         else:
             primary = PrimaryIntent.KNOWLEDGE_QUERY
 
-        tasks = self._infer_tasks(request, primary)
+        generic_out_of_scope = self._requires_capability_boundary(
+            request,
+            primary,
+            clarification_pending=clarification_pending,
+        )
+        if generic_out_of_scope:
+            primary = PrimaryIntent.ACTION_REQUEST
+            mode = InteractionMode.TASK
+
+        tasks = (
+            [
+                IntentTaskItem(
+                    task_id="task_1",
+                    primary_intent=PrimaryIntent.ACTION_REQUEST,
+                    target_type=IntentTarget.GENERAL,
+                    action=IntentTaskAction.EXECUTE,
+                    execution_policy=TaskExecutionDecision.REFUSE,
+                )
+            ]
+            if generic_out_of_scope
+            else self._infer_tasks(request, primary)
+        )
         suggested = self._suggest_route(primary, request, tasks)
         operations = [
             SlotOperation(operation=SlotOperationKind.SET, slot_name=name, value=value)
@@ -915,6 +992,40 @@ class ConversationUnderstandingService:
             suggested_route=suggested,
             confidence=confidence,
         )
+
+    @staticmethod
+    def _requires_capability_boundary(
+        request: str,
+        primary: PrimaryIntent,
+        *,
+        clarification_pending: bool,
+        has_context_target: bool = False,
+    ) -> bool:
+        """Catch unsupported tasks by structure without enumerating outside topics."""
+
+        lowered = request.lower()
+        if clarification_pending or any(term in lowered for term in SEMICONDUCTOR_SCOPE_TERMS):
+            return False
+        if (
+            ConversationUnderstandingService._is_history_recall_request(request)
+            or (
+                any(term in lowered for term in ("简化", "总结", "翻译", "改写"))
+                and any(
+                    term in lowered
+                    for term in ("刚才", "刚刚", "上一轮", "上一条", "上面", "之前", "前面", "最开始")
+                )
+            )
+            or GREETING_PATTERN.fullmatch(request.strip())
+            or CAPABILITY_PATTERN.search(request.strip())
+            or FEEDBACK_PATTERN.search(request)
+            or CANCEL_PATTERN.fullmatch(request.strip())
+        ):
+            return False
+        if primary is not PrimaryIntent.CONVERSATION:
+            if primary is PrimaryIntent.CONTENT_TASK and has_context_target:
+                return False
+            return True
+        return bool(GENERIC_TASK_REQUEST_PATTERN.search(request))
 
     @staticmethod
     def _direct_understanding(
@@ -1094,7 +1205,7 @@ class ConversationUnderstandingService:
         if primary is PrimaryIntent.DATA_QUERY:
             return AgentRoute.TOOL_ONLY
         if primary in {PrimaryIntent.CONVERSATION, PrimaryIntent.CONTENT_TASK}:
-            return AgentRoute.HISTORY_DIRECT
+            return AgentRoute.CHAT_DIRECT
         return AgentRoute.INTERNAL_RAG
 
     @staticmethod
