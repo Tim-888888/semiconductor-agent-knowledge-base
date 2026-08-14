@@ -67,6 +67,7 @@ function App() {
   const [selectedEvaluation, setSelectedEvaluation] = useState<EvaluationRun>();
   const [query, setQuery] = useState(starterQuestion);
   const [asset, setAsset] = useState<AssetAccess | null>(null);
+  const [assetError, setAssetError] = useState("");
   const [assetModalOpen, setAssetModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [accessRequired, setAccessRequired] = useState(false);
@@ -78,6 +79,7 @@ function App() {
   const streamAbortRef = useRef<AbortController | null>(null);
   const streamStopRequestedRef = useRef(false);
   const streamLifecycleRef = useRef<{ threadId: string; requestId: string } | null>(null);
+  const manualAssetSelectionRef = useRef<{ resultKey: string; imageId: string } | null>(null);
 
   const traceOptions = useMemo(() => {
     if (!selectedTrace || traces.some((item) => item.trace_id === selectedTrace.trace_id)) return traces;
@@ -85,6 +87,19 @@ function App() {
   }, [selectedTrace, traces]);
   const hasPendingJobs = jobs.some((job) => !["published", "failed"].includes(job.status));
   const hasPendingEvaluations = evaluations.some((run) => ["queued", "running"].includes(run.status));
+  const activeImageSelection = useMemo(() => {
+    const latestAssistant = [...(thread?.messages ?? [])]
+      .reverse()
+      .find((message) => message.role === "assistant");
+    const imageIds = agentResult?.image_asset_ids
+      ?? latestAssistant?.presentation?.image_asset_ids
+      ?? [];
+    return {
+      resultKey: `${thread?.thread_id ?? "none"}:${latestAssistant?.request_id ?? latestAssistant?.message_id ?? "empty"}`,
+      imageIds: [...new Set(imageIds)]
+    };
+  }, [agentResult, thread]);
+  const activeImageIdsKey = activeImageSelection.imageIds.join("\u001f");
 
   async function initializeWorkspace(demoAccessKey: string) {
     await bootstrapToken(demoAccessKey);
@@ -161,6 +176,32 @@ function App() {
   useEffect(() => () => {
     if (asset?.local_object_url) URL.revokeObjectURL(asset.url);
   }, [asset]);
+
+  useEffect(() => {
+    let cancelled = false;
+    manualAssetSelectionRef.current = null;
+    setAsset(null);
+    setAssetError("");
+    setAssetModalOpen(false);
+    const firstImageId = activeImageSelection.imageIds[0];
+    if (!firstImageId) return () => { cancelled = true; };
+
+    void resolveAsset(firstImageId)
+      .then((nextAsset) => {
+        if (!cancelled && manualAssetSelectionRef.current === null) {
+          setAsset(nextAsset);
+        } else if (nextAsset.local_object_url) {
+          URL.revokeObjectURL(nextAsset.url);
+        }
+      })
+      .catch(() => {
+        if (!cancelled && manualAssetSelectionRef.current === null) {
+          setAsset(null);
+          setAssetError("当前结果的图片无法加载，文本答案仍可正常使用。");
+        }
+      });
+    return () => { cancelled = true; };
+  }, [activeImageSelection.resultKey, activeImageIdsKey]);
 
   useEffect(() => {
     function cancelOnPageHide() {
@@ -363,6 +404,7 @@ function App() {
       setThread(await getThread(threadId));
       setAgentResult(null);
       setAsset(null);
+      setAssetError("");
       setStreamState(null);
     }, "线程恢复失败。");
   }
@@ -395,11 +437,33 @@ function App() {
   }
 
   async function openImage(imageId: string) {
-    await runAction(async () => {
+    const resultKey = activeImageSelection.resultKey;
+    manualAssetSelectionRef.current = { resultKey, imageId };
+    setAssetError("");
+    try {
       const nextAsset = await resolveAsset(imageId);
-      setAsset(nextAsset);
-      setAssetModalOpen(true);
-    }, "图片访问被拒绝。");
+      const selection = manualAssetSelectionRef.current;
+      if (selection?.resultKey === resultKey && selection.imageId === imageId) {
+        setAsset(nextAsset);
+        setAssetModalOpen(true);
+      } else if (nextAsset.local_object_url) {
+        URL.revokeObjectURL(nextAsset.url);
+      }
+    } catch (caught) {
+      const selection = manualAssetSelectionRef.current;
+      if (selection?.resultKey === resultKey && selection.imageId === imageId) {
+        setAsset(null);
+        setAssetModalOpen(false);
+        setAssetError("图片无权访问、已失效或暂时无法加载，文本答案不受影响。");
+      }
+      setError(messageFrom(caught, "图片访问失败。"));
+    }
+  }
+
+  function handleAssetLoadError() {
+    setAsset(null);
+    setAssetModalOpen(false);
+    setAssetError("图片链接已失效或加载失败，文本答案仍可正常使用。");
   }
 
   async function upload(file: File, metadata: UploadMetadata) {
@@ -502,12 +566,15 @@ function App() {
         query={query}
         loading={actionLoading}
         asset={asset}
+        assetError={assetError}
+        imageIds={activeImageSelection.imageIds}
         streamState={streamState}
         onQueryChange={setQuery}
         onSubmit={submitQuestion}
         onSelectThread={(threadId) => void selectThread(threadId)}
         onNewThread={() => void addThread()}
         onOpenImage={(imageId) => void openImage(imageId)}
+        onAssetLoadError={handleAssetLoadError}
         onOpenTrace={(traceId) => void openTrace(traceId)}
         onStopStream={() => void stopStream()}
         onRetryStream={() => void retryStream()}
@@ -519,7 +586,7 @@ function App() {
 
     {asset && assetModalOpen && <div className="asset-modal" role="dialog" aria-modal="true" aria-label="受控图片预览" data-testid="asset-modal">
       <div className="asset-modal-toolbar"><div><ImageIcon size={17} /><strong>{asset.image_id}</strong><span>{asset.object_key}</span></div><button className="icon-button" type="button" title="关闭图片" onClick={() => setAssetModalOpen(false)}><X size={18} /></button></div>
-      <img src={asset.url} alt={`受控图片 ${asset.image_id}`} />
+      <img src={asset.url} alt={`受控图片 ${asset.image_id}`} onError={handleAssetLoadError} />
     </div>}
   </div>;
 }

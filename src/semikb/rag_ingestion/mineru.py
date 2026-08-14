@@ -69,7 +69,6 @@ class MinerUPrecisionClient:
             uploaded = client.put(
                 upload_urls[0],
                 content=content,
-                headers={"Content-Type": "application/octet-stream"},
             )
             uploaded.raise_for_status()
             zip_url = self._wait_for_result(client, headers, str(batch_id), deadline)

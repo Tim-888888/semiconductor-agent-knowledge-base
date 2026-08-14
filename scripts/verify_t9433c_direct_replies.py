@@ -15,7 +15,7 @@ from semikb.config import Settings
 from semikb.evaluation.intent import IntentEvaluationDataset, IntentEvaluationRunner
 
 ROOT = Path(__file__).resolve().parents[1]
-CATALOG_PATH = ROOT / "data" / "intent_catalogs" / "semikb_intent_catalog_v2.json"
+CATALOG_PATH = ROOT / "data" / "intent_catalogs" / "semikb_intent_catalog_v3.json"
 DATASET_PATHS = tuple(
     ROOT / "data" / "intent_sets" / f"semikb_intent_v{version}.json"
     for version in (1, 2, 3)

@@ -1,0 +1,22 @@
+{
+  "verification": "T9-4.3.4-final-ecs-health",
+  "captured_at": "2026-08-14",
+  "api_health": "ok",
+  "public_health": "ok",
+  "worker_ping": "pong",
+  "application_containers": {
+    "web": {"id": "12764104e229", "status": "healthy"},
+    "worker": {"id": "d360d4dcab75", "status": "running"},
+    "api": {"id": "a386a919f562", "status": "healthy"}
+  },
+  "protected_data_containers": {
+    "milvus": {"id": "2f6827ca640e", "status": "healthy", "unchanged": true},
+    "mongodb": {"id": "e6bd110ad320", "status": "healthy", "unchanged": true},
+    "milvus_minio": {"id": "6c9133e777d2", "status": "healthy", "unchanged": true},
+    "redis": {"id": "ada0a643b6a6", "status": "healthy", "unchanged": true},
+    "etcd": {"id": "9deab8ba1805", "status": "healthy", "unchanged": true},
+    "business_minio": {"id": "54dab754141e", "status": "healthy", "unchanged": true}
+  },
+  "active_milvus_collection": "semikb_chunks_v4",
+  "credentials_stored": false
+}

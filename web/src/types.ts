@@ -90,6 +90,7 @@ export type MessagePresentation = {
   trace_id?: string | null;
   verification_warnings: string[];
   task_results: TaskExecutionResult[];
+  image_asset_ids: string[];
 };
 
 export type IntentTaskItem = {

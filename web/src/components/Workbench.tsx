@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowUp,
@@ -24,12 +24,15 @@ type Props = {
   query: string;
   loading: boolean;
   asset: AssetAccess | null;
+  assetError: string;
+  imageIds: string[];
   streamState: StreamUiState | null;
   onQueryChange: (value: string) => void;
   onSubmit: (event: FormEvent) => void;
   onSelectThread: (threadId: string) => void;
   onNewThread: () => void;
   onOpenImage: (imageId: string) => void;
+  onAssetLoadError: () => void;
   onOpenTrace: (traceId?: string | null) => void;
   onStopStream: () => void;
   onRetryStream: () => void;
@@ -42,12 +45,15 @@ export function Workbench({
   query,
   loading,
   asset,
+  assetError,
+  imageIds,
   streamState,
   onQueryChange,
   onSubmit,
   onSelectThread,
   onNewThread,
   onOpenImage,
+  onAssetLoadError,
   onOpenTrace,
   onStopStream,
   onRetryStream
@@ -56,15 +62,6 @@ export function Workbench({
   const [selectedEvidenceId, setSelectedEvidenceId] = useState<string>("");
   const selectedEvidence = ledger.find((item) => item.evidence_id === selectedEvidenceId) ?? ledger[0];
   const messageListRef = useRef<HTMLDivElement>(null);
-  const imageIds = useMemo(() => {
-    const fromResult = result?.image_asset_ids ?? [];
-    const fromLedger = ledger.flatMap((item) => item.image_ids ?? []);
-    const fromMessages = thread?.messages.flatMap((message) =>
-      (message.citations ?? []).flatMap((citation) => citation.image_ids ?? [])
-    ) ?? [];
-    return [...new Set([...fromResult, ...fromLedger, ...fromMessages])];
-  }, [ledger, result, thread]);
-
   useEffect(() => {
     const list = messageListRef.current;
     if (list) list.scrollTop = list.scrollHeight;
@@ -157,12 +154,12 @@ export function Workbench({
       </div>
 
       {asset ? <figure className="asset-preview">
-        <img className="wafer-image" src={asset.url} alt={`受控图片 ${asset.image_id}`} />
+        <img className="wafer-image" data-testid="asset-preview-image" src={asset.url} alt={`受控图片 ${asset.image_id}`} onError={onAssetLoadError} />
         <figcaption><strong>{asset.image_id}</strong><span>授权有效至 {new Date(asset.expires_at).toLocaleTimeString("zh-CN")}</span></figcaption>
-      </figure> : <div className="asset-placeholder"><ImageIcon size={30} /><span>暂无已打开图片</span></div>}
+      </figure> : <div className={`asset-placeholder ${assetError ? "asset-error" : ""}`} data-testid="asset-placeholder"><ImageIcon size={30} /><span>{assetError || "当前结果没有可预览图片"}</span></div>}
 
       {imageIds.length > 0 && <div className="asset-list">
-        {imageIds.map((imageId) => <button className="asset-item" type="button" key={imageId} onClick={() => onOpenImage(imageId)}>
+        {imageIds.map((imageId) => <button className={`asset-item ${asset?.image_id === imageId ? "active" : ""}`} type="button" key={imageId} aria-pressed={asset?.image_id === imageId} onClick={() => onOpenImage(imageId)}>
           <ImageIcon size={16} /><span>{imageId}</span>
         </button>)}
       </div>}

@@ -5,6 +5,8 @@ import zipfile
 from collections.abc import Sequence
 from pathlib import Path
 
+import httpx
+
 from semikb.config import Settings
 from semikb.contracts.models import (
     DocumentLifecycle,
@@ -145,6 +147,84 @@ def test_mineru_archive_returns_markdown_and_referenced_image() -> None:
     assert len(parsed.images) == 1
     assert parsed.images[0].filename == "wafer.png"
     assert parsed.images[0].caption == "edge ring"
+
+
+def test_mineru_signed_upload_does_not_override_content_type(monkeypatch) -> None:
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w") as archive:
+        archive.writestr("result/full.md", "# Parsed document")
+
+    class FakeClient:
+        put_headers: dict[str, str] | None = None
+
+        def __init__(self, **_kwargs) -> None:
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args) -> None:
+            pass
+
+        def post(self, url, **_kwargs):
+            return httpx.Response(
+                200,
+                request=httpx.Request("POST", url),
+                json={
+                    "code": 0,
+                    "data": {
+                        "batch_id": "batch-1",
+                        "file_urls": ["https://upload.example/signed"],
+                    },
+                },
+            )
+
+        def put(self, url, **kwargs):
+            self.put_headers = kwargs.get("headers")
+            return httpx.Response(200, request=httpx.Request("PUT", url))
+
+        def get(self, url, **_kwargs):
+            if "extract-results" in url:
+                return httpx.Response(
+                    200,
+                    request=httpx.Request("GET", url),
+                    json={
+                        "code": 0,
+                        "data": {
+                            "extract_result": [
+                                {
+                                    "state": "done",
+                                    "full_zip_url": "https://download.example/result.zip",
+                                }
+                            ]
+                        },
+                    },
+                )
+            return httpx.Response(
+                200,
+                request=httpx.Request("GET", url),
+                content=output.getvalue(),
+            )
+
+    fake_client = FakeClient()
+    monkeypatch.setattr(
+        "semikb.rag_ingestion.mineru.httpx.Client",
+        lambda **_kwargs: fake_client,
+    )
+    settings = Settings(
+        _env_file=None,
+        mineru_api_base_url="https://mineru.example",
+        mineru_api_key="test-key",
+    )
+
+    parsed = MinerUPrecisionClient(settings).parse_file(
+        "document.pdf",
+        b"%PDF-1.4",
+        "document:R1",
+    )
+
+    assert parsed.markdown == "# Parsed document"
+    assert fake_client.put_headers is None
 
 
 def test_source_and_parse_objects_are_replayable() -> None:

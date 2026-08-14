@@ -37,6 +37,7 @@ def test_investigation_routes_use_structured_cards(route: AgentRoute) -> None:
         status="completed",
         trace_id="trace_1",
         verification_warnings=["warning"],
+        image_asset_ids=["IMG-2", "IMG-1", "IMG-2"],
     )
 
     assert presentation.mode is MessageRenderMode.STRUCTURED_CARD
@@ -44,6 +45,7 @@ def test_investigation_routes_use_structured_cards(route: AgentRoute) -> None:
     assert presentation.answer == _answer()
     assert presentation.trace_id == "trace_1"
     assert presentation.verification_warnings == ["warning"]
+    assert presentation.image_asset_ids == ["IMG-2", "IMG-1"]
 
 
 @pytest.mark.parametrize(
@@ -62,6 +64,7 @@ def test_direct_routes_use_bubbles_even_if_an_answer_is_supplied(route: AgentRou
         status="completed",
         trace_id="trace_should_not_leak",
         verification_warnings=["should_not_render"],
+        image_asset_ids=["IMG-should-not-leak"],
     )
 
     assert presentation.mode is MessageRenderMode.BUBBLE
@@ -69,6 +72,7 @@ def test_direct_routes_use_bubbles_even_if_an_answer_is_supplied(route: AgentRou
     assert presentation.answer is None
     assert presentation.trace_id is None
     assert presentation.verification_warnings == []
+    assert presentation.image_asset_ids == []
 
 
 @pytest.mark.asyncio
@@ -112,3 +116,28 @@ async def test_structured_message_survives_later_direct_reply_and_thread_reload(
     assert restored_prior.presentation.mode is MessageRenderMode.STRUCTURED_CARD
     assert restored_prior.presentation.answer is not None
     assert prior_assistant.presentation is None
+
+
+@pytest.mark.asyncio
+async def test_final_image_order_survives_thread_reload(seeded_services) -> None:
+    _, _, _, service, _ = seeded_services
+    scope = ActorScope()
+    thread = service.create_thread("image presentation", scope)
+
+    response = await service.send_message(
+        thread.thread_id,
+        "有没有 ETCH-03 Chamber B 的边缘环状缺陷晶圆图？",
+        scope,
+    )
+
+    assert response["image_asset_ids"]
+    latest = response["thread"]["messages"][-1]
+    assert latest["presentation"]["image_asset_ids"] == response["image_asset_ids"]
+
+    restored = service.get_thread(thread.thread_id, scope)
+    assert restored is not None
+    assert restored.messages[-1].presentation is not None
+    assert (
+        restored.messages[-1].presentation.image_asset_ids
+        == response["image_asset_ids"]
+    )

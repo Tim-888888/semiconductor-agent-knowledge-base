@@ -183,8 +183,8 @@ async def test_intent_v3_deterministic_baseline_emits_reproducible_detailed_repo
     assert result.confusion_matrices["intent_card"]
     assert result.per_class_metrics["primary_intent"]["investigation"]["f1"] == 1.0
     assert result.per_class_metrics["intent_card"]["action.prohibited_write"]["recall"] == 1.0
-    assert result.capacity["intent_catalog_version"] == "semikb-intent-catalog-v2"
-    assert result.capacity["active_intent_card_count"] == 14
+    assert result.capacity["intent_catalog_version"] == "semikb-intent-catalog-v3"
+    assert result.capacity["active_intent_card_count"] == 15
     assert result.capacity["intent_card_selection"] == "all_active"
     assert result.capacity["llm_evaluated_cases"] == 0
     assert result.capacity["all_active_cards_injected_rate"] is None

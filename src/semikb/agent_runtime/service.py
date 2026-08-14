@@ -537,6 +537,7 @@ class ConversationService:
                     trace_id=None,
                     verification_warnings=list(result.get("verification_warnings", [])),
                     task_results=list(result.get("task_results", [])),
+                    image_asset_ids=[],
                 ),
             )
             model = SendMessageResponse(
@@ -572,6 +573,7 @@ class ConversationService:
                 trace_id=result.get("trace_id"),
                 verification_warnings=list(result.get("verification_warnings", [])),
                 task_results=list(result.get("task_results", [])),
+                image_asset_ids=list(result.get("image_evidence", [])),
             ),
         )
         model = SendMessageResponse(
@@ -704,6 +706,9 @@ class ConversationService:
                     str(item) for item in payload.get("verification_warnings", [])
                 ],
                 task_results=list(payload.get("task_results", record.task_results)),
+                image_asset_ids=[
+                    str(item) for item in payload.get("image_asset_ids", [])
+                ],
             )
         return hydrated
 

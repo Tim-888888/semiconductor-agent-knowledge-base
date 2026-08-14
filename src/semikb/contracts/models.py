@@ -265,6 +265,7 @@ class MessagePresentation(BaseModel):
     trace_id: str | None = None
     verification_warnings: list[str] = Field(default_factory=list)
     task_results: list[TaskExecutionResult] = Field(default_factory=list, max_length=3)
+    image_asset_ids: list[str] = Field(default_factory=list, max_length=64)
 
 
 class ChatMessage(BaseModel):

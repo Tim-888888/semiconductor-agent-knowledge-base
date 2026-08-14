@@ -236,9 +236,15 @@ MinerU Precision API。`DEMO_MODE=true` 时在请求内同步处理，便于无�
 
 - `mode`：`bubble` 或 `structured_card`；
 - `route_decision`：产生该消息的最终服务端路由；
-- `status`、`answer`、`trace_id`、`verification_warnings`：仅供该消息对应的结构化卡片使用。
+- `status`、`answer`、`trace_id`、`verification_warnings`：仅供该消息对应的结构化卡片使用；
+- `image_asset_ids`：当前结构化回答最终授权证据中的有序图片 ID；气泡路由固定为空列表。
 
 服务端固定把 `reuse_evidence/internal_rag/tool_only/rag_and_tool/rag_and_web` 映射为
 `structured_card`，把 `chat_direct/clarify/refuse` 及旧 `history_direct` 映射为 `bubble`。模型不能输出
 或覆盖该决策；前端只按消息字段渲染，不能使用全局最新结果控制历史消息。旧消息缺少展示字段时，服务端
 按 `request_id` 从已完成的 `agent_message_requests.result_payload` 补齐，MongoDB 原消息不做破坏性迁移。
+
+T9-4.3.4 起，SSE `completed`、幂等重放和 `GET thread` 必须返回相同的 `image_asset_ids`。前端自动选择
+第一项，并通过 `/api/assets/{image_id}/access` 重新校验当前用户、文档版本、有效期和 Scope 后取得短时
+链接；不得从 Retrieval Candidate、自行拼接的 MinIO 路径或上一轮全局状态展示图片。多图手动选择只在
+当前结果内保留，新结果无图时必须清空旧预览。

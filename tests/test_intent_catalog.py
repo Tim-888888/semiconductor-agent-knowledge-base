@@ -15,6 +15,7 @@ from semikb.evaluation.intent import IntentEvaluationDataset
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG_PATH = ROOT / "data" / "intent_catalogs" / "semikb_intent_catalog_v1.json"
 CATALOG_V2_PATH = ROOT / "data" / "intent_catalogs" / "semikb_intent_catalog_v2.json"
+CATALOG_V3_PATH = ROOT / "data" / "intent_catalogs" / "semikb_intent_catalog_v3.json"
 EXAMPLE_BANK_PATH = ROOT / "data" / "intent_examples" / "intent_example_bank_v1.json"
 V3_PATH = ROOT / "data" / "intent_sets" / "semikb_intent_v3.json"
 
@@ -110,6 +111,23 @@ def test_catalog_v2_migrates_history_routes_and_adds_one_generic_boundary_card()
     assert "action.out_of_scope" in {card.card_id for card in catalog.active_cards}
     assert all("history_direct" not in card.allowed_routes for card in history_cards.values())
     assert all("chat_direct" in card.allowed_routes for card in history_cards.values())
+
+
+def test_catalog_v3_adds_governed_text_to_image_asset_lookup() -> None:
+    catalog = IntentCatalog.load(CATALOG_V3_PATH)
+    image_card = next(
+        card for card in catalog.active_cards if card.card_id == "knowledge.image_asset_lookup"
+    )
+
+    assert catalog.catalog_version == "semikb-intent-catalog-v3"
+    assert len(catalog.cards) == 17
+    assert len(catalog.active_cards) == 15
+    assert [route.value for route in image_card.allowed_routes] == [
+        "internal_rag",
+        "clarify",
+    ]
+    assert image_card.required_slots == []
+    assert image_card.task_signatures[0].key == "knowledge_query:wafer_map:lookup:execute"
 
 
 @pytest.mark.asyncio

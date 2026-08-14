@@ -1,0 +1,101 @@
+{
+  "verification": "T9-4.3.4-complete-business-loop",
+  "documents": [
+    {
+      "job_id": "ing_d2514369d5ba42679b3e3081f54cac40",
+      "document_id": "T9434-MD-20260814150120",
+      "file_type": "md",
+      "status": "published",
+      "attempt": 1,
+      "chunks_count": 2,
+      "images_count": 0,
+      "event_stages": [
+        "queued",
+        "validating",
+        "parsing",
+        "quality_check",
+        "embedding",
+        "staged",
+        "published"
+      ],
+      "duplicate_verified": true
+    },
+    {
+      "job_id": "ing_9b0c472baba9407fbb393f632c5215f2",
+      "document_id": "T9434-PDF-20260814150120",
+      "file_type": "pdf",
+      "status": "published",
+      "attempt": 1,
+      "chunks_count": 1,
+      "images_count": 0,
+      "event_stages": [
+        "queued",
+        "validating",
+        "parsing",
+        "quality_check",
+        "embedding",
+        "staged",
+        "published"
+      ],
+      "duplicate_verified": false
+    }
+  ],
+  "searches": [
+    {
+      "document_id": "T9434-MD-20260814150120",
+      "trace_id": "trace_2d6be453804341b99ebec715e8f20298",
+      "final_evidence_ids": [
+        "T9434-MD-20260814150120-R1-001",
+        "T9434-PDF-20260814150120-R1-001",
+        "T9434-PDF-20260814145208-R1-001",
+        "T9434-MD-20260814144419-R1-001",
+        "T9434-MD-20260814145208-R1-001"
+      ]
+    },
+    {
+      "document_id": "T9434-PDF-20260814150120",
+      "trace_id": "trace_2189dca2ad454f7f9294066ed2b00f4e",
+      "final_evidence_ids": [
+        "T9434-PDF-20260814150120-R1-001",
+        "T9434-MD-20260814150120-R1-001",
+        "T9434-MD-20260814144419-R1-001",
+        "T9434-PDF-20260814145208-R1-001",
+        "T9434-MD-20260814145208-R1-001"
+      ]
+    }
+  ],
+  "conversation": {
+    "thread_id": "thread_15b3d9a01bf449ea9b40a3335fa13e1e",
+    "history_recovered": true,
+    "mixed_route": "rag_and_tool",
+    "mixed_task_statuses": [
+      "completed",
+      "completed",
+      "completed"
+    ],
+    "image_count": 1,
+    "first_image_id": "IMG-FA-ETCH-03-2026-004",
+    "final_image_order_persisted": true,
+    "no_image_clears_projection": true
+  },
+  "trace": {
+    "trace_id": "trace_4389c1f74b2840c9b5a750fba0fdb70d",
+    "final_evidence_count": 5,
+    "candidate_count": 22
+  },
+  "evaluation": {
+    "evaluation_run_id": "eval_f8882ef389b44768bfeeb2dd9c2a1bd7",
+    "status": "completed",
+    "profile": "full",
+    "case_count": 8,
+    "case_trace_visible": true
+  },
+  "cross_store": {
+    "mongodb_documents": 2,
+    "mongodb_chunks": 3,
+    "minio_objects_verified": 4,
+    "milvus_rows": 3,
+    "active_collection": "semikb_chunks_v4",
+    "alias_verified": true
+  }
+}

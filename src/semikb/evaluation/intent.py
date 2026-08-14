@@ -232,7 +232,7 @@ class RouteExpectationOverlay(BaseModel):
 
 
 DEFAULT_ROUTE_OVERLAY_PATH = Path(
-    "data/intent_sets/route_migrations/semikb_history_to_chat_v1.json"
+    "data/intent_sets/route_migrations/semikb_history_to_chat_v2.json"
 )
 
 

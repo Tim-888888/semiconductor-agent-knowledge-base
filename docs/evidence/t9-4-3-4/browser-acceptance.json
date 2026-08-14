@@ -1,0 +1,44 @@
+{
+  "verification": "T9-4.3.4-public-browser",
+  "tested_at": "2026-08-14",
+  "public_url": "http://112.74.99.143/",
+  "credentials_stored": false,
+  "desktop": {
+    "viewport": "1280x720",
+    "auto_first_image": true,
+    "refresh_restored_first_image": true,
+    "multi_image_count": 2,
+    "manual_second_image_selected": true,
+    "no_image_cleared_previous_preview": true,
+    "markdown_upload_published": true,
+    "pdf_upload_published": true,
+    "trace_opened": true,
+    "full_evaluation_completed": true
+  },
+  "mobile": {
+    "viewport": "390x844",
+    "auto_image_state_verified": true,
+    "no_image_state_verified": true,
+    "horizontal_overflow": false
+  },
+  "console": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "evaluation": {
+    "run_id": "eval_29e96540fb6144b9a5ca44566b11f10d",
+    "case_count": 8,
+    "pass_rate": 0.75,
+    "recall_at_5": 0.8,
+    "mrr": 0.8,
+    "ndcg_at_5": 0.8,
+    "negative_accuracy": 0.667,
+    "image_recall_at_5": 1.0,
+    "average_latency_ms": 2631.94,
+    "p95_latency_ms": 6782.45,
+    "known_failed_cases": [
+      "eval-current-sop",
+      "eval-expired-recipe"
+    ]
+  }
+}

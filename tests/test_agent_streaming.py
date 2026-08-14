@@ -152,6 +152,46 @@ def test_mixed_task_stream_reports_every_terminal_task_state() -> None:
     ]
 
 
+def test_stream_persists_final_image_order_and_next_no_image_result_clears_it() -> None:
+    client, headers = _authenticated_client()
+    thread_id = client.post(
+        "/api/v1/threads",
+        json={"title": "image projection stream"},
+        headers=headers,
+    ).json()["thread_id"]
+
+    events = _stream_events(
+        client,
+        headers,
+        thread_id,
+        "req_stream_image_001",
+        "有没有 ETCH-03 Chamber B 的边缘环状缺陷晶圆图？",
+    )
+    evidence_events = [
+        event for event in events if event.event is AgentStreamEventType.EVIDENCE
+    ]
+    completed = events[-1].data.result
+
+    assert evidence_events[-1].data.image_asset_ids
+    assert completed.image_asset_ids == evidence_events[-1].data.image_asset_ids
+    latest = completed.thread.messages[-1]
+    assert latest.presentation is not None
+    assert latest.presentation.image_asset_ids == completed.image_asset_ids
+
+    _stream_events(
+        client,
+        headers,
+        thread_id,
+        "req_stream_image_002",
+        "你好",
+    )
+    refreshed = client.get(f"/api/v1/threads/{thread_id}", headers=headers).json()
+    latest_presentation = refreshed["messages"][-1]["presentation"]
+    previous_presentation = refreshed["messages"][-3]["presentation"]
+    assert latest_presentation["image_asset_ids"] == []
+    assert previous_presentation["image_asset_ids"] == completed.image_asset_ids
+
+
 def test_stream_api_validates_authentication_and_thread_before_sse_headers() -> None:
     client, headers = _authenticated_client()
     payload = {
@@ -417,10 +457,10 @@ async def test_production_graph_streams_multiple_verified_answer_units(seeded_se
     assert events[-1].data.result.model_metadata["answer_streamed"] is True
     ledger = store.get_message_request(thread.thread_id, scope.user_id, prepared.record.request_id)
     assert ledger is not None
-    assert ledger.understanding_audit.intent_catalog_version == "semikb-intent-catalog-v2"
+    assert ledger.understanding_audit.intent_catalog_version == "semikb-intent-catalog-v3"
     assert ledger.understanding_audit.intent_catalog_hash
-    assert ledger.understanding_audit.active_intent_card_count == 14
+    assert ledger.understanding_audit.active_intent_card_count == 15
     assert ledger.understanding_audit.intent_card_selection == "all_active"
-    assert ledger.understanding_audit.intent_cards_in_prompt == 14
+    assert ledger.understanding_audit.intent_cards_in_prompt == 15
     assert ledger.understanding_audit.intent_prompt_tokens > 0
     assert set(ledger.understanding_audit.model_dump()).isdisjoint({"prompt", "cards", "api_key"})
