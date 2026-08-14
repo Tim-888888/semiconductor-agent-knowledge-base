@@ -126,6 +126,11 @@ T9-4.3.3c 完成后，新历史请求统一产生 `chat_direct`，并以 `contex
 评估集和路由风险校准，不写死通用 `0.8/0.6/0.4`；语义低置信度进入澄清，Provider 熔断只由超时、
 429、5xx 或无效响应触发。
 
+T9-4.3.3a 目标 Prompt 固定加载指定 `catalog_version` 中全部 `status=active` 的意图卡，不新增候选卡
+字段、预筛 API 或前置 Embedding 调用。内部理解审计增加 `intent_catalog_version`、
+`intent_catalog_hash`、`active_intent_card_count` 和 `intent_prompt_tokens`；这些字段不得包含完整 Prompt
+或用户敏感正文。动态 Few-shot 只追加经过隔离的案例，不改变 LLM 可见的全量合法意图集合。
+
 `SendMessageResponse` 和 SSE `completed.data.result` 已以可选、向后兼容字段返回
 `interaction_mode`、`route_decision`、`route_confidence`、`task_items`、`task_decisions` 和
 `retrieval_skipped_reason`。`agent_message_requests` 保存同一组路由审计信息，以及上下文消息 ID、
