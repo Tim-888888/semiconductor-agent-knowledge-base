@@ -1,0 +1,52 @@
+{
+  "verification": "T9-4.3.3a ECS acceptance",
+  "verified_at": "2026-08-14",
+  "deployed_source_commit": "580ebba",
+  "deployment_method": "verified incremental patch from 5d280ed because the ECS working tree contained known prior deployment drift",
+  "application_containers": {
+    "api": "ca61b80f7547",
+    "worker": "5fd114599197",
+    "web": "d17940f354bb"
+  },
+  "unchanged_data_containers": {
+    "mongodb": "e6bd110ad320",
+    "milvus": "2f6827ca640e",
+    "minio": "54dab754141e",
+    "milvus_minio": "6c9133e777d2",
+    "etcd": "9deab8ba1805",
+    "redis": "ada0a643b6a6"
+  },
+  "health": {
+    "api": "healthy",
+    "web": "healthy",
+    "worker_ping": "pong",
+    "recent_application_errors": 0
+  },
+  "online_probe": {
+    "dataset_version": "semikb-intent-v3",
+    "case_id": "knowledge-01",
+    "route": "internal_rag",
+    "catalog_version": "semikb-intent-catalog-v1",
+    "catalog_hash": "01a5fa3ab6b12ac60a9612bde4a57de42247a72140eeb95fcf97bc38bb249f6e",
+    "active_cards": 13,
+    "cards_in_prompt": 13,
+    "prompt_tokens": 4072,
+    "understanding_latency_ms": 3019.104,
+    "failures": 0
+  },
+  "request_ledger": {
+    "thread_id": "thread_76585986412f4f62aefd337298551d2d",
+    "request_id": "req_t9433a_ecs_1786678878",
+    "status": "completed",
+    "route": "internal_rag",
+    "understanding_source": "llm",
+    "understanding_calls": 1,
+    "catalog_version": "semikb-intent-catalog-v1",
+    "active_cards": 13,
+    "cards_in_prompt": 13,
+    "prompt_tokens": 4072,
+    "prompt_tokens_source": "provider_usage",
+    "understanding_latency_ms": 3002.451,
+    "contains_prompt_or_secret": false
+  }
+}
