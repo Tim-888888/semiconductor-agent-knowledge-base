@@ -2,17 +2,22 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any
 
 from semikb.agent_runtime.intent_experiments import IntentExperimentArm
-from semikb.evaluation.intent import IntentEvaluationResult
+from semikb.evaluation.intent import (
+    IntentEvaluationDataset,
+    IntentEvaluationResult,
+)
 
 QUALITY_METRICS = (
     "primary_intent_macro_f1",
     "intent_card_macro_f1",
     "intent_card_micro_f1",
     "high_risk_intent_f2",
+    "confusion_pair_intent_card_exact_match_rate",
     "task_set_exact_match_rate",
     "multi_task_exact_match_rate",
     "multi_task_miss_rate",
@@ -52,13 +57,19 @@ def build_intent_experiment_comparison(
 
     pricing = pricing or IntentExperimentReferencePricing()
     baseline = results[IntentExperimentArm.B_ALL_ACTIVE_CARDS]
+    fixed_few_shot = results[IntentExperimentArm.C_FIXED_FEW_SHOT]
     comparisons: dict[str, Any] = {}
     for arm, result in results.items():
         deltas = {
             metric: round(result.metrics[metric] - baseline.metrics[metric], 6)
             for metric in QUALITY_METRICS
         }
-        gates = _gates(result, baseline, arm=arm)
+        gates = _gates(
+            result,
+            baseline,
+            fixed_few_shot=fixed_few_shot,
+            arm=arm,
+        )
         comparisons[arm.value] = {
             "quality_delta_to_b": deltas,
             "gates": gates,
@@ -97,6 +108,11 @@ def build_intent_experiment_comparison(
             else "not_supported_by_current_shadow_data"
         ),
         "requires_user_confirmation_before_any_online_change": True,
+        "dynamic_reason": (
+            "D strictly beat C on multi-task exact match and governed confusion-pair accuracy."
+            if d_supported
+            else "D did not strictly beat C on both multi-task exact match and governed confusion-pair accuracy."
+        ),
         "reason": (
             "C passed safety and quality gates and improved at least one governed quality metric."
             if c_supported
@@ -118,6 +134,8 @@ def build_intent_experiment_comparison(
             "multi_task_exact_match_rate": "not_lower_than_b",
             "intent_prompt_tokens_p95": "within_catalog_capacity_gate",
             "all_active_cards": "required_for_b_c_d",
+            "dynamic_multi_task_exact_match": "strictly_higher_than_c",
+            "dynamic_confusion_pair_accuracy": "strictly_higher_than_c",
         },
         "reference_pricing": {
             "llm_input_usd_per_million": pricing.llm_input_usd_per_million,
@@ -141,6 +159,7 @@ def _gates(
     result: IntentEvaluationResult,
     baseline: IntentEvaluationResult,
     *,
+    fixed_few_shot: IntentEvaluationResult,
     arm: IntentExperimentArm,
 ) -> dict[str, bool]:
     metrics = result.metrics
@@ -169,7 +188,46 @@ def _gates(
         gates["all_active_cards_injected"] = (
             result.capacity["all_active_cards_injected_rate"] == 1.0
         )
+    if arm is IntentExperimentArm.D_DYNAMIC_FEW_SHOT:
+        gates["dynamic_multi_task_exact_better_than_fixed"] = (
+            metrics["multi_task_exact_match_rate"]
+            > fixed_few_shot.metrics["multi_task_exact_match_rate"]
+        )
+        gates["dynamic_confusion_pair_accuracy_better_than_fixed"] = (
+            metrics["confusion_pair_intent_card_exact_match_rate"]
+            > fixed_few_shot.metrics["confusion_pair_intent_card_exact_match_rate"]
+        )
     return gates
+
+
+def backfill_confusion_pair_metric(
+    result: IntentEvaluationResult,
+    dataset: IntentEvaluationDataset,
+) -> IntentEvaluationResult:
+    """Derive the new subgroup metric from a prior credential-safe raw report."""
+
+    metric_name = "confusion_pair_intent_card_exact_match_rate"
+    if metric_name in result.metrics:
+        return result
+    case_ids = {
+        case.case_id
+        for case in dataset.cases
+        if "confusion_pair" in case.tags and case.expected_intent_card_ids
+    }
+    if not case_ids:
+        raise ValueError("the frozen dataset contains no governed confusion-pair cases")
+    failure_by_id = {str(item.get("case_id")): item for item in result.failures}
+    correct = 0
+    for case_id in case_ids:
+        failure = failure_by_id.get(case_id)
+        if failure is None:
+            correct += 1
+            continue
+        expected = failure.get("expected", {}).get("intent_card_ids", [])
+        actual = failure.get("actual", {}).get("intent_card_ids", [])
+        correct += int(Counter(expected) == Counter(actual))
+    metrics = {**result.metrics, metric_name: round(correct / len(case_ids), 6)}
+    return result.model_copy(update={"metrics": metrics})
 
 
 def _quality_improved(

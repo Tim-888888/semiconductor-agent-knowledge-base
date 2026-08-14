@@ -219,6 +219,8 @@ class IntentEvaluationRunner:
         correction_cases = 0
         dangerous_failures = 0
         dangerous_cases = 0
+        confusion_pair_card_exact = 0
+        confusion_pair_cases = 0
         context_reference_failures = 0
         context_reference_cases = 0
         task_set_exact = 0
@@ -376,6 +378,11 @@ class IntentEvaluationRunner:
                 expected_card_labels.append(expected_cards)
                 actual_card_labels.append(actual_cards)
                 card_confusion_pairs.extend(self._aligned_pairs(expected_cards, actual_cards))
+                if "confusion_pair" in case.tags:
+                    confusion_pair_cases += 1
+                    confusion_pair_card_exact += int(
+                        Counter(expected_cards) == Counter(actual_cards)
+                    )
 
             if case.expected_tasks:
                 structured_task_cases += 1
@@ -510,6 +517,9 @@ class IntentEvaluationRunner:
             "intent_card_macro_f1": card_summary["macro_f1"],
             "intent_card_micro_f1": card_summary["micro_f1"],
             "high_risk_intent_f2": high_risk_f2,
+            "confusion_pair_intent_card_exact_match_rate": (
+                confusion_pair_card_exact / max(confusion_pair_cases, 1)
+            ),
             "task_set_exact_match_rate": task_set_exact / max(structured_task_cases, 1),
             "multi_task_exact_match_rate": multi_task_exact / max(multi_task_cases, 1),
             "multi_task_miss_rate": missed_tasks / max(expected_tasks, 1),

@@ -57,7 +57,8 @@
         "wrong_clarification_rate": 0.02,
         "slot_correction_failure_rate": 0.0,
         "dangerous_execution_miss_rate": 0.0,
-        "context_reference_accuracy": 1.0
+        "context_reference_accuracy": 1.0,
+        "confusion_pair_intent_card_exact_match_rate": 0.666667
       },
       "failures": [
         {
@@ -2335,7 +2336,8 @@
         "wrong_clarification_rate": 0.01,
         "slot_correction_failure_rate": 0.0,
         "dangerous_execution_miss_rate": 0.0,
-        "context_reference_accuracy": 1.0
+        "context_reference_accuracy": 1.0,
+        "confusion_pair_intent_card_exact_match_rate": 1.0
       },
       "failures": [
         {
@@ -4697,7 +4699,8 @@
         "wrong_clarification_rate": 0.01,
         "slot_correction_failure_rate": 0.0,
         "dangerous_execution_miss_rate": 0.0,
-        "context_reference_accuracy": 1.0
+        "context_reference_accuracy": 1.0,
+        "confusion_pair_intent_card_exact_match_rate": 1.0
       },
       "failures": [
         {
@@ -6735,7 +6738,8 @@
         "wrong_clarification_rate": 0.01,
         "slot_correction_failure_rate": 0.0,
         "dangerous_execution_miss_rate": 0.0,
-        "context_reference_accuracy": 1.0
+        "context_reference_accuracy": 1.0,
+        "confusion_pair_intent_card_exact_match_rate": 1.0
       },
       "failures": [
         {
@@ -8757,7 +8761,9 @@
       "intent_card_macro_f1": "not_lower_than_b",
       "multi_task_exact_match_rate": "not_lower_than_b",
       "intent_prompt_tokens_p95": "within_catalog_capacity_gate",
-      "all_active_cards": "required_for_b_c_d"
+      "all_active_cards": "required_for_b_c_d",
+      "dynamic_multi_task_exact_match": "strictly_higher_than_c",
+      "dynamic_confusion_pair_accuracy": "strictly_higher_than_c"
     },
     "reference_pricing": {
       "llm_input_usd_per_million": 0.2,
@@ -8774,6 +8780,7 @@
           "intent_card_macro_f1": -0.064571,
           "intent_card_micro_f1": -0.14511,
           "high_risk_intent_f2": -0.308964,
+          "confusion_pair_intent_card_exact_match_rate": -0.333333,
           "task_set_exact_match_rate": 0.046296,
           "multi_task_exact_match_rate": 0.0,
           "multi_task_miss_rate": 0.016393,
@@ -8809,6 +8816,7 @@
           "intent_card_macro_f1": 0.0,
           "intent_card_micro_f1": 0.0,
           "high_risk_intent_f2": 0.0,
+          "confusion_pair_intent_card_exact_match_rate": 0.0,
           "task_set_exact_match_rate": 0.0,
           "multi_task_exact_match_rate": 0.0,
           "multi_task_miss_rate": 0.0,
@@ -8845,6 +8853,7 @@
           "intent_card_macro_f1": -0.017342,
           "intent_card_micro_f1": -0.004634,
           "high_risk_intent_f2": 0.0,
+          "confusion_pair_intent_card_exact_match_rate": 0.0,
           "task_set_exact_match_rate": 0.046296,
           "multi_task_exact_match_rate": 0.0,
           "multi_task_miss_rate": 0.008197,
@@ -8881,6 +8890,7 @@
           "intent_card_macro_f1": 0.007506,
           "intent_card_micro_f1": 0.023425,
           "high_risk_intent_f2": 0.031709,
+          "confusion_pair_intent_card_exact_match_rate": 0.0,
           "task_set_exact_match_rate": 0.055555,
           "multi_task_exact_match_rate": 0.0,
           "multi_task_miss_rate": 0.0,
@@ -8896,9 +8906,11 @@
           "intent_card_macro_f1_not_regressed": true,
           "multi_task_exact_match_not_regressed": true,
           "prompt_token_capacity_passed": true,
-          "all_active_cards_injected": true
+          "all_active_cards_injected": true,
+          "dynamic_multi_task_exact_better_than_fixed": false,
+          "dynamic_confusion_pair_accuracy_better_than_fixed": false
         },
-        "all_blocking_gates_passed": true,
+        "all_blocking_gates_passed": false,
         "quality_improved_over_b": true,
         "latency_capacity_warning": true,
         "reference_cost": {
@@ -8916,8 +8928,9 @@
       "shadow_only": true,
       "online_default_remains": "b_all_active_cards",
       "fixed_few_shot_status": "not_supported_by_current_shadow_data",
-      "dynamic_few_shot_status": "eligible_for_separate_review_but_not_online",
+      "dynamic_few_shot_status": "not_supported_by_current_shadow_data",
       "requires_user_confirmation_before_any_online_change": true,
+      "dynamic_reason": "D did not strictly beat C on both multi-task exact match and governed confusion-pair accuracy.",
       "reason": "Keep B because C did not prove a governed quality improvement without regression."
     }
   }

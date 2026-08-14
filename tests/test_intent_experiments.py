@@ -14,13 +14,17 @@ from semikb.agent_runtime.intent_experiments import (
 from semikb.agent_runtime.llm_gateway import LLMCompletion
 from semikb.agent_runtime.understanding import ConversationUnderstandingService
 from semikb.config import Settings
-from semikb.evaluation.intent import IntentEvaluationResult
-from semikb.evaluation.intent_experiments import build_intent_experiment_comparison
+from semikb.evaluation.intent import IntentEvaluationDataset, IntentEvaluationResult
+from semikb.evaluation.intent_experiments import (
+    backfill_confusion_pair_metric,
+    build_intent_experiment_comparison,
+)
 from semikb.rag_retrieval.encoders import HybridEmbedding
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG_PATH = ROOT / "data" / "intent_catalogs" / "semikb_intent_catalog_v1.json"
 EXAMPLE_BANK_PATH = ROOT / "data" / "intent_examples" / "intent_example_bank_v1.json"
+V3_PATH = ROOT / "data" / "intent_sets" / "semikb_intent_v3.json"
 
 
 class CapturingLLM:
@@ -227,12 +231,14 @@ def experiment_result(
     multi_task: float = 0.4,
     high_risk_f2: float = 0.9,
     dangerous_miss: float = 0.0,
+    confusion_pair_accuracy: float = 0.8,
 ) -> IntentEvaluationResult:
     metrics = {
         "primary_intent_macro_f1": 0.9,
         "intent_card_macro_f1": card_f1,
         "intent_card_micro_f1": 0.85,
         "high_risk_intent_f2": high_risk_f2,
+        "confusion_pair_intent_card_exact_match_rate": confusion_pair_accuracy,
         "task_set_exact_match_rate": 0.6,
         "multi_task_exact_match_rate": multi_task,
         "multi_task_miss_rate": 0.1,
@@ -275,7 +281,10 @@ def test_comparison_can_recommend_c_for_review_but_never_switches_online() -> No
             "c_fixed_few_shot", card_f1=0.82
         ),
         IntentExperimentArm.D_DYNAMIC_FEW_SHOT: experiment_result(
-            "d_dynamic_few_shot", card_f1=0.83
+            "d_dynamic_few_shot",
+            card_f1=0.83,
+            multi_task=0.5,
+            confusion_pair_accuracy=0.9,
         ),
     }
 
@@ -291,6 +300,29 @@ def test_comparison_can_recommend_c_for_review_but_never_switches_online() -> No
         == "eligible_for_separate_review_but_not_online"
     )
     assert comparison["recommendation"]["shadow_only"] is True
+
+
+def test_dynamic_arm_is_not_eligible_when_it_only_matches_fixed_subgroups() -> None:
+    results = {
+        IntentExperimentArm.A_CURRENT_PROMPT: experiment_result("a_current_prompt"),
+        IntentExperimentArm.B_ALL_ACTIVE_CARDS: experiment_result("b_all_active_cards"),
+        IntentExperimentArm.C_FIXED_FEW_SHOT: experiment_result(
+            "c_fixed_few_shot", card_f1=0.82
+        ),
+        IntentExperimentArm.D_DYNAMIC_FEW_SHOT: experiment_result(
+            "d_dynamic_few_shot", card_f1=0.83
+        ),
+    }
+
+    comparison = build_intent_experiment_comparison(results, full_dataset_run=True)
+
+    d = comparison["arms"]["d_dynamic_few_shot"]
+    assert d["gates"]["dynamic_multi_task_exact_better_than_fixed"] is False
+    assert d["gates"]["dynamic_confusion_pair_accuracy_better_than_fixed"] is False
+    assert (
+        comparison["recommendation"]["dynamic_few_shot_status"]
+        == "not_supported_by_current_shadow_data"
+    )
 
 
 def test_comparison_rejects_c_when_high_risk_quality_regresses() -> None:
@@ -313,3 +345,15 @@ def test_comparison_rejects_c_when_high_risk_quality_regresses() -> None:
         comparison["recommendation"]["fixed_few_shot_status"]
         == "not_supported_by_current_shadow_data"
     )
+
+
+def test_prior_report_can_backfill_confusion_pair_metric_without_provider_calls() -> None:
+    dataset = IntentEvaluationDataset.load(V3_PATH)
+    prior = experiment_result("b_all_active_cards")
+    metrics = dict(prior.metrics)
+    metrics.pop("confusion_pair_intent_card_exact_match_rate")
+    prior = prior.model_copy(update={"metrics": metrics})
+
+    updated = backfill_confusion_pair_metric(prior, dataset)
+
+    assert updated.metrics["confusion_pair_intent_card_exact_match_rate"] == 1.0

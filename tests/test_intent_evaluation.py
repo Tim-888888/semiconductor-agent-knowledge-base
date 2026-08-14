@@ -164,6 +164,7 @@ async def test_intent_v3_deterministic_baseline_emits_reproducible_detailed_repo
             "intent_card_macro_f1",
             "intent_card_micro_f1",
             "high_risk_intent_f2",
+            "confusion_pair_intent_card_exact_match_rate",
             "task_set_exact_match_rate",
             "multi_task_exact_match_rate",
             "target_action_joint_accuracy",
