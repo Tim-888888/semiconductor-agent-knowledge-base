@@ -394,6 +394,178 @@ export type EvaluationDataset = {
   created_at: string;
 };
 
+export type SourceManifestStatus = "draft" | "approved" | "retired";
+export type SourceManifestType =
+  | "dataset"
+  | "paper"
+  | "repository"
+  | "ontology"
+  | "documentation"
+  | "curated_corpus"
+  | "other";
+export type SourceContentOrigin = "real" | "synthetic" | "derived";
+export type SourceLicenseStatus = "verified" | "declared" | "unclear" | "restricted";
+export type RedistributionPolicy = "allowed" | "restricted" | "prohibited" | "unknown";
+export type SourceIngestionMode =
+  | "document_rag"
+  | "tabular_profile_and_tool"
+  | "image_corpus"
+  | "mixed_curated_corpus"
+  | "reference_only";
+export type SourceIndexArtifact =
+  | "document_chunks"
+  | "data_dictionary"
+  | "dataset_profile"
+  | "analysis_report"
+  | "image_text";
+
+export type SourceIngestionPolicy = {
+  mode: SourceIngestionMode;
+  raw_storage: "minio_private";
+  raw_row_vectorization: false;
+  index_artifacts: SourceIndexArtifact[];
+  analysis_tool_required: boolean;
+};
+
+export type SourceManifest = {
+  manifest_schema_version: "semikb-source-manifest-v1";
+  source_id: string;
+  manifest_version: string;
+  status: SourceManifestStatus;
+  title: string;
+  source_type: SourceManifestType;
+  source_url: string;
+  doi_or_repo?: string | null;
+  retrieved_at: string;
+  source_hash: string;
+  hash_scope: string;
+  content_origin: SourceContentOrigin;
+  license_name: string;
+  license_status: SourceLicenseStatus;
+  redistribution_policy: RedistributionPolicy;
+  license_notes: string;
+  ingestion_policy: SourceIngestionPolicy;
+  parser_hint?: string | null;
+  expected_assets: {
+    raw_files_min: number;
+    documents_min: number;
+    images_min: number;
+    tables_min: number;
+    records_estimate?: number | null;
+    expected_formats: string[];
+  };
+  dataset_version: string;
+  access_scope_key: string;
+  source_snapshot_ref?: {
+    bucket: string;
+    object_key: string;
+    content_type: string;
+    sha256: string;
+    version_id?: string | null;
+  } | null;
+  supersedes_manifest_version?: string | null;
+  created_by: string;
+  created_at: string;
+  notes: string;
+};
+
+export type DocumentLifecycle =
+  | "staged"
+  | "published"
+  | "superseded"
+  | "expired"
+  | "quarantined"
+  | "withdrawn";
+export type DocumentLifecycleAction = "withdraw" | "restore";
+export type DocumentLifecycleOperationStatus =
+  | "requested"
+  | "blocking"
+  | "vector_cleanup"
+  | "withdrawn"
+  | "restore_validating"
+  | "restore_indexing"
+  | "restored"
+  | "compensation_required"
+  | "failed";
+
+export type AffectedRecordCounts = {
+  documents: number;
+  chunks: number;
+  images: number;
+  tables: number;
+  vectors: number;
+};
+
+export type KnowledgeDocumentRevisionSummary = {
+  document_id: string;
+  revision: string;
+  title: string;
+  document_type: string;
+  approval_status: "draft" | "approved" | "rejected";
+  lifecycle: DocumentLifecycle;
+  effective_at: string;
+  expires_at?: string | null;
+  source_id?: string | null;
+  source_manifest_version?: string | null;
+  dataset_version?: string | null;
+  source_uri: string;
+  source_license: string;
+  source_license_status?: SourceLicenseStatus | null;
+  redistribution_policy?: RedistributionPolicy | null;
+  access_scope_key: string;
+  counts: AffectedRecordCounts;
+  created_at: string;
+};
+
+export type KnowledgeDocumentSummary = {
+  document_id: string;
+  title: string;
+  document_type: string;
+  current_revision?: string | null;
+  current_lifecycle?: DocumentLifecycle | null;
+  revision_count: number;
+  source_id?: string | null;
+  dataset_version?: string | null;
+  updated_at: string;
+};
+
+export type KnowledgeDocumentListResponse = {
+  items: KnowledgeDocumentSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type WithdrawDocumentRevisionRequest = {
+  request_id: string;
+  reason: string;
+};
+
+export type RestoreDocumentRevisionRequest = {
+  request_id: string;
+  reason: string;
+  target_index_version?: string | null;
+};
+
+export type DocumentLifecycleOperationRecord = {
+  operation_id: string;
+  request_id: string;
+  action: DocumentLifecycleAction;
+  status: DocumentLifecycleOperationStatus;
+  selector: { document_id: string; revision: string };
+  actor_user_id: string;
+  reason: string;
+  before_lifecycle: DocumentLifecycle;
+  after_lifecycle?: DocumentLifecycle | null;
+  target_index_version?: string | null;
+  affected: AffectedRecordCounts;
+  compensation_status: "not_required" | "pending" | "running" | "completed" | "failed";
+  warning_codes: string[];
+  created_at: string;
+  updated_at: string;
+  completed_at?: string | null;
+};
+
 export type AssetAccess = {
   image_id: string;
   url: string;

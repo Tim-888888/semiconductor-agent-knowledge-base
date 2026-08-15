@@ -83,6 +83,22 @@ APPROVED_LEGACY_INDEX_SPECS: dict[str, tuple[MongoIndexSpec, ...]] = {
     ),
 }
 
+# Freeze this historical migration at its pre-T9-4.4.6a target. New source
+# governance indexes must only be created by the T9-4.4.6a migration.
+_POST_T2_INDEX_NAMES = {
+    "document_catalog": {"lifecycle_approval_created_at", "source_manifest_ref"},
+    "audit_events": {"resource_created_at"},
+}
+T2_G4_INDEX_SPECS: dict[str, tuple[MongoIndexSpec, ...]] = {
+    collection_name: tuple(
+        spec
+        for spec in specs
+        if spec.name not in _POST_T2_INDEX_NAMES.get(collection_name, set())
+    )
+    for collection_name, specs in MONGO_INDEX_SPECS.items()
+    if collection_name != "source_manifests"
+}
+
 
 @dataclass(frozen=True, slots=True)
 class IndexAction:
@@ -105,14 +121,14 @@ def capture_snapshot(database: Any) -> dict[str, Any]:
     """Capture counts and index metadata without reading document contents."""
 
     existing_collections = set(database.list_collection_names())
-    missing_collections = sorted(set(MONGO_INDEX_SPECS).difference(existing_collections))
+    missing_collections = sorted(set(T2_G4_INDEX_SPECS).difference(existing_collections))
     if missing_collections:
         raise MigrationSafetyError(
             f"database is missing collections: {', '.join(missing_collections)}"
         )
 
     collections: dict[str, Any] = {}
-    for collection_name, _ in MONGO_INDEX_SPECS.items():
+    for collection_name, _ in T2_G4_INDEX_SPECS.items():
         collection = database[collection_name]
         indexes = []
         for index_name, details in collection.index_information().items():
@@ -156,12 +172,12 @@ def build_migration_plan(snapshot: dict[str, Any]) -> list[IndexAction]:
         )
 
     collection_states = snapshot.get("collections", {})
-    missing = sorted(set(MONGO_INDEX_SPECS).difference(collection_states))
+    missing = sorted(set(T2_G4_INDEX_SPECS).difference(collection_states))
     if missing:
         raise MigrationSafetyError(f"snapshot is missing collections: {', '.join(missing)}")
 
     actions: list[IndexAction] = []
-    for collection_name, desired_specs in MONGO_INDEX_SPECS.items():
+    for collection_name, desired_specs in T2_G4_INDEX_SPECS.items():
         state = collection_states[collection_name]
         document_count = int(state.get("document_count", -1))
         if document_count != 0:

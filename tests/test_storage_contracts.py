@@ -17,6 +17,7 @@ from semikb.storage.external import service_configuration_health
 from semikb.storage.milvus_chunks import _alias_names
 from semikb.storage.minio_artifacts import MinioArtifactRepository
 from semikb.storage.mongo_index_migration import (
+    T2_G4_INDEX_SPECS,
     MigrationSafetyError,
     build_migration_plan,
     capture_snapshot,
@@ -26,6 +27,7 @@ from semikb.storage.mongo_schema import MONGO_INDEX_SPECS, compare_index_informa
 from semikb.storage.preflight import run_preflight
 from semikb.storage.t6_mongo_migration import (
     APPROVED_PRE_T6,
+    T6_INDEX_SPECS,
     TARGET_COLLECTIONS,
     T6MigrationSafetyError,
 )
@@ -123,11 +125,9 @@ def test_mongo_index_contract_keeps_identity_and_idempotency_unique_separately()
 def test_mongo_index_comparison_reports_missing_and_uniqueness_differences() -> None:
     expected = MONGO_INDEX_SPECS["document_catalog"]
     actual = {
-        "document_id_revision": {
-            "key": [("document_id", 1), ("revision", 1)],
-            "unique": False,
-        }
+        spec.name: {"key": list(spec.keys), "unique": spec.unique} for spec in expected
     }
+    actual["document_id_revision"]["unique"] = False
 
     assert compare_index_information(expected, actual) == [
         "index uniqueness differs: document_id_revision"
@@ -138,10 +138,7 @@ def test_mongo_index_comparison_reports_unexpected_indexes() -> None:
     expected = MONGO_INDEX_SPECS["document_catalog"]
     actual = {
         "_id_": {"key": [("_id", 1)]},
-        "document_id_revision": {
-            "key": [("document_id", 1), ("revision", 1)],
-            "unique": True,
-        },
+        **{spec.name: {"key": list(spec.keys), "unique": spec.unique} for spec in expected},
         "manual_index": {"key": [("manual", 1)]},
     }
 
@@ -240,7 +237,7 @@ def migration_snapshot(
     extra_document_index: dict[str, object] | None = None,
 ) -> dict[str, object]:
     collections: dict[str, object] = {}
-    for collection_name, specs in MONGO_INDEX_SPECS.items():
+    for collection_name, specs in T2_G4_INDEX_SPECS.items():
         indexes = [
             {"name": "_id_", "keys": [["_id", 1]], "unique": False},
             *[
@@ -446,7 +443,7 @@ def test_mongo_index_migration_refuses_missing_live_collection() -> None:
 def t6_migration_snapshot(*, desired: bool, non_empty: str | None = None) -> dict[str, Any]:
     collections: dict[str, Any] = {}
     for name in TARGET_COLLECTIONS:
-        specs = MONGO_INDEX_SPECS[name] if desired else APPROVED_PRE_T6[name]
+        specs = T6_INDEX_SPECS[name] if desired else APPROVED_PRE_T6[name]
         collections[name] = {
             "document_count": 1 if name == non_empty else 0,
             "indexes": [

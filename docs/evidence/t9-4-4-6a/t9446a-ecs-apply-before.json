@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "database": "semikb",
+  "migration_version": "t9-4.4.6a-source-governance-v1",
+  "captured_at": "2026-08-15T08:40:15.730028+00:00",
+  "collections": {
+    "document_catalog": {
+      "collection_existed": true,
+      "document_count": 35,
+      "indexes": [
+        {
+          "name": "_id_",
+          "keys": [
+            [
+              "_id",
+              1
+            ]
+          ],
+          "unique": false
+        },
+        {
+          "name": "document_id_revision",
+          "keys": [
+            [
+              "document_id",
+              1
+            ],
+            [
+              "revision",
+              1
+            ]
+          ],
+          "unique": true
+        }
+      ]
+    },
+    "source_manifests": {
+      "collection_existed": false,
+      "document_count": 0,
+      "indexes": []
+    },
+    "audit_events": {
+      "collection_existed": true,
+      "document_count": 141,
+      "indexes": [
+        {
+          "name": "_id_",
+          "keys": [
+            [
+              "_id",
+              1
+            ]
+          ],
+          "unique": false
+        },
+        {
+          "name": "actor_user_id_created_at",
+          "keys": [
+            [
+              "actor_user_id",
+              1
+            ],
+            [
+              "created_at",
+              1
+            ]
+          ],
+          "unique": false
+        },
+        {
+          "name": "event_id",
+          "keys": [
+            [
+              "event_id",
+              1
+            ]
+          ],
+          "unique": true
+        }
+      ]
+    }
+  }
+}

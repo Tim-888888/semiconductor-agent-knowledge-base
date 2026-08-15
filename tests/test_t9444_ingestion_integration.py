@@ -237,6 +237,35 @@ def test_local_format_outputs_flow_through_governed_publication(
         assert document.upstream_commit == job.upstream_commit
 
 
+def test_source_manifest_link_flows_into_governed_document_without_breaking_ingestion() -> None:
+    store = DemoStore()
+    metadata = _metadata("T9446A-SOURCE-LINK")
+    metadata.update(
+        {
+            "source_id": "semikb.demo.synthetic",
+            "source_manifest_version": "1.0.0",
+            "dataset_version": "demo-v2",
+            "source_license_status": "verified",
+            "redistribution_policy": "allowed",
+        }
+    )
+
+    job = _service(store).ingest_file(
+        "source-linked.md",
+        b"# Source linked document\n\nCheck chamber pressure.",
+        metadata,
+    )
+
+    document = store.get_document("T9446A-SOURCE-LINK", "R1")
+    assert job.status is IngestionStatus.PUBLISHED
+    assert document is not None
+    assert document.source_id == "semikb.demo.synthetic"
+    assert document.source_manifest_version == "1.0.0"
+    assert document.dataset_version == "demo-v2"
+    assert document.source_license_status == "verified"
+    assert document.redistribution_policy == "allowed"
+
+
 def test_table_and_image_assets_keep_stable_links_and_durable_objects() -> None:
     store = DemoStore()
     service = _service(store)

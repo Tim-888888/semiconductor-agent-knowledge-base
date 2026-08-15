@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 def utc_now() -> datetime:
@@ -30,6 +30,84 @@ class DocumentLifecycle(StrEnum):
     SUPERSEDED = "superseded"
     EXPIRED = "expired"
     QUARANTINED = "quarantined"
+    WITHDRAWN = "withdrawn"
+
+
+class SourceManifestStatus(StrEnum):
+    DRAFT = "draft"
+    APPROVED = "approved"
+    RETIRED = "retired"
+
+
+class SourceManifestType(StrEnum):
+    DATASET = "dataset"
+    PAPER = "paper"
+    REPOSITORY = "repository"
+    ONTOLOGY = "ontology"
+    DOCUMENTATION = "documentation"
+    CURATED_CORPUS = "curated_corpus"
+    OTHER = "other"
+
+
+class SourceContentOrigin(StrEnum):
+    REAL = "real"
+    SYNTHETIC = "synthetic"
+    DERIVED = "derived"
+
+
+class SourceLicenseStatus(StrEnum):
+    VERIFIED = "verified"
+    DECLARED = "declared"
+    UNCLEAR = "unclear"
+    RESTRICTED = "restricted"
+
+
+class RedistributionPolicy(StrEnum):
+    ALLOWED = "allowed"
+    RESTRICTED = "restricted"
+    PROHIBITED = "prohibited"
+    UNKNOWN = "unknown"
+
+
+class SourceIngestionMode(StrEnum):
+    DOCUMENT_RAG = "document_rag"
+    TABULAR_PROFILE_AND_TOOL = "tabular_profile_and_tool"
+    IMAGE_CORPUS = "image_corpus"
+    MIXED_CURATED_CORPUS = "mixed_curated_corpus"
+    REFERENCE_ONLY = "reference_only"
+
+
+class SourceIndexArtifact(StrEnum):
+    DOCUMENT_CHUNKS = "document_chunks"
+    DATA_DICTIONARY = "data_dictionary"
+    DATASET_PROFILE = "dataset_profile"
+    ANALYSIS_REPORT = "analysis_report"
+    IMAGE_TEXT = "image_text"
+
+
+class DocumentLifecycleAction(StrEnum):
+    WITHDRAW = "withdraw"
+    RESTORE = "restore"
+
+
+class DocumentLifecycleOperationStatus(StrEnum):
+    REQUESTED = "requested"
+    BLOCKING = "blocking"
+    VECTOR_CLEANUP = "vector_cleanup"
+    WITHDRAWN = "withdrawn"
+    RESTORE_VALIDATING = "restore_validating"
+    RESTORE_INDEXING = "restore_indexing"
+    RESTORED = "restored"
+    COMPENSATION_REQUIRED = "compensation_required"
+    FAILED = "failed"
+
+
+class CompensationStatus(StrEnum):
+    NOT_REQUIRED = "not_required"
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
 
 class ChunkType(StrEnum):
@@ -73,6 +151,108 @@ class ObjectRef(BaseModel):
     version_id: str | None = None
 
 
+class SourceIngestionPolicy(BaseModel):
+    """Controls which derived representations may enter RAG for one source."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    mode: SourceIngestionMode
+    raw_storage: Literal["minio_private"] = "minio_private"
+    raw_row_vectorization: bool = False
+    index_artifacts: list[SourceIndexArtifact] = Field(default_factory=list)
+    analysis_tool_required: bool = False
+
+    @model_validator(mode="after")
+    def validate_representation_boundary(self) -> SourceIngestionPolicy:
+        if self.raw_row_vectorization:
+            raise ValueError("Raw tabular rows must never be vectorized as individual RAG chunks.")
+        if len(self.index_artifacts) != len(set(self.index_artifacts)):
+            raise ValueError("index_artifacts must not contain duplicates.")
+        artifacts = set(self.index_artifacts)
+        if self.mode is SourceIngestionMode.DOCUMENT_RAG:
+            if SourceIndexArtifact.DOCUMENT_CHUNKS not in artifacts:
+                raise ValueError("document_rag requires document_chunks.")
+        elif self.mode is SourceIngestionMode.TABULAR_PROFILE_AND_TOOL:
+            required = {
+                SourceIndexArtifact.DATA_DICTIONARY,
+                SourceIndexArtifact.DATASET_PROFILE,
+            }
+            if not required.issubset(artifacts) or not self.analysis_tool_required:
+                raise ValueError(
+                    "tabular_profile_and_tool requires data_dictionary, dataset_profile, "
+                    "and analysis_tool_required=true."
+                )
+        elif self.mode is SourceIngestionMode.IMAGE_CORPUS:
+            if SourceIndexArtifact.IMAGE_TEXT not in artifacts:
+                raise ValueError("image_corpus requires image_text.")
+        elif self.mode is SourceIngestionMode.MIXED_CURATED_CORPUS:
+            if not artifacts:
+                raise ValueError("mixed_curated_corpus requires at least one index artifact.")
+        elif self.mode is SourceIngestionMode.REFERENCE_ONLY and artifacts:
+            raise ValueError("reference_only sources cannot declare index artifacts.")
+        return self
+
+
+class SourceExpectedAssets(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    raw_files_min: int = Field(default=1, ge=1)
+    documents_min: int = Field(default=0, ge=0)
+    images_min: int = Field(default=0, ge=0)
+    tables_min: int = Field(default=0, ge=0)
+    records_estimate: int | None = Field(default=None, ge=0)
+    expected_formats: list[str] = Field(default_factory=list)
+
+
+class SourceManifest(BaseModel):
+    """Immutable, versioned provenance card for one acquired source snapshot."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    manifest_schema_version: Literal["semikb-source-manifest-v1"] = (
+        "semikb-source-manifest-v1"
+    )
+    source_id: str = Field(min_length=1, max_length=160, pattern=r"^[A-Za-z0-9._:-]+$")
+    manifest_version: str = Field(min_length=1, max_length=64)
+    status: SourceManifestStatus = SourceManifestStatus.DRAFT
+    title: str = Field(min_length=1, max_length=500)
+    source_type: SourceManifestType
+    source_url: str = Field(min_length=1, max_length=2000)
+    doi_or_repo: str | None = Field(default=None, max_length=2000)
+    retrieved_at: datetime
+    source_hash: str = Field(pattern=r"^[0-9a-fA-F]{64}$")
+    hash_scope: str = Field(min_length=1, max_length=1000)
+    content_origin: SourceContentOrigin
+    license_name: str = Field(min_length=1, max_length=200)
+    license_status: SourceLicenseStatus
+    redistribution_policy: RedistributionPolicy
+    license_notes: str = Field(default="", max_length=4000)
+    ingestion_policy: SourceIngestionPolicy
+    parser_hint: str | None = Field(default=None, max_length=200)
+    expected_assets: SourceExpectedAssets = Field(default_factory=SourceExpectedAssets)
+    dataset_version: str = Field(min_length=1, max_length=160)
+    access_scope_key: str = Field(default="demo_engineering", min_length=1, max_length=160)
+    source_snapshot_ref: ObjectRef | None = None
+    supersedes_manifest_version: str | None = Field(default=None, max_length=64)
+    created_by: str = Field(min_length=1, max_length=160)
+    created_at: datetime = Field(default_factory=utc_now)
+    notes: str = Field(default="", max_length=4000)
+
+    @model_validator(mode="after")
+    def validate_version_chain(self) -> SourceManifest:
+        if self.supersedes_manifest_version == self.manifest_version:
+            raise ValueError("A source manifest cannot supersede itself.")
+        return self
+
+
+def _validate_source_manifest_link(
+    source_id: str | None,
+    source_manifest_version: str | None,
+) -> None:
+    if bool(source_id) != bool(source_manifest_version):
+        raise ValueError("source_id and source_manifest_version must be provided together.")
+
+
 class DocumentRevision(BaseModel):
     document_id: str
     revision: str
@@ -89,6 +269,11 @@ class DocumentRevision(BaseModel):
     source_kind: str = "synthetic"
     source_uri: str = ""
     source_license: str = "internal"
+    source_id: str | None = None
+    source_manifest_version: str | None = None
+    dataset_version: str | None = None
+    source_license_status: SourceLicenseStatus | None = None
+    redistribution_policy: RedistributionPolicy | None = None
     access_scope_key: str = "demo_engineering"
     fab: str = "FAB-01"
     product: str = "P-ALPHA"
@@ -112,6 +297,110 @@ class DocumentRevision(BaseModel):
     embedding_version: str = "deterministic-demo-v1"
     index_version: str = "v1"
     created_at: datetime = Field(default_factory=utc_now)
+
+    @model_validator(mode="after")
+    def validate_source_manifest_link(self) -> DocumentRevision:
+        _validate_source_manifest_link(self.source_id, self.source_manifest_version)
+        return self
+
+
+class DocumentRevisionSelector(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    document_id: str = Field(min_length=1, max_length=120)
+    revision: str = Field(min_length=1, max_length=64)
+
+
+class AffectedRecordCounts(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    documents: int = Field(default=0, ge=0)
+    chunks: int = Field(default=0, ge=0)
+    images: int = Field(default=0, ge=0)
+    tables: int = Field(default=0, ge=0)
+    vectors: int = Field(default=0, ge=0)
+
+
+class KnowledgeDocumentRevisionSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    document_id: str
+    revision: str
+    title: str
+    document_type: str
+    approval_status: ApprovalStatus
+    lifecycle: DocumentLifecycle
+    effective_at: datetime
+    expires_at: datetime | None = None
+    source_id: str | None = None
+    source_manifest_version: str | None = None
+    dataset_version: str | None = None
+    source_uri: str = ""
+    source_license: str = "internal"
+    source_license_status: SourceLicenseStatus | None = None
+    redistribution_policy: RedistributionPolicy | None = None
+    access_scope_key: str
+    counts: AffectedRecordCounts = Field(default_factory=AffectedRecordCounts)
+    created_at: datetime
+
+
+class KnowledgeDocumentSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    document_id: str
+    title: str
+    document_type: str
+    current_revision: str | None = None
+    current_lifecycle: DocumentLifecycle | None = None
+    revision_count: int = Field(ge=0)
+    source_id: str | None = None
+    dataset_version: str | None = None
+    updated_at: datetime
+
+
+class KnowledgeDocumentListResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[KnowledgeDocumentSummary]
+    total: int = Field(ge=0)
+    limit: int = Field(ge=1, le=200)
+    offset: int = Field(ge=0)
+
+
+class WithdrawDocumentRevisionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    request_id: str = Field(min_length=1, max_length=160)
+    reason: str = Field(min_length=8, max_length=1000)
+
+
+class RestoreDocumentRevisionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    request_id: str = Field(min_length=1, max_length=160)
+    reason: str = Field(min_length=8, max_length=1000)
+    target_index_version: str | None = Field(default=None, min_length=1, max_length=64)
+
+
+class DocumentLifecycleOperationRecord(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation_id: str = Field(default_factory=lambda: new_id("doc_lifecycle"))
+    request_id: str
+    action: DocumentLifecycleAction
+    status: DocumentLifecycleOperationStatus
+    selector: DocumentRevisionSelector
+    actor_user_id: str
+    reason: str
+    before_lifecycle: DocumentLifecycle
+    after_lifecycle: DocumentLifecycle | None = None
+    target_index_version: str | None = Field(default=None, min_length=1, max_length=64)
+    affected: AffectedRecordCounts = Field(default_factory=AffectedRecordCounts)
+    compensation_status: CompensationStatus = CompensationStatus.NOT_REQUIRED
+    warning_codes: list[str] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+    completed_at: datetime | None = None
 
 
 class Chunk(BaseModel):
@@ -747,6 +1036,11 @@ class IngestDocumentRequest(BaseModel):
     source_kind: str = "user_upload"
     source_uri: str = ""
     source_license: str = "internal"
+    source_id: str | None = None
+    source_manifest_version: str | None = None
+    dataset_version: str | None = None
+    source_license_status: SourceLicenseStatus | None = None
+    redistribution_policy: RedistributionPolicy | None = None
     access_scope_key: str = "demo_engineering"
     fab: str = "FAB-01"
     product: str = "P-ALPHA"
@@ -756,6 +1050,11 @@ class IngestDocumentRequest(BaseModel):
     recipe_id: str | None = None
     recipe_version: str | None = None
     images: list[dict[str, Any]] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_source_manifest_link(self) -> IngestDocumentRequest:
+        _validate_source_manifest_link(self.source_id, self.source_manifest_version)
+        return self
 
 
 class IngestUploadMetadata(BaseModel):
@@ -769,6 +1068,11 @@ class IngestUploadMetadata(BaseModel):
     source_kind: str = "user_upload"
     source_uri: str = ""
     source_license: str = "internal"
+    source_id: str | None = None
+    source_manifest_version: str | None = None
+    dataset_version: str | None = None
+    source_license_status: SourceLicenseStatus | None = None
+    redistribution_policy: RedistributionPolicy | None = None
     access_scope_key: str = "demo_engineering"
     fab: str = "FAB-01"
     product: str = "P-ALPHA"
@@ -778,6 +1082,11 @@ class IngestUploadMetadata(BaseModel):
     recipe_id: str | None = None
     recipe_version: str | None = None
     images: list[dict[str, Any]] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_source_manifest_link(self) -> IngestUploadMetadata:
+        _validate_source_manifest_link(self.source_id, self.source_manifest_version)
+        return self
 
 
 class CreateEvaluationRunRequest(BaseModel):

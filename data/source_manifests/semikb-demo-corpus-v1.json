@@ -1,0 +1,50 @@
+{
+  "manifest_schema_version": "semikb-source-manifest-v1",
+  "source_id": "semikb.demo.synthetic",
+  "manifest_version": "1.0.0",
+  "status": "approved",
+  "title": "SEMIKB synthetic semiconductor demonstration corpus",
+  "source_type": "curated_corpus",
+  "source_url": "synthetic://semikb/demo-corpus",
+  "doi_or_repo": null,
+  "retrieved_at": "2026-08-11T00:00:00Z",
+  "source_hash": "1acb55719ca9e4db434324c28b574efd97108622a7e6b5c557f8fead384fbfd9",
+  "hash_scope": "data/fixtures/demo_corpus.json",
+  "content_origin": "synthetic",
+  "license_name": "CC0-1.0",
+  "license_status": "verified",
+  "redistribution_policy": "allowed",
+  "license_notes": "Project-authored synthetic data; contains no real Fab or customer data.",
+  "ingestion_policy": {
+    "mode": "mixed_curated_corpus",
+    "raw_storage": "minio_private",
+    "raw_row_vectorization": false,
+    "index_artifacts": [
+      "document_chunks",
+      "dataset_profile",
+      "analysis_report",
+      "image_text"
+    ],
+    "analysis_tool_required": true
+  },
+  "parser_hint": "semikb_ingest",
+  "expected_assets": {
+    "raw_files_min": 4,
+    "documents_min": 7,
+    "images_min": 2,
+    "tables_min": 1,
+    "records_estimate": 120,
+    "expected_formats": [
+      "json",
+      "csv",
+      "png"
+    ]
+  },
+  "dataset_version": "demo-v2",
+  "access_scope_key": "demo_engineering",
+  "source_snapshot_ref": null,
+  "supersedes_manifest_version": null,
+  "created_by": "semikb",
+  "created_at": "2026-08-15T00:00:00Z",
+  "notes": "Baseline manifest used to validate the T9-4.4.6a governance contract."
+}

@@ -36,6 +36,18 @@ def _checkpoint_index(name: str, *, writes: bool = False) -> MongoIndexSpec:
 MONGO_INDEX_SPECS: dict[str, tuple[MongoIndexSpec, ...]] = {
     "document_catalog": (
         _index("document_id_revision", "document_id", "revision", unique=True),
+        _index(
+            "lifecycle_approval_created_at",
+            "lifecycle",
+            "approval_status",
+            "created_at",
+        ),
+        _index("source_manifest_ref", "source_id", "source_manifest_version"),
+    ),
+    "source_manifests": (
+        _index("source_id_manifest_version", "source_id", "manifest_version", unique=True),
+        _index("status_created_at", "status", "created_at"),
+        _index("source_hash", "source_hash"),
     ),
     "chunk_catalog": (
         _index("chunk_id", "chunk_id", unique=True),
@@ -97,6 +109,12 @@ MONGO_INDEX_SPECS: dict[str, tuple[MongoIndexSpec, ...]] = {
     "audit_events": (
         _index("event_id", "event_id", unique=True),
         _index("actor_user_id_created_at", "actor_user_id", "created_at"),
+        _index(
+            "resource_created_at",
+            "details.resource_type",
+            "details.resource_id",
+            "created_at",
+        ),
     ),
 }
 

@@ -63,7 +63,7 @@ def _provision_mongodb(settings: Settings) -> list[str]:
             )
         if differences:
             raise RuntimeError(
-                "MongoDB index differences require the dedicated T2-G4 migration command."
+                "MongoDB index differences require the dedicated versioned migration command."
             )
 
         created: list[str] = []

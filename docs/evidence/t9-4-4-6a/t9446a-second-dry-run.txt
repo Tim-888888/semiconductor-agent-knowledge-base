@@ -1,0 +1,8 @@
+{
+  "database": "semikb",
+  "migration_version": "t9-4.4.6a-source-governance-v1",
+  "applied": false,
+  "status": "dry_run",
+  "snapshot_path": "/tmp/t9446a-ecs-after.json",
+  "actions": []
+}

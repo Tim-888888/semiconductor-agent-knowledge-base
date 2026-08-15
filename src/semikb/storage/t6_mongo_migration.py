@@ -49,6 +49,17 @@ APPROVED_PRE_T6: dict[str, tuple[MongoIndexSpec, ...]] = {
     "audit_events": (_spec("actor_user_id_created_at", "actor_user_id", "created_at"),),
 }
 
+# Freeze T6 at its accepted target. The resource audit index belongs to
+# T9-4.4.6a and must not appear when the historical T6 command is replayed.
+T6_INDEX_SPECS: dict[str, tuple[MongoIndexSpec, ...]] = {
+    name: tuple(
+        spec
+        for spec in MONGO_INDEX_SPECS[name]
+        if not (name == "audit_events" and spec.name == "resource_created_at")
+    )
+    for name in TARGET_COLLECTIONS
+}
+
 
 def _definition(name: str, details: dict[str, Any]) -> MongoIndexSpec:
     return MongoIndexSpec(
@@ -102,15 +113,15 @@ def plan(state: dict[str, Any]) -> list[IndexAction]:
         if int(collection_state["document_count"]) != 0:
             raise T6MigrationSafetyError(f"{name} must be empty before the T6 migration.")
         actual = _definitions(collection_state["indexes"])
-        desired = {item.name: item for item in MONGO_INDEX_SPECS[name]}
-        approved = {*APPROVED_PRE_T6[name], *MONGO_INDEX_SPECS[name]}
+        desired = {item.name: item for item in T6_INDEX_SPECS[name]}
+        approved = {*APPROVED_PRE_T6[name], *T6_INDEX_SPECS[name]}
         unknown = [item.name for item in actual.values() if item not in approved]
         if unknown:
             raise T6MigrationSafetyError(f"{name} has unapproved indexes: {', '.join(unknown)}")
         for index_name, definition in sorted(actual.items()):
             if desired.get(index_name) != definition:
                 actions.append(IndexAction(name, "drop", index_name, definition.keys, definition.unique))
-        for definition in MONGO_INDEX_SPECS[name]:
+        for definition in T6_INDEX_SPECS[name]:
             if actual.get(definition.name) != definition:
                 actions.append(
                     IndexAction(name, "create", definition.name, definition.keys, definition.unique)

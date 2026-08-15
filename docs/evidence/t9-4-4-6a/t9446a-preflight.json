@@ -1,0 +1,62 @@
+[
+  {
+    "name": "mongodb",
+    "configured": true,
+    "reachable": true,
+    "detail": "connection verified"
+  },
+  {
+    "name": "milvus",
+    "configured": true,
+    "reachable": true,
+    "detail": "connection verified"
+  },
+  {
+    "name": "minio",
+    "configured": true,
+    "reachable": true,
+    "detail": "connection verified"
+  },
+  {
+    "name": "redis",
+    "configured": true,
+    "reachable": true,
+    "detail": "connection verified"
+  },
+  {
+    "name": "mineru",
+    "configured": true,
+    "reachable": null,
+    "detail": "configuration present"
+  },
+  {
+    "name": "llm_primary",
+    "configured": true,
+    "reachable": null,
+    "detail": "configuration present"
+  },
+  {
+    "name": "llm_fallback",
+    "configured": true,
+    "reachable": null,
+    "detail": "configuration present"
+  },
+  {
+    "name": "reranker",
+    "configured": true,
+    "reachable": null,
+    "detail": "configuration present"
+  },
+  {
+    "name": "embedding",
+    "configured": true,
+    "reachable": null,
+    "detail": "configuration present"
+  },
+  {
+    "name": "aliyun_web_mcp",
+    "configured": true,
+    "reachable": null,
+    "detail": "configuration present"
+  }
+]

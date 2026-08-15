@@ -1,0 +1,1019 @@
+{
+  "contract_version": "semikb-source-governance-v1",
+  "schemas": {
+    "DocumentLifecycleOperationRecord": {
+      "$defs": {
+        "AffectedRecordCounts": {
+          "additionalProperties": false,
+          "properties": {
+            "chunks": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Chunks",
+              "type": "integer"
+            },
+            "documents": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Documents",
+              "type": "integer"
+            },
+            "images": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Images",
+              "type": "integer"
+            },
+            "tables": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Tables",
+              "type": "integer"
+            },
+            "vectors": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Vectors",
+              "type": "integer"
+            }
+          },
+          "title": "AffectedRecordCounts",
+          "type": "object"
+        },
+        "CompensationStatus": {
+          "enum": [
+            "not_required",
+            "pending",
+            "running",
+            "completed",
+            "failed"
+          ],
+          "title": "CompensationStatus",
+          "type": "string"
+        },
+        "DocumentLifecycle": {
+          "enum": [
+            "staged",
+            "published",
+            "superseded",
+            "expired",
+            "quarantined",
+            "withdrawn"
+          ],
+          "title": "DocumentLifecycle",
+          "type": "string"
+        },
+        "DocumentLifecycleAction": {
+          "enum": [
+            "withdraw",
+            "restore"
+          ],
+          "title": "DocumentLifecycleAction",
+          "type": "string"
+        },
+        "DocumentLifecycleOperationStatus": {
+          "enum": [
+            "requested",
+            "blocking",
+            "vector_cleanup",
+            "withdrawn",
+            "restore_validating",
+            "restore_indexing",
+            "restored",
+            "compensation_required",
+            "failed"
+          ],
+          "title": "DocumentLifecycleOperationStatus",
+          "type": "string"
+        },
+        "DocumentRevisionSelector": {
+          "additionalProperties": false,
+          "properties": {
+            "document_id": {
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Document Id",
+              "type": "string"
+            },
+            "revision": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Revision",
+              "type": "string"
+            }
+          },
+          "required": [
+            "document_id",
+            "revision"
+          ],
+          "title": "DocumentRevisionSelector",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/DocumentLifecycleAction"
+        },
+        "actor_user_id": {
+          "title": "Actor User Id",
+          "type": "string"
+        },
+        "affected": {
+          "$ref": "#/$defs/AffectedRecordCounts"
+        },
+        "after_lifecycle": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DocumentLifecycle"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "before_lifecycle": {
+          "$ref": "#/$defs/DocumentLifecycle"
+        },
+        "compensation_status": {
+          "$ref": "#/$defs/CompensationStatus",
+          "default": "not_required"
+        },
+        "completed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Completed At"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "operation_id": {
+          "title": "Operation Id",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        },
+        "selector": {
+          "$ref": "#/$defs/DocumentRevisionSelector"
+        },
+        "status": {
+          "$ref": "#/$defs/DocumentLifecycleOperationStatus"
+        },
+        "target_index_version": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Index Version"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "warning_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warning Codes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "request_id",
+        "action",
+        "status",
+        "selector",
+        "actor_user_id",
+        "reason",
+        "before_lifecycle"
+      ],
+      "title": "DocumentLifecycleOperationRecord",
+      "type": "object"
+    },
+    "KnowledgeDocumentListResponse": {
+      "$defs": {
+        "DocumentLifecycle": {
+          "enum": [
+            "staged",
+            "published",
+            "superseded",
+            "expired",
+            "quarantined",
+            "withdrawn"
+          ],
+          "title": "DocumentLifecycle",
+          "type": "string"
+        },
+        "KnowledgeDocumentSummary": {
+          "additionalProperties": false,
+          "properties": {
+            "current_lifecycle": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/DocumentLifecycle"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "current_revision": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Current Revision"
+            },
+            "dataset_version": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Dataset Version"
+            },
+            "document_id": {
+              "title": "Document Id",
+              "type": "string"
+            },
+            "document_type": {
+              "title": "Document Type",
+              "type": "string"
+            },
+            "revision_count": {
+              "minimum": 0,
+              "title": "Revision Count",
+              "type": "integer"
+            },
+            "source_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Source Id"
+            },
+            "title": {
+              "title": "Title",
+              "type": "string"
+            },
+            "updated_at": {
+              "format": "date-time",
+              "title": "Updated At",
+              "type": "string"
+            }
+          },
+          "required": [
+            "document_id",
+            "title",
+            "document_type",
+            "revision_count",
+            "updated_at"
+          ],
+          "title": "KnowledgeDocumentSummary",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/KnowledgeDocumentSummary"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "limit": {
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "offset": {
+          "minimum": 0,
+          "title": "Offset",
+          "type": "integer"
+        },
+        "total": {
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "total",
+        "limit",
+        "offset"
+      ],
+      "title": "KnowledgeDocumentListResponse",
+      "type": "object"
+    },
+    "KnowledgeDocumentRevisionSummary": {
+      "$defs": {
+        "AffectedRecordCounts": {
+          "additionalProperties": false,
+          "properties": {
+            "chunks": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Chunks",
+              "type": "integer"
+            },
+            "documents": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Documents",
+              "type": "integer"
+            },
+            "images": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Images",
+              "type": "integer"
+            },
+            "tables": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Tables",
+              "type": "integer"
+            },
+            "vectors": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Vectors",
+              "type": "integer"
+            }
+          },
+          "title": "AffectedRecordCounts",
+          "type": "object"
+        },
+        "ApprovalStatus": {
+          "enum": [
+            "draft",
+            "approved",
+            "rejected"
+          ],
+          "title": "ApprovalStatus",
+          "type": "string"
+        },
+        "DocumentLifecycle": {
+          "enum": [
+            "staged",
+            "published",
+            "superseded",
+            "expired",
+            "quarantined",
+            "withdrawn"
+          ],
+          "title": "DocumentLifecycle",
+          "type": "string"
+        },
+        "RedistributionPolicy": {
+          "enum": [
+            "allowed",
+            "restricted",
+            "prohibited",
+            "unknown"
+          ],
+          "title": "RedistributionPolicy",
+          "type": "string"
+        },
+        "SourceLicenseStatus": {
+          "enum": [
+            "verified",
+            "declared",
+            "unclear",
+            "restricted"
+          ],
+          "title": "SourceLicenseStatus",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "access_scope_key": {
+          "title": "Access Scope Key",
+          "type": "string"
+        },
+        "approval_status": {
+          "$ref": "#/$defs/ApprovalStatus"
+        },
+        "counts": {
+          "$ref": "#/$defs/AffectedRecordCounts"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "dataset_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dataset Version"
+        },
+        "document_id": {
+          "title": "Document Id",
+          "type": "string"
+        },
+        "document_type": {
+          "title": "Document Type",
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "title": "Effective At",
+          "type": "string"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expires At"
+        },
+        "lifecycle": {
+          "$ref": "#/$defs/DocumentLifecycle"
+        },
+        "redistribution_policy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RedistributionPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "revision": {
+          "title": "Revision",
+          "type": "string"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
+        "source_license": {
+          "default": "internal",
+          "title": "Source License",
+          "type": "string"
+        },
+        "source_license_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceLicenseStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source_manifest_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Manifest Version"
+        },
+        "source_uri": {
+          "default": "",
+          "title": "Source Uri",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "document_id",
+        "revision",
+        "title",
+        "document_type",
+        "approval_status",
+        "lifecycle",
+        "effective_at",
+        "access_scope_key",
+        "created_at"
+      ],
+      "title": "KnowledgeDocumentRevisionSummary",
+      "type": "object"
+    },
+    "RestoreDocumentRevisionRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "maxLength": 1000,
+          "minLength": 8,
+          "title": "Reason",
+          "type": "string"
+        },
+        "request_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Request Id",
+          "type": "string"
+        },
+        "target_index_version": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Index Version"
+        }
+      },
+      "required": [
+        "request_id",
+        "reason"
+      ],
+      "title": "RestoreDocumentRevisionRequest",
+      "type": "object"
+    },
+    "SourceManifest": {
+      "$defs": {
+        "ObjectRef": {
+          "properties": {
+            "bucket": {
+              "title": "Bucket",
+              "type": "string"
+            },
+            "content_type": {
+              "title": "Content Type",
+              "type": "string"
+            },
+            "object_key": {
+              "title": "Object Key",
+              "type": "string"
+            },
+            "sha256": {
+              "title": "Sha256",
+              "type": "string"
+            },
+            "version_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Version Id"
+            }
+          },
+          "required": [
+            "bucket",
+            "object_key",
+            "content_type",
+            "sha256"
+          ],
+          "title": "ObjectRef",
+          "type": "object"
+        },
+        "RedistributionPolicy": {
+          "enum": [
+            "allowed",
+            "restricted",
+            "prohibited",
+            "unknown"
+          ],
+          "title": "RedistributionPolicy",
+          "type": "string"
+        },
+        "SourceContentOrigin": {
+          "enum": [
+            "real",
+            "synthetic",
+            "derived"
+          ],
+          "title": "SourceContentOrigin",
+          "type": "string"
+        },
+        "SourceExpectedAssets": {
+          "additionalProperties": false,
+          "properties": {
+            "documents_min": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Documents Min",
+              "type": "integer"
+            },
+            "expected_formats": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Expected Formats",
+              "type": "array"
+            },
+            "images_min": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Images Min",
+              "type": "integer"
+            },
+            "raw_files_min": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Raw Files Min",
+              "type": "integer"
+            },
+            "records_estimate": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Records Estimate"
+            },
+            "tables_min": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Tables Min",
+              "type": "integer"
+            }
+          },
+          "title": "SourceExpectedAssets",
+          "type": "object"
+        },
+        "SourceIndexArtifact": {
+          "enum": [
+            "document_chunks",
+            "data_dictionary",
+            "dataset_profile",
+            "analysis_report",
+            "image_text"
+          ],
+          "title": "SourceIndexArtifact",
+          "type": "string"
+        },
+        "SourceIngestionMode": {
+          "enum": [
+            "document_rag",
+            "tabular_profile_and_tool",
+            "image_corpus",
+            "mixed_curated_corpus",
+            "reference_only"
+          ],
+          "title": "SourceIngestionMode",
+          "type": "string"
+        },
+        "SourceIngestionPolicy": {
+          "additionalProperties": false,
+          "description": "Controls which derived representations may enter RAG for one source.",
+          "properties": {
+            "analysis_tool_required": {
+              "default": false,
+              "title": "Analysis Tool Required",
+              "type": "boolean"
+            },
+            "index_artifacts": {
+              "items": {
+                "$ref": "#/$defs/SourceIndexArtifact"
+              },
+              "title": "Index Artifacts",
+              "type": "array"
+            },
+            "mode": {
+              "$ref": "#/$defs/SourceIngestionMode"
+            },
+            "raw_row_vectorization": {
+              "default": false,
+              "title": "Raw Row Vectorization",
+              "type": "boolean"
+            },
+            "raw_storage": {
+              "const": "minio_private",
+              "default": "minio_private",
+              "title": "Raw Storage",
+              "type": "string"
+            }
+          },
+          "required": [
+            "mode"
+          ],
+          "title": "SourceIngestionPolicy",
+          "type": "object"
+        },
+        "SourceLicenseStatus": {
+          "enum": [
+            "verified",
+            "declared",
+            "unclear",
+            "restricted"
+          ],
+          "title": "SourceLicenseStatus",
+          "type": "string"
+        },
+        "SourceManifestStatus": {
+          "enum": [
+            "draft",
+            "approved",
+            "retired"
+          ],
+          "title": "SourceManifestStatus",
+          "type": "string"
+        },
+        "SourceManifestType": {
+          "enum": [
+            "dataset",
+            "paper",
+            "repository",
+            "ontology",
+            "documentation",
+            "curated_corpus",
+            "other"
+          ],
+          "title": "SourceManifestType",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Immutable, versioned provenance card for one acquired source snapshot.",
+      "properties": {
+        "access_scope_key": {
+          "default": "demo_engineering",
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Access Scope Key",
+          "type": "string"
+        },
+        "content_origin": {
+          "$ref": "#/$defs/SourceContentOrigin"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Created By",
+          "type": "string"
+        },
+        "dataset_version": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Dataset Version",
+          "type": "string"
+        },
+        "doi_or_repo": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Doi Or Repo"
+        },
+        "expected_assets": {
+          "$ref": "#/$defs/SourceExpectedAssets"
+        },
+        "hash_scope": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Hash Scope",
+          "type": "string"
+        },
+        "ingestion_policy": {
+          "$ref": "#/$defs/SourceIngestionPolicy"
+        },
+        "license_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "License Name",
+          "type": "string"
+        },
+        "license_notes": {
+          "default": "",
+          "maxLength": 4000,
+          "title": "License Notes",
+          "type": "string"
+        },
+        "license_status": {
+          "$ref": "#/$defs/SourceLicenseStatus"
+        },
+        "manifest_schema_version": {
+          "const": "semikb-source-manifest-v1",
+          "default": "semikb-source-manifest-v1",
+          "title": "Manifest Schema Version",
+          "type": "string"
+        },
+        "manifest_version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Manifest Version",
+          "type": "string"
+        },
+        "notes": {
+          "default": "",
+          "maxLength": 4000,
+          "title": "Notes",
+          "type": "string"
+        },
+        "parser_hint": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parser Hint"
+        },
+        "redistribution_policy": {
+          "$ref": "#/$defs/RedistributionPolicy"
+        },
+        "retrieved_at": {
+          "format": "date-time",
+          "title": "Retrieved At",
+          "type": "string"
+        },
+        "source_hash": {
+          "pattern": "^[0-9a-fA-F]{64}$",
+          "title": "Source Hash",
+          "type": "string"
+        },
+        "source_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "title": "Source Id",
+          "type": "string"
+        },
+        "source_snapshot_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source_type": {
+          "$ref": "#/$defs/SourceManifestType"
+        },
+        "source_url": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Source Url",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/SourceManifestStatus",
+          "default": "draft"
+        },
+        "supersedes_manifest_version": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Manifest Version"
+        },
+        "title": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "manifest_version",
+        "title",
+        "source_type",
+        "source_url",
+        "retrieved_at",
+        "source_hash",
+        "hash_scope",
+        "content_origin",
+        "license_name",
+        "license_status",
+        "redistribution_policy",
+        "ingestion_policy",
+        "dataset_version",
+        "created_by"
+      ],
+      "title": "SourceManifest",
+      "type": "object"
+    },
+    "WithdrawDocumentRevisionRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "maxLength": 1000,
+          "minLength": 8,
+          "title": "Reason",
+          "type": "string"
+        },
+        "request_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Request Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "request_id",
+        "reason"
+      ],
+      "title": "WithdrawDocumentRevisionRequest",
+      "type": "object"
+    }
+  }
+}

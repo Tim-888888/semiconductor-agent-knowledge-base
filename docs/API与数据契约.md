@@ -198,7 +198,16 @@ MinerU”的隐藏回退。此结论是本地代码与自动测试结果，不�
 ## 关键模型
 
 - `DocumentRevision`：版本、审批状态、有效期、权限范围、MinIO 原件/解析件引用，以及 Parser、Provider、
-  上游 Commit、警告和解析指标。
+  上游 Commit、警告和解析指标；可选关联不可变 Source Manifest，生命周期兼容新增 `withdrawn`。
+- `SourceManifest`：版本化来源登记，保存来源身份、Hash、真实/合成/派生属性、许可与再分发策略、
+  数据集版本、Parser 提示、预期资产和结构化入库策略；同一 `(source_id, manifest_version)` 不可覆盖。
+- `SourceIngestionPolicy`：明确 `document_rag/tabular_profile_and_tool/image_corpus/reference_only` 模式及
+  允许的索引产物；大型表格的 `raw_row_vectorization` 在契约层固定为 `false`。
+- `KnowledgeDocumentSummary` / `KnowledgeDocumentRevisionSummary`：4.4.6b 文档管理清单的冻结响应模型。
+- `WithdrawDocumentRevisionRequest` / `RestoreDocumentRevisionRequest`：管理员操作请求；原因必填，恢复可
+  指定目标索引版本。
+- `DocumentLifecycleOperationRecord`：记录 actor、原因、前后状态、跨存储影响计数、补偿状态及 Job/Trace
+  关联。4.4.6a 尚未开放对应 REST 路由，运行时实现属于 4.4.6b。
 - `Chunk`：正文/表格/图文检索单元，保留图片/表格稳定引用和解析来源；MongoDB 保存正文，Milvus 只
   保存向量及过滤字段。
 - `ImageAsset`：真实图片对象引用、图注、OCR、检测摘要、源位置、解析来源及 Case 关联。

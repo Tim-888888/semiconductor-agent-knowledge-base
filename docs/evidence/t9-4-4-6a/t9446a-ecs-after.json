@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "database": "semikb",
+  "migration_version": "t9-4.4.6a-source-governance-v1",
+  "captured_at": "2026-08-15T08:40:34.126853+00:00",
+  "collections": {
+    "document_catalog": {
+      "collection_existed": true,
+      "document_count": 35,
+      "indexes": [
+        {
+          "name": "_id_",
+          "keys": [
+            [
+              "_id",
+              1
+            ]
+          ],
+          "unique": false
+        },
+        {
+          "name": "document_id_revision",
+          "keys": [
+            [
+              "document_id",
+              1
+            ],
+            [
+              "revision",
+              1
+            ]
+          ],
+          "unique": true
+        },
+        {
+          "name": "lifecycle_approval_created_at",
+          "keys": [
+            [
+              "lifecycle",
+              1
+            ],
+            [
+              "approval_status",
+              1
+            ],
+            [
+              "created_at",
+              1
+            ]
+          ],
+          "unique": false
+        },
+        {
+          "name": "source_manifest_ref",
+          "keys": [
+            [
+              "source_id",
+              1
+            ],
+            [
+              "source_manifest_version",
+              1
+            ]
+          ],
+          "unique": false
+        }
+      ]
+    },
+    "source_manifests": {
+      "collection_existed": true,
+      "document_count": 0,
+      "indexes": [
+        {
+          "name": "_id_",
+          "keys": [
+            [
+              "_id",
+              1
+            ]
+          ],
+          "unique": false
+        },
+        {
+          "name": "source_hash",
+          "keys": [
+            [
+              "source_hash",
+              1
+            ]
+          ],
+          "unique": false
+        },
+        {
+          "name": "source_id_manifest_version",
+          "keys": [
+            [
+              "source_id",
+              1
+            ],
+            [
+              "manifest_version",
+              1
+            ]
+          ],
+          "unique": true
+        },
+        {
+          "name": "status_created_at",
+          "keys": [
+            [
+              "status",
+              1
+            ],
+            [
+              "created_at",
+              1
+            ]
+          ],
+          "unique": false
+        }
+      ]
+    },
+    "audit_events": {
+      "collection_existed": true,
+      "document_count": 141,
+      "indexes": [
+        {
+          "name": "_id_",
+          "keys": [
+            [
+              "_id",
+              1
+            ]
+          ],
+          "unique": false
+        },
+        {
+          "name": "actor_user_id_created_at",
+          "keys": [
+            [
+              "actor_user_id",
+              1
+            ],
+            [
+              "created_at",
+              1
+            ]
+          ],
+          "unique": false
+        },
+        {
+          "name": "event_id",
+          "keys": [
+            [
+              "event_id",
+              1
+            ]
+          ],
+          "unique": true
+        },
+        {
+          "name": "resource_created_at",
+          "keys": [
+            [
+              "details.resource_type",
+              1
+            ],
+            [
+              "details.resource_id",
+              1
+            ],
+            [
+              "created_at",
+              1
+            ]
+          ],
+          "unique": false
+        }
+      ]
+    }
+  }
+}
