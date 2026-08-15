@@ -165,6 +165,18 @@ Dense/Sparse/HyDE 分数、路由排名、RRF、Rerank、选择原因、组件�
 
 ## 知识与运维接口
 
+### T9-4.4.2 文档解析内部契约
+
+独立包 `semikb_ingest` 已实现内部契约 `semikb-ingest-v1`。未来受控入库层只允许通过
+`IngestDispatcher` 获得 `ParsedDocument`，其中包含 `ChunkDraft`、`ImageAssetDraft`、
+`TableAssetDraft`、Parse Provenance、警告和指标；该包不接收审批、权限、Fab/Tool/Recipe、对象路径、
+Embedding 或索引字段。扩展名、MIME、Magic Bytes 和 OOXML 容器成员必须一致，未知格式或未注册
+Parser/Provider 明确失败；只有 PDF 路由声明 MinerU。
+
+T9-4.4.2 尚未改变现有 API 和 Worker 运行路径。下方“Markdown/TXT 直读、其他二进制调用 MinerU”仍是
+当前线上事实，直到 T9-4.4.3 完成专用适配器并在 T9-4.4.4 受控接入后才更新；不能仅凭新路由表宣称
+DOCX/XLSX/PPTX/图片已经能够入库。
+
 | 方法 | 路径 | 作用 |
 | --- | --- | --- |
 | `POST` | `/retrieval/search` | 受权限/版本过滤的混合检索与可解释 Trace |

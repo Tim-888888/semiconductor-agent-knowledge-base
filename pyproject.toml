@@ -33,7 +33,7 @@ dev = [
   "ruff>=0.8,<1",
 ]
 [tool.hatch.build.targets.wheel]
-packages = ["src/semikb"]
+packages = ["src/semikb", "src/semikb_ingest"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
