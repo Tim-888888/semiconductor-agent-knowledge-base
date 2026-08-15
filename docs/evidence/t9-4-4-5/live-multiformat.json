@@ -1,0 +1,403 @@
+{
+  "verification": "T9-4.4.5-multi-format-live-loop",
+  "golden_version": "t9-4.4.5-golden-v1",
+  "executed_at": "2026-08-15T05:23:02.629083+00:00",
+  "formats": [
+    {
+      "category": "markdown",
+      "document_id": "T9445-GOLDEN-MD",
+      "filename": "01_pressure_sop.md",
+      "sha256": "0e3d2dd58939f7f6af197292fc07c285aebfba318e4f9b59e5f9e23434b5be47",
+      "job_id": "ing_39fe465115f544d5aad028ad82da7b57",
+      "parser_name": "markdown-structured-v1",
+      "provider_name": "builtin",
+      "provider_version": "python-stdlib",
+      "chunks_count": 4,
+      "images_count": 0,
+      "tables_count": 1,
+      "duplicate_job_verified": true
+    },
+    {
+      "category": "text",
+      "document_id": "T9445-GOLDEN-TXT",
+      "filename": "02_rf_match_checklist.txt",
+      "sha256": "6b619620a9b2e17c74544b84a3ee765af7874edaafc8655d3777714db7bb9a87",
+      "job_id": "ing_6dece2a1c6924110986d504ca94f0a9e",
+      "parser_name": "text-structured-v1",
+      "provider_name": "builtin",
+      "provider_version": "python-stdlib",
+      "chunks_count": 1,
+      "images_count": 0,
+      "tables_count": 0,
+      "duplicate_job_verified": true
+    },
+    {
+      "category": "html",
+      "document_id": "T9445-GOLDEN-HTML",
+      "filename": "03_foreline_alarm.html",
+      "sha256": "d81409574e07205ececee2ce913f55913909a8b5dcc0291c8741fb091e2ec584",
+      "job_id": "ing_d0eba5b345834893afea67eec2a2a112",
+      "parser_name": "html-structured-v1",
+      "provider_name": "local-html",
+      "provider_version": "beautifulsoup4+lxml+markdownify",
+      "chunks_count": 3,
+      "images_count": 0,
+      "tables_count": 1,
+      "duplicate_job_verified": true
+    },
+    {
+      "category": "pdf",
+      "document_id": "T9445-GOLDEN-PDF-V2",
+      "filename": "04_controlled_case.pdf",
+      "sha256": "e4b2df454ccf27fa4781fd9dca7d7fbd18e24fa2dfab9a3e22ff6576c3646267",
+      "job_id": "ing_a3a9e2dbe4f24431ac144e9a1bbf5c05",
+      "parser_name": "pdf-mineru-v1",
+      "provider_name": "mineru",
+      "provider_version": "vlm",
+      "chunks_count": 4,
+      "images_count": 2,
+      "tables_count": 1,
+      "duplicate_job_verified": true
+    },
+    {
+      "category": "docx",
+      "document_id": "T9445-GOLDEN-DOCX",
+      "filename": "05_chamber_recovery.docx",
+      "sha256": "fcdcbff2a4b39f2e7f07d693916a9b60bfcca2363d0f39d1a159bdf40c041222",
+      "job_id": "ing_c0f13a5d0bc0490a8e479dddab54de4a",
+      "parser_name": "docx-structured-v1",
+      "provider_name": "local-docx",
+      "provider_version": "python-docx-1.2",
+      "chunks_count": 5,
+      "images_count": 1,
+      "tables_count": 1,
+      "duplicate_job_verified": true
+    },
+    {
+      "category": "xlsx",
+      "document_id": "T9445-GOLDEN-XLSX",
+      "filename": "06_fdc_limits.xlsx",
+      "sha256": "c42d64794d5d210460b33b34b1832a91f908a0bc5dca84d10ad37b32cbfa6414",
+      "job_id": "ing_3519f1c5c7de469981bad29366898203",
+      "parser_name": "xlsx-structured-v1",
+      "provider_name": "local-xlsx",
+      "provider_version": "openpyxl-3.1",
+      "chunks_count": 3,
+      "images_count": 0,
+      "tables_count": 3,
+      "duplicate_job_verified": true
+    },
+    {
+      "category": "csv",
+      "document_id": "T9445-GOLDEN-CSV",
+      "filename": "07_spc_samples.csv",
+      "sha256": "7427ef504b72c8786da6789895f058352d3ad0d3505ed437c55f1917c42473de",
+      "job_id": "ing_71533b5123894e84999ab7040bb8048c",
+      "parser_name": "csv-structured-v1",
+      "provider_name": "builtin-csv",
+      "provider_version": "python-csv",
+      "chunks_count": 1,
+      "images_count": 0,
+      "tables_count": 1,
+      "duplicate_job_verified": true
+    },
+    {
+      "category": "pptx",
+      "document_id": "T9445-GOLDEN-PPTX",
+      "filename": "08_edge_ring_training.pptx",
+      "sha256": "42633e220f604a2c92ddf964f625f68579490ce77f1c683ed88c2a3ac9ad308e",
+      "job_id": "ing_5a56fa9513c84139b1c358563188ef43",
+      "parser_name": "pptx-structured-v1",
+      "provider_name": "local-pptx",
+      "provider_version": "python-pptx-1.0",
+      "chunks_count": 4,
+      "images_count": 1,
+      "tables_count": 1,
+      "duplicate_job_verified": true
+    },
+    {
+      "category": "image",
+      "document_id": "T9445-GOLDEN-IMAGE",
+      "filename": "09_edge_ring_wafer.png",
+      "sha256": "e6626f5739ceba8cdb4df1a1e3e238603b05142aa7b73dc8d22e7081b6e77a4e",
+      "job_id": "ing_65471cee25e2463196d70509626837f2",
+      "parser_name": "image-vlm-v1",
+      "provider_name": "qwen-vl",
+      "provider_version": "qwen3.7-plus",
+      "chunks_count": 1,
+      "images_count": 1,
+      "tables_count": 0,
+      "duplicate_job_verified": true
+    }
+  ],
+  "searches": [
+    {
+      "category": "markdown",
+      "document_id": "T9445-GOLDEN-MD",
+      "trace_id": "trace_e526e9a0474d4e3687808e2a26d32785",
+      "routes": [
+        "dense",
+        "sparse",
+        "rrf",
+        "reranker"
+      ],
+      "final_evidence_ids": [
+        "T9445-GOLDEN-MD-R1-003",
+        "T9445-GOLDEN-PDF-R1-001",
+        "T9445-GOLDEN-MD-R1-001",
+        "T9445-GOLDEN-CSV-R1-001",
+        "T9445-GOLDEN-DOCX-R1-004",
+        "T9445-GOLDEN-PPTX-R1-002",
+        "T9445-GOLDEN-XLSX-R1-001",
+        "T9445-VERSION-PROBE-R2-001"
+      ],
+      "image_asset_ids": [
+        "T9445-GOLDEN-DOCX-R1-IMAGE-001",
+        "T9445-GOLDEN-PPTX-R1-IMAGE-001"
+      ]
+    },
+    {
+      "category": "text",
+      "document_id": "T9445-GOLDEN-TXT",
+      "trace_id": "trace_eacebee629f84416a22b5c70994797f1",
+      "routes": [
+        "dense",
+        "sparse",
+        "rrf",
+        "reranker"
+      ],
+      "final_evidence_ids": [
+        "T9445-GOLDEN-TXT-R1-001",
+        "T9445-GOLDEN-MD-R1-004",
+        "CASE-FA-2026-004-R1-003",
+        "T9445-GOLDEN-MD-R1-002",
+        "T9445-GOLDEN-CSV-R1-001",
+        "T9445-GOLDEN-PDF-R1-002",
+        "T9445-GOLDEN-PPTX-R1-001",
+        "T9445-GOLDEN-DOCX-R1-004"
+      ],
+      "image_asset_ids": [
+        "T9445-GOLDEN-DOCX-R1-IMAGE-001"
+      ]
+    },
+    {
+      "category": "html",
+      "document_id": "T9445-GOLDEN-HTML",
+      "trace_id": "trace_0d99ca4e0b2044e088fbf255019144c9",
+      "routes": [
+        "dense",
+        "sparse",
+        "rrf",
+        "reranker"
+      ],
+      "final_evidence_ids": [
+        "T9445-GOLDEN-HTML-R1-003",
+        "T9445-GOLDEN-PDF-R1-002",
+        "T9445-GOLDEN-MD-R1-003",
+        "T9445-GOLDEN-HTML-R1-001",
+        "T9445-GOLDEN-HTML-R1-002",
+        "T9445-GOLDEN-XLSX-R1-001",
+        "T9445-GOLDEN-PPTX-R1-001",
+        "T9445-GOLDEN-MD-R1-001"
+      ],
+      "image_asset_ids": []
+    },
+    {
+      "category": "pdf",
+      "document_id": "T9445-GOLDEN-PDF-V2",
+      "trace_id": "trace_baf4e8ef67b74df69736020048b3852d",
+      "routes": [
+        "dense",
+        "sparse",
+        "rrf",
+        "reranker"
+      ],
+      "final_evidence_ids": [
+        "T9445-GOLDEN-PDF-V2-R1-001",
+        "T9445-GOLDEN-MD-R1-004",
+        "T9445-GOLDEN-PDF-R1-001",
+        "T9445-GOLDEN-PPTX-R1-004",
+        "T9445-GOLDEN-MD-R1-002",
+        "T9445-VERSION-PROBE-R2-001",
+        "T9445-GOLDEN-DOCX-R1-001",
+        "T9445-GOLDEN-PDF-R1-004"
+      ],
+      "image_asset_ids": [
+        "T9445-GOLDEN-PDF-R1-IMAGE-002"
+      ]
+    },
+    {
+      "category": "docx",
+      "document_id": "T9445-GOLDEN-DOCX",
+      "trace_id": "trace_cd7b2f025f594772a8bd9d4680ba0e5d",
+      "routes": [
+        "dense",
+        "sparse",
+        "rrf",
+        "reranker"
+      ],
+      "final_evidence_ids": [
+        "T9445-GOLDEN-DOCX-R1-001",
+        "T9445-GOLDEN-PDF-V2-R1-001",
+        "T9445-GOLDEN-DOCX-R1-004",
+        "T9445-GOLDEN-MD-R1-004",
+        "T9445-GOLDEN-PDF-R1-003",
+        "T9445-GOLDEN-PDF-V2-R1-003",
+        "T9445-GOLDEN-XLSX-R1-001",
+        "T9445-GOLDEN-TXT-R1-001"
+      ],
+      "image_asset_ids": [
+        "T9445-GOLDEN-DOCX-R1-IMAGE-001",
+        "T9445-GOLDEN-PDF-R1-IMAGE-001",
+        "T9445-GOLDEN-PDF-V2-R1-IMAGE-001"
+      ]
+    },
+    {
+      "category": "xlsx",
+      "document_id": "T9445-GOLDEN-XLSX",
+      "trace_id": "trace_c6ccc778455b49669e73d882ef5421a4",
+      "routes": [
+        "dense",
+        "sparse",
+        "rrf",
+        "reranker"
+      ],
+      "final_evidence_ids": [
+        "T9445-GOLDEN-XLSX-R1-001",
+        "T9445-GOLDEN-MD-R1-003",
+        "T9445-GOLDEN-PDF-R1-002",
+        "T9445-GOLDEN-PDF-V2-R1-002",
+        "CASE-FA-2026-004-R1-002",
+        "RECIPE-ETCH-ALPHA-V2.3-001",
+        "T9445-GOLDEN-DOCX-R1-001",
+        "T9445-GOLDEN-PDF-R1-001"
+      ],
+      "image_asset_ids": []
+    },
+    {
+      "category": "csv",
+      "document_id": "T9445-GOLDEN-CSV",
+      "trace_id": "trace_382d3f5461d442c9967f71f06836dbc0",
+      "routes": [
+        "dense",
+        "sparse",
+        "rrf",
+        "reranker"
+      ],
+      "final_evidence_ids": [
+        "T9445-GOLDEN-CSV-R1-001",
+        "T9445-GOLDEN-MD-R1-003",
+        "SPC-ETCH-PRESSURE-R1-001",
+        "T9445-GOLDEN-PDF-R1-003",
+        "T9445-GOLDEN-PDF-V2-R1-003",
+        "T9445-GOLDEN-MD-R1-001",
+        "T9445-GOLDEN-DOCX-R1-001",
+        "SPC-ETCH-PRESSURE-R1-002"
+      ],
+      "image_asset_ids": [
+        "T9445-GOLDEN-PDF-R1-IMAGE-001",
+        "T9445-GOLDEN-PDF-V2-R1-IMAGE-001"
+      ]
+    },
+    {
+      "category": "pptx",
+      "document_id": "T9445-GOLDEN-PPTX",
+      "trace_id": "trace_62c5cc1c4f1b4d7e99f2ffa9f180872f",
+      "routes": [
+        "dense",
+        "sparse",
+        "rrf",
+        "reranker"
+      ],
+      "final_evidence_ids": [
+        "T9445-GOLDEN-PPTX-R1-001",
+        "T9445-GOLDEN-PPTX-R1-002",
+        "T9445-GOLDEN-DOCX-R1-004",
+        "T9445-VERSION-PROBE-R2-001",
+        "T9445-GOLDEN-MD-R1-004",
+        "T9445-GOLDEN-PDF-V2-R1-001",
+        "T9445-GOLDEN-PDF-R1-001",
+        "T9445-GOLDEN-IMAGE-R1-001"
+      ],
+      "image_asset_ids": [
+        "T9445-GOLDEN-PPTX-R1-IMAGE-001",
+        "T9445-GOLDEN-DOCX-R1-IMAGE-001",
+        "T9445-GOLDEN-IMAGE-R1-IMAGE-001"
+      ]
+    },
+    {
+      "category": "image",
+      "document_id": "T9445-GOLDEN-IMAGE",
+      "trace_id": "trace_d8358913ec874ec28e5f294304ee95d3",
+      "routes": [
+        "dense",
+        "sparse",
+        "rrf",
+        "reranker"
+      ],
+      "final_evidence_ids": [
+        "T9445-GOLDEN-IMAGE-R1-001",
+        "CASE-FA-2026-004-R1-001",
+        "T9445-GOLDEN-PPTX-R1-002",
+        "T9445-GOLDEN-DOCX-R1-004",
+        "CASE-FA-2026-004-R1-IMAGE-001",
+        "CASE-FA-2026-004-R1-IMAGE-002",
+        "T9434-MD-20260814145208-R1-002",
+        "T9445-GOLDEN-PPTX-R1-001"
+      ],
+      "image_asset_ids": [
+        "T9445-GOLDEN-IMAGE-R1-IMAGE-001",
+        "T9445-GOLDEN-PPTX-R1-IMAGE-001",
+        "T9445-GOLDEN-DOCX-R1-IMAGE-001",
+        "IMG-FA-ETCH-03-2026-004",
+        "IMG-ETCH-03-NORMAL-REFERENCE"
+      ]
+    }
+  ],
+  "acl": {
+    "queries": 9,
+    "leaked_documents": 0,
+    "trace_ids": [
+      "trace_f224a67649aa485e923888c69fb462cb",
+      "trace_91741d9e1a764a46b4d2792c87f05635",
+      "trace_b71e7c9254e7443db1e9302b7e60f693",
+      "trace_7a23c816138243a28a2205b104ef6e72",
+      "trace_3b8ad9bcda04441283bb5a250f24b9fc",
+      "trace_854ff961f0f44ca0a1980834cb05fd6b",
+      "trace_34d76707b7364c518d8d370b93ca5044",
+      "trace_74798ade70a148db806583e0357153a9",
+      "trace_2f0407197bdd477faa426da4de214556"
+    ]
+  },
+  "version_filter": {
+    "document_id": "T9445-VERSION-PROBE",
+    "published_job_id": "ing_a3b9a99e27724d999238bdb886c4b736",
+    "superseded_revision_hidden": true,
+    "current_revision_retrieved": true,
+    "trace_ids": [
+      "trace_0591cb84ae0344a896fd6ce7f2265e6b",
+      "trace_06a2e5f98cdf41d8a957a9c8d3d8b888"
+    ]
+  },
+  "invalid_format": {
+    "status_code": 422,
+    "error_code": "INGEST_FILE_TYPE_MISMATCH"
+  },
+  "cross_store": {
+    "mongodb": {
+      "documents": 9,
+      "chunks": 26,
+      "images": 5,
+      "tables": 9,
+      "parser_audit_verified": true
+    },
+    "minio": {
+      "objects_verified": 32
+    },
+    "milvus": {
+      "rows": 26,
+      "active_collection": "semikb_chunks_v4",
+      "alias_verified": true
+    }
+  }
+}

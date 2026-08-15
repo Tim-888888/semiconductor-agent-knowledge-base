@@ -58,7 +58,13 @@ export function Workbench({
   onStopStream,
   onRetryStream
 }: Props) {
-  const ledger = result?.evidence_ledger ?? [];
+  const latestAssistantPresentation = [...(thread?.messages ?? [])]
+    .reverse()
+    .find((message) => message.role === "assistant" && message.presentation)?.presentation;
+  const ledger = result?.evidence_ledger
+    ?? latestAssistantPresentation?.evidence_ledger
+    ?? [];
+  const activeTraceId = result?.trace_id ?? latestAssistantPresentation?.trace_id;
   const [selectedEvidenceId, setSelectedEvidenceId] = useState<string>("");
   const selectedEvidence = ledger.find((item) => item.evidence_id === selectedEvidenceId) ?? ledger[0];
   const messageListRef = useRef<HTMLDivElement>(null);
@@ -150,7 +156,7 @@ export function Workbench({
     <aside className="evidence-panel">
       <div className="panel-heading">
         <div><span className="section-label">EVIDENCE DRAWER</span><h2>证据与资产</h2></div>
-        {result?.trace_id && <button className="icon-button" type="button" title="打开检索 Trace" onClick={() => onOpenTrace(result.trace_id)}><SearchCheck size={18} /></button>}
+        {activeTraceId && <button className="icon-button" type="button" title="打开检索 Trace" onClick={() => onOpenTrace(activeTraceId)}><SearchCheck size={18} /></button>}
       </div>
 
       {asset ? <figure className="asset-preview">

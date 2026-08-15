@@ -16,7 +16,7 @@ type Props = {
   selectedJob?: IngestionJob;
   loading: boolean;
   onSelect: (jobId: string) => void;
-  onUpload: (file: File, metadata: UploadMetadata) => Promise<void>;
+  onUpload: (file: File, metadata: UploadMetadata) => Promise<boolean>;
   onRetry: (jobId: string) => Promise<void>;
   onRefresh: () => Promise<void>;
 };
@@ -44,7 +44,7 @@ export function IngestionPanel({ jobs, selectedJob, loading, onSelect, onUpload,
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!file) return;
-    await onUpload(file, metadata);
+    if (!await onUpload(file, metadata)) return;
     setFile(null);
     setMetadata(initialMetadata());
     setShowUpload(false);
@@ -61,7 +61,7 @@ export function IngestionPanel({ jobs, selectedJob, loading, onSelect, onUpload,
 
     {showUpload && <form className="upload-band" onSubmit={submit} data-testid="upload-form">
       <div className="band-heading"><div><span className="section-label">NEW INGESTION JOB</span><h3>文档与治理元数据</h3></div><button className="icon-button" type="button" title="关闭上传" onClick={() => setShowUpload(false)}><X size={17} /></button></div>
-      <label className="file-drop"><FileUp size={24} /><span>{file?.name ?? "选择 PDF、DOCX、XLSX、图片、Markdown 或 TXT"}</span><input data-testid="ingestion-file" type="file" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,.md,.txt" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label>
+      <label className="file-drop"><FileUp size={24} /><span>{file?.name ?? "选择 PDF、Office、表格、图片或结构化文本"}</span><input data-testid="ingestion-file" type="file" accept=".pdf,.docx,.xlsx,.csv,.pptx,.png,.jpg,.jpeg,.md,.txt,.html,.htm" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label>
       <div className="form-grid">
         <Field label="Document ID" value={metadata.document_id} onChange={(value) => setMetadata({ ...metadata, document_id: value })} />
         <Field label="Revision" value={metadata.revision} onChange={(value) => setMetadata({ ...metadata, revision: value })} />

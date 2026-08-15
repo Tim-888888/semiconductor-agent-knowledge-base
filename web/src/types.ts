@@ -91,6 +91,7 @@ export type MessagePresentation = {
   verification_warnings: string[];
   task_results: TaskExecutionResult[];
   image_asset_ids: string[];
+  evidence_ledger: EvidenceLedgerEntry[];
 };
 
 export type IntentTaskItem = {

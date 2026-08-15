@@ -191,6 +191,14 @@ def test_graph_accepts_only_sourced_valid_context_slots() -> None:
     assert not ConversationGraph._constraint_is_grounded("tool_id", "ETCH-03", "它呢", context)
 
 
+def test_graph_deterministic_extract_does_not_turn_chamber_phrase_into_constraint() -> None:
+    result = ConversationGraph._deterministic_extract(
+        "查询受控知识库中 chamber recovery 12 Pa 的要求"
+    )
+
+    assert "chamber" not in result["constraints"]
+
+
 @pytest.mark.asyncio
 async def test_different_request_ids_cannot_run_concurrently_in_one_thread(seeded_services) -> None:
     _, _, _, conversation, _ = seeded_services

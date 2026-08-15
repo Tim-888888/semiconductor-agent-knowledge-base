@@ -1,0 +1,5 @@
+T9445 TXT Chamber Checklist
+
+Control token T9445-TXT-RFMATCH-82.
+After chamber clean, confirm RF match is at least 85 percent.
+Hold the lot until two monitor wafers are stable.

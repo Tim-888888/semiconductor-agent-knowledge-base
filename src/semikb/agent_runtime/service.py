@@ -29,6 +29,7 @@ from semikb.contracts.models import (
     ChatMessage,
     IntentTaskItem,
     InteractionMode,
+    MessageRenderMode,
     RouteTaskDecision,
     SendMessageResponse,
     SlotOperation,
@@ -538,6 +539,7 @@ class ConversationService:
                     verification_warnings=list(result.get("verification_warnings", [])),
                     task_results=list(result.get("task_results", [])),
                     image_asset_ids=[],
+                    evidence_ledger=[],
                 ),
             )
             model = SendMessageResponse(
@@ -574,6 +576,7 @@ class ConversationService:
                 verification_warnings=list(result.get("verification_warnings", [])),
                 task_results=list(result.get("task_results", [])),
                 image_asset_ids=list(result.get("image_evidence", [])),
+                evidence_ledger=list(result.get("evidence_ledger", [])),
             ),
         )
         model = SendMessageResponse(
@@ -666,14 +669,20 @@ class ConversationService:
         return SendMessageResponse.model_validate({"thread": thread, **record.result_payload})
 
     def _hydrate_message_presentations(self, thread: ThreadRecord) -> ThreadRecord:
-        missing_request_ids = {
+        presentation_request_ids = {
             message.request_id
             for message in thread.messages
             if message.role == "assistant"
-            and message.presentation is None
             and message.request_id
+            and (
+                message.presentation is None
+                or (
+                    message.presentation.mode is MessageRenderMode.STRUCTURED_CARD
+                    and not message.presentation.evidence_ledger
+                )
+            )
         }
-        if not missing_request_ids:
+        if not presentation_request_ids:
             return thread
 
         records = self.repository.list_message_requests(
@@ -683,7 +692,7 @@ class ConversationService:
         records_by_id = {
             record.request_id: record
             for record in records
-            if record.request_id in missing_request_ids
+            if record.request_id in presentation_request_ids
             and record.status is AgentMessageRequestStatus.COMPLETED
         }
         if not records_by_id:
@@ -691,7 +700,11 @@ class ConversationService:
 
         hydrated = thread.model_copy(deep=True)
         for message in hydrated.messages:
-            if message.role != "assistant" or message.presentation is not None:
+            needs_presentation = message.presentation is None or (
+                message.presentation.mode is MessageRenderMode.STRUCTURED_CARD
+                and not message.presentation.evidence_ledger
+            )
+            if message.role != "assistant" or not needs_presentation:
                 continue
             record = records_by_id.get(message.request_id or "")
             if record is None:
@@ -709,6 +722,7 @@ class ConversationService:
                 image_asset_ids=[
                     str(item) for item in payload.get("image_asset_ids", [])
                 ],
+                evidence_ledger=list(payload.get("evidence_ledger", [])),
             )
         return hydrated
 

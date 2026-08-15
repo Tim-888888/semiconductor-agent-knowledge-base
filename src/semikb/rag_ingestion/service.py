@@ -53,6 +53,10 @@ _CANONICAL_MEDIA_TYPES = {
 }
 
 
+class IngestionIdempotencyConflictError(ValueError):
+    """The same ingestion identity was reused with different replay metadata."""
+
+
 class IngestionService:
     """Submits replayable jobs and executes their controlled state transitions."""
 
@@ -163,7 +167,7 @@ class IngestionService:
         }
         existing_payload = self.store.get_replay_payload(job.job_id)
         if existing_payload is not None and existing_payload != replay_payload:
-            raise ValueError(
+            raise IngestionIdempotencyConflictError(
                 "The idempotency key already exists with different ingestion metadata."
             )
         self.store.save_replay_payload(job.job_id, replay_payload)

@@ -1,0 +1,70 @@
+{
+  "verification": "T9-4.4.5-public-browser-acceptance",
+  "executed_at": "2026-08-15T14:31:25+08:00",
+  "public_url": "http://112.74.99.143/",
+  "ui_uploads": [
+    {"format": "markdown", "document_id": "T9445-UI-MD-202608151343", "status": "published", "progress": 100, "chunks": 4, "images": 0, "tables": 1, "attempt": 1},
+    {"format": "text", "document_id": "T9445-UI-TXT-202608151343", "status": "published", "progress": 100, "chunks": 1, "images": 0, "tables": 0, "attempt": 1},
+    {"format": "html", "document_id": "T9445-UI-HTML-202608151343", "status": "published", "progress": 100, "chunks": 3, "images": 0, "tables": 1, "attempt": 1},
+    {"format": "pdf", "document_id": "T9445-UI-PDF-202608151343", "status": "published", "progress": 100, "chunks": 4, "images": 2, "tables": 1, "attempt": 1},
+    {"format": "docx", "document_id": "T9445-UI-DOCX-202608151343", "status": "published", "progress": 100, "chunks": 5, "images": 1, "tables": 1, "attempt": 1},
+    {"format": "xlsx", "document_id": "T9445-UI-XLSX-202608151343", "status": "published", "progress": 100, "chunks": 3, "images": 0, "tables": 3, "attempt": 1},
+    {"format": "csv", "document_id": "T9445-UI-CSV-202608151343", "status": "published", "progress": 100, "chunks": 1, "images": 0, "tables": 1, "attempt": 1},
+    {"format": "pptx", "document_id": "T9445-UI-PPTX-202608151343", "status": "published", "progress": 100, "chunks": 4, "images": 1, "tables": 1, "attempt": 1},
+    {"format": "png", "document_id": "T9445-UI-IMAGE-202608151343", "status": "published", "progress": 100, "chunks": 1, "images": 1, "tables": 0, "attempt": 1}
+  ],
+  "job_event_probe": {
+    "document_id": "T9445-UI-IMAGE-202608151343",
+    "job_id": "ing_ce59d1e4b9de445aaf4e14d2d6c112ff",
+    "stages": ["queued", "validating", "parsing", "quality_check", "embedding", "staged", "published"],
+    "parser_version": "1.0.0",
+    "chunker_version": "structured-blocks-v1",
+    "embedding": "qwen3.7-text-embedding+qwen3.7-text-embedding-sparse-v1",
+    "index_version": "v4"
+  },
+  "representative_queries": [
+    {"format": "markdown", "query": "T9445-MD-PRESSURE-17 first wafer pressure gate", "expected_document": "T9445-GOLDEN-MD", "passed": true},
+    {"format": "text", "query": "T9445-TXT-RFMATCH-82 RF match monitor wafers", "expected_document": "T9445-GOLDEN-TXT", "passed": true},
+    {"format": "html", "query": "T9445-HTML-FORELINE-29 foreline pressure limit", "expected_document": "T9445-GOLDEN-HTML", "passed": true},
+    {"format": "pdf", "query": "查询受控知识库中 T9445-PDF-ESCALATE-42 对 Release Gate 和 leak check 的文字要求，不要执行任何设备操作。", "expected_document": "T9445-GOLDEN-PDF-V2", "passed": true},
+    {"format": "docx", "query": "请只读查询受控知识库中 T9445-DOCX-LEAKCHECK-33 的文字定义：chamber recovery 的判定阈值是多少？不要执行任何设备操作。", "expected_document": "T9445-GOLDEN-DOCX", "trace_id": "trace_7258d2b66e3d442ca163efede42c703c", "passed": true},
+    {"format": "xlsx", "query": "受控表格 T9445-XLSX-PRESSURE-64 中，ETCH-ALPHA 对应的 pressure limit 是多少？", "expected_document": "T9445-GOLDEN-XLSX", "passed": true},
+    {"format": "csv", "query": "知识问答任务：检索受控文档关键词 T9445-CSV-SPC-58 SPC pressure disposition；禁止调用制造数据工具。", "expected_document": "T9445-GOLDEN-CSV", "passed": true},
+    {"format": "pptx", "query": "知识问答任务：检索受控演示文档关键词 T9445-PPTX-EDGE-72 edge ring release gate；禁止执行任何设备操作。", "expected_document": "T9445-GOLDEN-PPTX", "passed": true},
+    {"format": "png", "query": "知识问答任务：检索受控图片文字 T9445 IMAGE EDGE RING 57 ETCH-03 wafer map；只读取知识库图片证据。", "expected_document": "T9445-UI-IMAGE-202608151343", "passed": true}
+  ],
+  "asset_behavior": {
+    "first_image_auto_preview": true,
+    "multiple_image_switch": true,
+    "no_image_query_clears_previous_preview": true,
+    "refresh_restores_structured_card": true,
+    "refresh_restores_evidence_ledger": true,
+    "refresh_restores_selected_evidence": true,
+    "refresh_restores_trace_button": true,
+    "refresh_restores_first_image": true
+  },
+  "responsive": {
+    "desktop": {"width": 1280, "height": 720, "horizontal_overflow": false},
+    "mobile": {"width": 390, "height": 844, "horizontal_overflow": false},
+    "screenshots": [
+      "docs/evidence/t9-4-4-5/browser-desktop.png",
+      "docs/evidence/t9-4-4-5/browser-mobile-390x844.png",
+      "docs/evidence/t9-4-4-5/browser-mobile-390x844-evidence.png"
+    ]
+  },
+  "console": {"errors": 0, "warnings": 0},
+  "application_containers": {
+    "api": {"id": "cd32b94c8c31", "healthy": true},
+    "worker": {"id": "84e46a234ae9", "celery_ping": "pong"},
+    "web": {"id": "dacdaa326c2f", "healthy": true}
+  },
+  "protected_container_ids_unchanged": {
+    "mongodb": "e6bd110ad320",
+    "milvus": "2f6827ca640e",
+    "milvus_minio": "6c9133e777d2",
+    "minio": "54dab754141e",
+    "etcd": "9deab8ba1805",
+    "redis": "ada0a643b6a6"
+  },
+  "contains_credentials": false
+}

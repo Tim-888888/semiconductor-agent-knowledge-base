@@ -303,6 +303,28 @@ class AgentAnswer(BaseModel):
     confidence: str = Field(default="low", pattern="^(low|medium|high)$")
 
 
+class EvidenceLedgerEntry(BaseModel):
+    evidence_id: str
+    source_type: str
+    content: str
+    chunk_id: str | None = None
+    document_id: str | None = None
+    revision: str | None = None
+    approval_status: str | None = None
+    effective_at: datetime | None = None
+    source_uri: str = ""
+    page_or_section: str = ""
+    tool_id: str | None = None
+    chamber: str | None = None
+    recipe_version: str | None = None
+    retrieval_routes: list[str] = Field(default_factory=list)
+    retrieval_score: float | None = None
+    rerank_score: float | None = None
+    context_selection_reason: str | None = None
+    image_ids: list[str] = Field(default_factory=list)
+    external_url: str = ""
+
+
 class MessageRenderMode(StrEnum):
     BUBBLE = "bubble"
     STRUCTURED_CARD = "structured_card"
@@ -319,6 +341,7 @@ class MessagePresentation(BaseModel):
     verification_warnings: list[str] = Field(default_factory=list)
     task_results: list[TaskExecutionResult] = Field(default_factory=list, max_length=3)
     image_asset_ids: list[str] = Field(default_factory=list, max_length=64)
+    evidence_ledger: list[EvidenceLedgerEntry] = Field(default_factory=list, max_length=64)
 
 
 class ChatMessage(BaseModel):
@@ -575,28 +598,6 @@ class ThreadRecord(BaseModel):
     messages: list[ChatMessage] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
-
-
-class EvidenceLedgerEntry(BaseModel):
-    evidence_id: str
-    source_type: str
-    content: str
-    chunk_id: str | None = None
-    document_id: str | None = None
-    revision: str | None = None
-    approval_status: str | None = None
-    effective_at: datetime | None = None
-    source_uri: str = ""
-    page_or_section: str = ""
-    tool_id: str | None = None
-    chamber: str | None = None
-    recipe_version: str | None = None
-    retrieval_routes: list[str] = Field(default_factory=list)
-    retrieval_score: float | None = None
-    rerank_score: float | None = None
-    context_selection_reason: str | None = None
-    image_ids: list[str] = Field(default_factory=list)
-    external_url: str = ""
 
 
 class SendMessageResponse(BaseModel):

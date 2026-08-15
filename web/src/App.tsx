@@ -467,11 +467,14 @@ function App() {
   }
 
   async function upload(file: File, metadata: UploadMetadata) {
+    let succeeded = false;
     await runAction(async () => {
       const job = await uploadDocument(file, metadata);
       await refreshJobs(job.job_id);
       setNotice(`入库任务 ${job.job_id.slice(-8)} 已创建`);
+      succeeded = true;
     }, "文档上传失败。");
+    return succeeded;
   }
 
   async function retryIngestion(jobId: string) {

@@ -40,6 +40,7 @@ from semikb.contracts.models import (
     SendMessageRequest,
 )
 from semikb.contracts.streaming import StreamMessageRequest, encode_sse_event
+from semikb.rag_ingestion.service import IngestionIdempotencyConflictError
 from semikb.rag_retrieval.milvus_schema import schema_contract
 from semikb.storage.conversations import (
     MessageRequestConflictError,
@@ -385,6 +386,8 @@ def create_ingestion_job(
             _enqueue_ingestion(container, job.job_id)
     except IngestError as exc:
         raise _ingest_http_exception(exc) from exc
+    except IngestionIdempotencyConflictError as exc:
+        raise _ingestion_idempotency_conflict() from exc
     return job.model_dump(mode="json")
 
 
@@ -431,6 +434,8 @@ async def upload_ingestion_document(
         )
     except IngestError as exc:
         raise _ingest_http_exception(exc) from exc
+    except IngestionIdempotencyConflictError as exc:
+        raise _ingestion_idempotency_conflict() from exc
     if not container.settings.demo_mode:
         _enqueue_ingestion(container, job.job_id)
     return job.model_dump(mode="json")
@@ -500,6 +505,19 @@ def _ingest_http_exception(exc: IngestError) -> HTTPException:
     return HTTPException(
         status_code=exc.descriptor.http_status,
         detail={"code": exc.code.value, "message": exc.safe_message},
+    )
+
+
+def _ingestion_idempotency_conflict() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail={
+            "code": "INGESTION_IDEMPOTENCY_CONFLICT",
+            "message": (
+                "The same document revision and file were already submitted "
+                "with different ingestion metadata."
+            ),
+        },
     )
 
 

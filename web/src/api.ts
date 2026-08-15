@@ -40,8 +40,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const payload = await response.text();
     let detail = payload;
     try {
-      const parsed = JSON.parse(payload) as { detail?: string };
-      detail = parsed.detail ?? payload;
+      const parsed = JSON.parse(payload) as {
+        detail?: string | { message?: string };
+      };
+      detail = typeof parsed.detail === "string"
+        ? parsed.detail
+        : parsed.detail?.message ?? payload;
     } catch (error) {
       if (!(error instanceof SyntaxError)) throw error;
     }

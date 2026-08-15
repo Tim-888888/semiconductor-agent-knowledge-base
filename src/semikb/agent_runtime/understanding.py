@@ -54,7 +54,11 @@ ENTITY_PATTERNS = {
     "lot_id": re.compile(r"\bLOT[-_ ]?[A-Z0-9-]+\b", re.IGNORECASE),
     "case_id": re.compile(r"\bCASE[-_ ][A-Z0-9-]+\b", re.IGNORECASE),
 }
-CHAMBER_PATTERN = re.compile(r"(?:CHAMBER|腔体)\s*[-:]?\s*([A-Z0-9]+)", re.IGNORECASE)
+CHAMBER_ID_TOKEN = r"(?:[A-Z](?:\d{0,2})?|\d{1,2})"
+CHAMBER_PATTERN = re.compile(
+    rf"(?:CHAMBER|腔体)\s*[-:]?\s*({CHAMBER_ID_TOKEN})(?![A-Z0-9])",
+    re.IGNORECASE,
+)
 TIME_PATTERN = re.compile(
     r"(?:最近|过去)?\s*\d+\s*(?:小时|天|周)|"
     r"\d{4}[-/]\d{1,2}[-/]\d{1,2}(?:\s*(?:至|到|~)\s*\d{4}[-/]\d{1,2}[-/]\d{1,2})?",
@@ -72,15 +76,17 @@ SLOT_CORRECTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "chamber",
         re.compile(
-            rf"不是\s*(?:CHAMBER|腔体)\s*[-:]?\s*([A-Z0-9]+)"
-            rf"{CORRECTION_SEPARATOR}(?:CHAMBER|腔体)\s*[-:]?\s*([A-Z0-9]+)",
+            rf"不是\s*(?:CHAMBER|腔体)\s*[-:]?\s*({CHAMBER_ID_TOKEN})(?![A-Z0-9])"
+            rf"{CORRECTION_SEPARATOR}(?:CHAMBER|腔体)\s*[-:]?\s*"
+            rf"({CHAMBER_ID_TOKEN})(?![A-Z0-9])",
             re.IGNORECASE,
         ),
     ),
     (
         "chamber",
         re.compile(
-            rf"不是\s*([A-Z0-9]+)\s*腔{CORRECTION_SEPARATOR}([A-Z0-9]+)\s*腔",
+            rf"不是\s*({CHAMBER_ID_TOKEN})\s*腔"
+            rf"{CORRECTION_SEPARATOR}({CHAMBER_ID_TOKEN})\s*腔",
             re.IGNORECASE,
         ),
     ),

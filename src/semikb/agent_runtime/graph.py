@@ -26,7 +26,7 @@ from semikb.agent_runtime.task_execution import (
     route_generation_contract,
 )
 from semikb.agent_runtime.tools import ManufacturingToolbox
-from semikb.agent_runtime.understanding import ConversationUnderstandingService
+from semikb.agent_runtime.understanding import CHAMBER_PATTERN, ConversationUnderstandingService
 from semikb.agent_runtime.web_search import AliyunWebSearchGateway
 from semikb.config import Settings
 from semikb.contracts.models import (
@@ -391,7 +391,7 @@ class ConversationGraph:
             match = re.search(pattern, normal)
             if match:
                 constraints[field] = match.group(0).replace(" ", "-")
-        chamber = re.search(r"(?:CHAMBER|腔体)\s*[-:]?\s*([A-Z0-9]+)", normal)
+        chamber = CHAMBER_PATTERN.search(normal)
         if chamber:
             constraints["chamber"] = chamber.group(1)
         time_range = re.search(

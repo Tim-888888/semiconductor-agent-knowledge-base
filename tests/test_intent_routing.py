@@ -805,6 +805,37 @@ def test_explicit_slot_extraction_prefers_affirmed_correction_value(
     assert slots[slot_name] == expected
 
 
+@pytest.mark.parametrize(
+    "utterance,expected",
+    [
+        ("查询 ETCH-03 Chamber B 当前 SOP", "B"),
+        ("查询 ETCH-03 Chamber A1 当前 SOP", "A1"),
+        ("查询 ETCH-03 腔体 2 当前 SOP", "2"),
+    ],
+)
+def test_explicit_slot_extraction_accepts_short_chamber_identifiers(
+    utterance: str,
+    expected: str,
+) -> None:
+    slots = ConversationUnderstandingService.extract_explicit_slots(utterance)
+
+    assert slots["chamber"] == expected
+
+
+@pytest.mark.parametrize(
+    "utterance",
+    [
+        "查询受控知识库中 chamber recovery 12 Pa 的要求",
+        "查询 chamber pressure alarm 的处置说明",
+        "总结 chamber cleaning 后的检查步骤",
+    ],
+)
+def test_explicit_slot_extraction_ignores_chamber_business_phrases(utterance: str) -> None:
+    slots = ConversationUnderstandingService.extract_explicit_slots(utterance)
+
+    assert "chamber" not in slots
+
+
 @pytest.mark.asyncio
 async def test_semantic_history_task_overrides_model_route_and_meta_context() -> None:
     request = "复述最近一条用户输入"

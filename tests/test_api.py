@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -147,12 +148,64 @@ def test_api_accepts_markdown_upload_as_an_ingestion_job() -> None:
     }
     response = client.post(
         "/api/v1/ingestion-jobs/upload",
-        data={"metadata": __import__("json").dumps(metadata)},
+        data={"metadata": json.dumps(metadata)},
         files={"file": ("upload.md", b"# Upload\n\nThis is a test note.", "text/markdown")},
         headers=headers,
     )
     assert response.status_code == 201
     assert response.json()["status"] == "published"
+
+
+def test_upload_api_returns_stable_conflict_for_changed_idempotent_metadata() -> None:
+    get_container.cache_clear()
+    client = TestClient(app)
+    token_response = client.post(
+        "/api/v1/auth/demo-token",
+        json={
+            "user_id": "knowledge_admin",
+            "roles": ["knowledge_admin"],
+            "access_scope_keys": ["demo_engineering"],
+        },
+    )
+    headers = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
+    metadata = {
+        "document_id": "UPLOAD-IDEMPOTENCY-CONFLICT",
+        "revision": "R1",
+        "title": "Original upload title",
+        "document_type": "training_note",
+    }
+    file_payload = {
+        "file": (
+            "idempotency.md",
+            b"# Idempotency\n\nThe source bytes remain identical.",
+            "text/markdown",
+        )
+    }
+
+    first = client.post(
+        "/api/v1/ingestion-jobs/upload",
+        data={"metadata": __import__("json").dumps(metadata)},
+        files=file_payload,
+        headers=headers,
+    )
+    changed = client.post(
+        "/api/v1/ingestion-jobs/upload",
+        data={
+            "metadata": json.dumps({**metadata, "title": "Changed upload title"})
+        },
+        files=file_payload,
+        headers=headers,
+    )
+
+    assert first.status_code == 201
+    assert changed.status_code == 409
+    assert changed.json()["detail"] == {
+        "code": "INGESTION_IDEMPOTENCY_CONFLICT",
+        "message": (
+            "The same document revision and file were already submitted "
+            "with different ingestion metadata."
+        ),
+    }
 
 
 @pytest.mark.parametrize(

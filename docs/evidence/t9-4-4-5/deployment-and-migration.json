@@ -1,0 +1,49 @@
+{
+  "verification": "T9-4.4.5-controlled-deployment",
+  "executed_at": "2026-08-15T14:25:20+08:00",
+  "mongodb_migration": {
+    "version": "t9-4.4.4-table-assets-v1",
+    "preflight_actions": [
+      {
+        "operation": "create",
+        "index_name": "table_id",
+        "keys": [["table_id", 1]],
+        "unique": true
+      },
+      {
+        "operation": "create",
+        "index_name": "document_id_revision",
+        "keys": [["document_id", 1], ["revision", 1]],
+        "unique": false
+      }
+    ],
+    "postcheck_actions": [],
+    "snapshots_mode": "0600"
+  },
+  "application_containers": {
+    "api": {"id": "cd32b94c8c31", "healthy": true},
+    "worker": {"id": "84e46a234ae9", "celery_ping": "pong"},
+    "web": {"id": "dacdaa326c2f", "healthy": true}
+  },
+  "protected_container_ids_unchanged": {
+    "mongodb": "e6bd110ad320",
+    "milvus": "2f6827ca640e",
+    "milvus_minio": "6c9133e777d2",
+    "minio": "54dab754141e",
+    "etcd": "9deab8ba1805",
+    "redis": "ada0a643b6a6"
+  },
+  "image_sizes_bytes": {
+    "api_before": 472457579,
+    "api_after": 517384487,
+    "worker_before": 472457579,
+    "worker_after": 517384487,
+    "web_before": 48450281,
+    "web_after": 48450306
+  },
+  "public_health": {
+    "liveness": "ok",
+    "health": "ok"
+  },
+  "contains_credentials": false
+}
