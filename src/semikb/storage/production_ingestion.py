@@ -14,6 +14,7 @@ from semikb.contracts.models import (
     IngestionJob,
     IngestionStatus,
     ObjectRef,
+    TableAsset,
 )
 from semikb.rag_retrieval.encoders import HybridEmbedding
 from semikb.storage.clients import StorageClientFactory
@@ -95,6 +96,9 @@ class ProductionIngestionStore:
             tables_count=tables_count,
         )
 
+    def set_job_parse_audit(self, job_id: str, **kwargs: Any) -> IngestionJob:
+        return self.mongo.set_job_parse_audit(job_id, **kwargs)
+
     def store_source(self, **kwargs: Any) -> ObjectRef:
         return self.artifacts.store_source(**kwargs)
 
@@ -107,14 +111,18 @@ class ProductionIngestionStore:
     def store_image_asset(self, **kwargs: Any) -> ObjectRef:
         return self.artifacts.store_image_asset(**kwargs)
 
+    def store_table_asset(self, **kwargs: Any) -> ObjectRef:
+        return self.artifacts.store_table_asset(**kwargs)
+
     def stage_document(
         self,
         document: DocumentRevision,
         chunks: Sequence[Chunk],
         images: Sequence[ImageAsset],
         embeddings: Sequence[HybridEmbedding],
+        tables: Sequence[TableAsset] = (),
     ) -> None:
-        self.mongo.stage_document(document, chunks, images)
+        self.mongo.stage_document(document, chunks, images, tables)
         try:
             self.vectors.upsert_chunks(
                 chunks,
@@ -132,6 +140,7 @@ class ProductionIngestionStore:
         chunks: Sequence[Chunk],
         images: Sequence[ImageAsset],
         embeddings: Sequence[HybridEmbedding],
+        tables: Sequence[TableAsset] = (),
     ) -> None:
         previous_superseded = False
         try:

@@ -1,0 +1,65 @@
+{
+  "schema_version": "semikb-t9-4-4-4-integration-results-v1",
+  "verified_at": "2026-08-15",
+  "scope": "local governed ingestion integration; no ECS deployment or browser acceptance",
+  "contract": {
+    "name": "semikb-ingest-v1",
+    "consumer": "rag_ingestion.SemikbIngestAdapter",
+    "business_models": [
+      "DocumentRevision",
+      "Chunk",
+      "ImageAsset",
+      "TableAsset"
+    ]
+  },
+  "formats_exercised": [
+    "markdown",
+    "text",
+    "html",
+    "pdf",
+    "docx",
+    "xlsx",
+    "csv",
+    "pptx",
+    "image"
+  ],
+  "tests": {
+    "targeted": "61 passed",
+    "backend_full": "302 passed, 1 warning",
+    "warning": "existing Starlette TestClient/httpx deprecation",
+    "ruff": "passed",
+    "compileall": "passed",
+    "frontend_lint_build": "passed",
+    "credential_scan": "passed"
+  },
+  "verified_behaviors": {
+    "markdown_pdf_compatibility": true,
+    "parser_provider_upstream_audit": true,
+    "image_and_table_object_roundtrip": true,
+    "mongo_table_catalog": true,
+    "milvus_receives_chunks_only": true,
+    "provider_timeout_unpublished": true,
+    "retry_idempotent": true,
+    "stable_http_errors": true,
+    "additive_migration_dry_run_apply_rollback": true
+  },
+  "wheel": {
+    "bytes": 228166,
+    "entries": 96,
+    "semikb_entries": 68,
+    "semikb_ingest_entries": 28,
+    "new_runtime_dependencies": 0
+  },
+  "docker_image_measurement": {
+    "performed": false,
+    "reason": "Local Docker Desktop Linux daemon was not running; ECS was intentionally unchanged in T9-4.4.4.",
+    "next_gate": "Measure Linux API/Worker images before T9-4.4.5 ECS replacement."
+  },
+  "not_claimed": [
+    "per-format public golden files",
+    "ECS deployment",
+    "real MinIO MongoDB Milvus reconciliation",
+    "retrieval and answer acceptance for every format",
+    "desktop or mobile browser acceptance"
+  ]
+}

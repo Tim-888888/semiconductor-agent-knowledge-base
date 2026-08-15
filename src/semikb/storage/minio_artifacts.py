@@ -120,6 +120,35 @@ class MinioArtifactRepository:
             content_class="image",
         )
 
+    def store_table_asset(
+        self,
+        *,
+        document_id: str,
+        revision: str,
+        table_id: str,
+        content: bytes,
+        source_hash: str,
+    ) -> ObjectRef:
+        if not content:
+            raise ValueError("Table asset content is empty.")
+        key = (
+            f"documents/{_segment(document_id, 'document_id')}/"
+            f"{_segment(revision, 'revision')}/assets/"
+            f"{_segment(table_id, 'table_id')}/table.json"
+        )
+        return self._put(
+            "semikb-derived",
+            key,
+            content,
+            "application/json",
+            hashlib.sha256(content).hexdigest(),
+            document_id=document_id,
+            revision=revision,
+            asset_id=table_id,
+            source_sha256=source_hash,
+            content_class="table",
+        )
+
     def load_object(self, object_ref: ObjectRef) -> bytes:
         client = self._factory.create_minio()
         response = client.get_object(object_ref.bucket, object_ref.object_key)

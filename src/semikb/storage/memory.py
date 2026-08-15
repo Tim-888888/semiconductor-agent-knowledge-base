@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import RLock
@@ -26,6 +27,7 @@ from semikb.contracts.models import (
     IngestionStatus,
     ObjectRef,
     RetrievalTrace,
+    TableAsset,
     ThreadRecord,
 )
 from semikb.contracts.streaming import (
@@ -50,6 +52,7 @@ class DemoStore:
         self.documents: dict[tuple[str, str], DocumentRevision] = {}
         self.chunks: dict[str, Chunk] = {}
         self.images: dict[str, ImageAsset] = {}
+        self.tables: dict[str, TableAsset] = {}
         self.jobs: dict[str, IngestionJob] = {}
         self.job_keys: dict[str, str] = {}
         self.traces: dict[str, RetrievalTrace] = {}
@@ -62,11 +65,18 @@ class DemoStore:
         self.replay_payloads: dict[str, dict[str, object]] = {}
         self.audit_events: dict[str, AuditEvent] = {}
 
-    def add_document(self, document: DocumentRevision, chunks: list[Chunk], images: list[ImageAsset]) -> None:
+    def add_document(
+        self,
+        document: DocumentRevision,
+        chunks: list[Chunk],
+        images: list[ImageAsset],
+        tables: Sequence[TableAsset] = (),
+    ) -> None:
         with self._lock:
             self.documents[(document.document_id, document.revision)] = document
             self.chunks.update({chunk.chunk_id: chunk for chunk in chunks})
             self.images.update({image.image_id: image for image in images})
+            self.tables.update({table.table_id: table for table in tables})
 
     def stage_document(
         self,
@@ -74,10 +84,11 @@ class DemoStore:
         chunks: list[Chunk],
         images: list[ImageAsset],
         embeddings: list[HybridEmbedding],
+        tables: Sequence[TableAsset] = (),
     ) -> None:
         if len(chunks) != len(embeddings):
             raise ValueError("Every staged chunk requires one embedding.")
-        self.add_document(document, chunks, images)
+        self.add_document(document, chunks, images, tables)
 
     def get_document(self, document_id: str, revision: str) -> DocumentRevision | None:
         return self.documents.get((document_id, revision))
@@ -87,6 +98,9 @@ class DemoStore:
 
     def get_image(self, image_id: str) -> ImageAsset | None:
         return self.images.get(image_id)
+
+    def get_table(self, table_id: str) -> TableAsset | None:
+        return self.tables.get(table_id)
 
     def list_published_chunks(self, actor_scope: ActorScope, now: datetime | None = None) -> list[Chunk]:
         current = now or datetime.now(UTC)
@@ -230,6 +244,34 @@ class DemoStore:
         job.tables_count = tables_count
         return job
 
+    def set_job_parse_audit(
+        self,
+        job_id: str,
+        *,
+        parse_contract_version: str,
+        parser_name: str,
+        parser_version: str,
+        provider_name: str | None,
+        provider_version: str | None,
+        upstream_project: str | None,
+        upstream_commit: str | None,
+        chunker_version: str,
+        warning_codes: list[str],
+        metrics: dict[str, object],
+    ) -> IngestionJob:
+        job = self.jobs[job_id]
+        job.parse_contract_version = parse_contract_version
+        job.parser_name = parser_name
+        job.parser_version = parser_version
+        job.provider_name = provider_name
+        job.provider_version = provider_version
+        job.upstream_project = upstream_project
+        job.upstream_commit = upstream_commit
+        job.chunker_version = chunker_version
+        job.parse_warning_codes = list(warning_codes)
+        job.parse_metrics = dict(metrics)
+        return job
+
     def _store_object(self, object_ref: ObjectRef, content: bytes) -> ObjectRef:
         self.objects[(object_ref.bucket, object_ref.object_key)] = content
         return object_ref
@@ -295,12 +337,30 @@ class DemoStore:
         )
         return self._store_object(object_ref, content)
 
+    def store_table_asset(
+        self,
+        *,
+        document_id: str,
+        revision: str,
+        table_id: str,
+        content: bytes,
+        source_hash: str,
+    ) -> ObjectRef:
+        object_ref = ObjectRef(
+            bucket="semikb-derived",
+            object_key=f"documents/{document_id}/{revision}/assets/{table_id}/table.json",
+            content_type="application/json",
+            sha256=hashlib.sha256(content).hexdigest(),
+        )
+        return self._store_object(object_ref, content)
+
     def publish_document(
         self,
         document: DocumentRevision,
         chunks: list[Chunk],
         images: list[ImageAsset],
         embeddings: list[HybridEmbedding],
+        tables: Sequence[TableAsset] = (),
     ) -> None:
         with self._lock:
             stored_document = self.documents[(document.document_id, document.revision)]
@@ -313,6 +373,9 @@ class DemoStore:
             for image in self.images.values():
                 if image.document_id == document.document_id and image.revision == document.revision:
                     image.lifecycle = DocumentLifecycle.PUBLISHED
+            for table in self.tables.values():
+                if table.document_id == document.document_id and table.revision == document.revision:
+                    table.lifecycle = DocumentLifecycle.PUBLISHED
             self.index_releases[document.index_version] = {
                 "status": "active",
                 "alias": "semikb_chunks_active",
@@ -331,6 +394,9 @@ class DemoStore:
         for image in self.images.values():
             if image.document_id == document_id and image.revision == revision:
                 image.lifecycle = lifecycle
+        for table in self.tables.values():
+            if table.document_id == document_id and table.revision == revision:
+                table.lifecycle = lifecycle
 
     def compensate_document(self, document_id: str, revision: str) -> None:
         if (document_id, revision) in self.documents:

@@ -47,6 +47,7 @@ from semikb.storage.conversations import (
     ThreadBusyError,
 )
 from semikb.storage.external import health_payload
+from semikb_ingest import IngestError
 
 
 def get_app_container() -> ApplicationContainer:
@@ -376,11 +377,14 @@ def create_ingestion_job(
     if "admin" not in actor_scope.roles and "knowledge_admin" not in actor_scope.roles:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Knowledge administrator role required.")
     payload = request.model_dump(mode="json")
-    if container.settings.demo_mode:
-        job = container.ingestion.ingest_payload(payload, created_by=actor_scope.user_id)
-    else:
-        job = container.ingestion.submit_payload(payload, created_by=actor_scope.user_id)
-        _enqueue_ingestion(container, job.job_id)
+    try:
+        if container.settings.demo_mode:
+            job = container.ingestion.ingest_payload(payload, created_by=actor_scope.user_id)
+        else:
+            job = container.ingestion.submit_payload(payload, created_by=actor_scope.user_id)
+            _enqueue_ingestion(container, job.job_id)
+    except IngestError as exc:
+        raise _ingest_http_exception(exc) from exc
     return job.model_dump(mode="json")
 
 
@@ -391,7 +395,7 @@ async def upload_ingestion_document(
     container: Annotated[ApplicationContainer, Depends(get_app_container)],
     actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
 ) -> dict[str, object]:
-    """Upload a source document; binary formats are normalized through MinerU."""
+    """Upload a source document through the exact-format parser registry."""
 
     if "admin" not in actor_scope.roles and "knowledge_admin" not in actor_scope.roles:
         raise HTTPException(
@@ -416,13 +420,17 @@ async def upload_ingestion_document(
         if container.settings.demo_mode
         else container.ingestion.submit_file
     )
-    job = await run_in_threadpool(
-        ingestion_method,
-        filename,
-        source_bytes,
-        upload_metadata.model_dump(mode="json"),
-        actor_scope.user_id,
-    )
+    try:
+        job = await run_in_threadpool(
+            ingestion_method,
+            filename,
+            source_bytes,
+            upload_metadata.model_dump(mode="json"),
+            actor_scope.user_id,
+            content_type=file.content_type,
+        )
+    except IngestError as exc:
+        raise _ingest_http_exception(exc) from exc
     if not container.settings.demo_mode:
         _enqueue_ingestion(container, job.job_id)
     return job.model_dump(mode="json")
@@ -486,6 +494,13 @@ def _enqueue_ingestion(container: ApplicationContainer, job_id: str) -> None:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Ingestion task queue is unavailable. Retry the failed job later.",
         ) from exc
+
+
+def _ingest_http_exception(exc: IngestError) -> HTTPException:
+    return HTTPException(
+        status_code=exc.descriptor.http_status,
+        detail={"code": exc.code.value, "message": exc.safe_message},
+    )
 
 
 @app.get("/api/v1/assets/{image_id}/access")

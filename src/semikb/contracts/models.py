@@ -97,7 +97,17 @@ class DocumentRevision(BaseModel):
     chamber: str | None = None
     recipe_id: str | None = None
     recipe_version: str | None = None
+    parse_contract_version: str = "legacy-ingestion-v1"
+    parser_name: str = "legacy"
     parser_version: str = "demo-parser-v1"
+    provider_name: str | None = None
+    provider_version: str | None = None
+    upstream_project: str | None = None
+    upstream_commit: str | None = None
+    detected_title: str | None = None
+    detected_language: str | None = None
+    parse_warning_codes: list[str] = Field(default_factory=list)
+    parse_metrics: dict[str, Any] = Field(default_factory=dict)
     chunker_version: str = "semantic-v1"
     embedding_version: str = "deterministic-demo-v1"
     index_version: str = "v1"
@@ -126,8 +136,11 @@ class Chunk(BaseModel):
     recipe_id: str | None = None
     recipe_version: str | None = None
     image_ids: list[str] = Field(default_factory=list)
+    table_ids: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
+    parser_name: str = "legacy"
     parser_version: str = "demo-parser-v1"
+    upstream_commit: str | None = None
     chunker_version: str = "semantic-v1"
     embedding_version: str = "deterministic-demo-v1"
     index_version: str = "v1"
@@ -147,8 +160,40 @@ class ImageAsset(BaseModel):
     ocr_text: str = ""
     detection_summary: str = ""
     source_page: str = ""
+    source_asset_id: str | None = None
+    source_location: dict[str, Any] = Field(default_factory=dict)
+    parser_name: str = "legacy"
+    parser_version: str = "demo-parser-v1"
+    provider_name: str | None = None
+    provider_version: str | None = None
     related_case_id: str | None = None
     demo_source_path: str | None = None
+    access_scope_key: str = "demo_engineering"
+    approval_status: ApprovalStatus = ApprovalStatus.APPROVED
+    lifecycle: DocumentLifecycle = DocumentLifecycle.STAGED
+    effective_at: datetime = Field(default_factory=utc_now)
+    expires_at: datetime | None = None
+
+
+class TableAsset(BaseModel):
+    """Governed table representation with one durable derived-object reference."""
+
+    table_id: str
+    document_id: str
+    revision: str
+    parent_chunk_id: str | None = None
+    object_ref: ObjectRef
+    title: str = ""
+    markdown: str
+    html: str
+    headers: list[str] = Field(default_factory=list)
+    row_count: int = Field(ge=0)
+    column_count: int = Field(ge=0)
+    source_asset_id: str | None = None
+    source_page: str = ""
+    source_location: dict[str, Any] = Field(default_factory=dict)
+    parser_name: str = "legacy"
+    parser_version: str = "demo-parser-v1"
     access_scope_key: str = "demo_engineering"
     approval_status: ApprovalStatus = ApprovalStatus.APPROVED
     lifecycle: DocumentLifecycle = DocumentLifecycle.STAGED
@@ -180,7 +225,15 @@ class IngestionJob(BaseModel):
     progress: int = Field(default=0, ge=0, le=100)
     attempt: int = 1
     idempotency_key: str
+    parse_contract_version: str = "legacy-ingestion-v1"
+    parser_name: str = "legacy"
     parser_version: str = "demo-parser-v1"
+    provider_name: str | None = None
+    provider_version: str | None = None
+    upstream_project: str | None = None
+    upstream_commit: str | None = None
+    parse_warning_codes: list[str] = Field(default_factory=list)
+    parse_metrics: dict[str, Any] = Field(default_factory=dict)
     chunker_version: str = "semantic-v1"
     embedding_version: str = "deterministic-demo-v1"
     index_version: str = "v1"

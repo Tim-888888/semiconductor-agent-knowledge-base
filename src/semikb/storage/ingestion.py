@@ -13,6 +13,7 @@ from semikb.contracts.models import (
     IngestionJob,
     IngestionStatus,
     ObjectRef,
+    TableAsset,
 )
 from semikb.rag_retrieval.encoders import HybridEmbedding
 
@@ -59,6 +60,22 @@ class IngestionStore(Protocol):
         tables_count: int,
     ) -> IngestionJob: ...
 
+    def set_job_parse_audit(
+        self,
+        job_id: str,
+        *,
+        parse_contract_version: str,
+        parser_name: str,
+        parser_version: str,
+        provider_name: str | None,
+        provider_version: str | None,
+        upstream_project: str | None,
+        upstream_commit: str | None,
+        chunker_version: str,
+        warning_codes: Sequence[str],
+        metrics: dict[str, object],
+    ) -> IngestionJob: ...
+
     def store_source(
         self,
         *,
@@ -94,12 +111,23 @@ class IngestionStore(Protocol):
         source_hash: str,
     ) -> ObjectRef: ...
 
+    def store_table_asset(
+        self,
+        *,
+        document_id: str,
+        revision: str,
+        table_id: str,
+        content: bytes,
+        source_hash: str,
+    ) -> ObjectRef: ...
+
     def stage_document(
         self,
         document: DocumentRevision,
         chunks: Sequence[Chunk],
         images: Sequence[ImageAsset],
         embeddings: Sequence[HybridEmbedding],
+        tables: Sequence[TableAsset] = (),
     ) -> None: ...
 
     def publish_document(
@@ -108,6 +136,7 @@ class IngestionStore(Protocol):
         chunks: Sequence[Chunk],
         images: Sequence[ImageAsset],
         embeddings: Sequence[HybridEmbedding],
+        tables: Sequence[TableAsset] = (),
     ) -> None: ...
 
     def finalize_inactive_document(

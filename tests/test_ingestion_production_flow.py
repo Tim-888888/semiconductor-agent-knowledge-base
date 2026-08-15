@@ -9,10 +9,12 @@ import httpx
 
 from semikb.config import Settings
 from semikb.contracts.models import (
+    Chunk,
     DocumentLifecycle,
     DocumentRevision,
     IngestionStatus,
     ObjectRef,
+    TableAsset,
 )
 from semikb.rag_ingestion.mineru import MinerUPrecisionClient
 from semikb.rag_ingestion.service import IngestionService
@@ -317,3 +319,71 @@ def test_production_publish_records_native_sparse_release_metadata() -> None:
         "sparse_encoder_version": "qwen3.7-text-embedding-sparse-v1",
         "normalization": "dense_l2_sparse_provider_raw",
     }
+
+
+def test_production_stage_routes_tables_to_mongo_and_only_chunks_to_milvus() -> None:
+    class Mongo:
+        staged_tables: list[TableAsset] | None = None
+
+        def stage_document(self, document, chunks, images, tables) -> None:
+            self.staged_tables = list(tables)
+
+        def compensate_document(self, document_id, revision) -> list[str]:
+            raise AssertionError("successful staging must not compensate")
+
+    class Vectors:
+        received_chunks: list[Chunk] | None = None
+
+        def upsert_chunks(self, chunks, embeddings, *, lifecycle) -> None:
+            self.received_chunks = list(chunks)
+            assert len(chunks) == len(embeddings) == 1
+            assert lifecycle is DocumentLifecycle.STAGED
+
+    source_ref = ObjectRef(
+        bucket="semikb-raw",
+        object_key="source.xlsx",
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        sha256="0" * 64,
+    )
+    table_ref = ObjectRef(
+        bucket="semikb-derived",
+        object_key="documents/T9444/R1/assets/TABLE-001/table.json",
+        content_type="application/json",
+        sha256="1" * 64,
+    )
+    document = DocumentRevision(
+        document_id="T9444-PRODUCTION",
+        revision="R1",
+        title="Production table routing",
+        document_type="sop",
+        source_hash="0" * 64,
+        source_ref=source_ref,
+    )
+    chunk = Chunk(
+        chunk_id="T9444-PRODUCTION-R1-001",
+        document_id=document.document_id,
+        revision=document.revision,
+        chunk_text="| Signal | Limit |\n| --- | --- |\n| Pressure | 12 |",
+        page_or_section="Sheet FDC A1:B2",
+        table_ids=["T9444-PRODUCTION-R1-TABLE-001"],
+    )
+    table = TableAsset(
+        table_id="T9444-PRODUCTION-R1-TABLE-001",
+        document_id=document.document_id,
+        revision=document.revision,
+        object_ref=table_ref,
+        markdown=chunk.chunk_text,
+        html="<table><tr><th>Signal</th><th>Limit</th></tr></table>",
+        headers=["Signal", "Limit"],
+        row_count=1,
+        column_count=2,
+    )
+    embedding = DeterministicHybridEncoder(8).encode([chunk.chunk_text])
+    store = object.__new__(ProductionIngestionStore)
+    store.mongo = Mongo()
+    store.vectors = Vectors()
+
+    store.stage_document(document, [chunk], [], embedding, tables=[table])
+
+    assert store.mongo.staged_tables == [table]
+    assert store.vectors.received_chunks == [chunk]

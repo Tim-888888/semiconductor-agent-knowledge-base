@@ -6,7 +6,6 @@ import hashlib
 import json
 import mimetypes
 from collections.abc import Sequence
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -14,24 +13,44 @@ from semikb.config import Settings
 from semikb.contracts.models import (
     ApprovalStatus,
     Chunk,
-    ChunkType,
     DocumentLifecycle,
     DocumentRevision,
     ImageAsset,
     IngestionJob,
     IngestionStatus,
     ObjectRef,
+    TableAsset,
 )
-from semikb.rag_ingestion.chunker import chunk_markdown
-from semikb.rag_ingestion.mineru import MinerUPrecisionClient, ParsedDocument
+from semikb.rag_ingestion.governed_records import (
+    build_governed_records,
+    location_label,
+    scoped_id,
+)
+from semikb.rag_ingestion.semikb_adapter import ParsedIngestSession, SemikbIngestAdapter
 from semikb.rag_retrieval.encoders import (
     HybridEmbedding,
     HybridEncoder,
     create_hybrid_encoder,
 )
 from semikb.storage.ingestion import IngestionStore
+from semikb_ingest import IngestError, IngestErrorCode
+from semikb_ingest.models import CONTRACT_VERSION, ParsedDocument
 
-_DIRECT_TEXT_SUFFIXES = {".md", ".markdown", ".txt"}
+_CANONICAL_MEDIA_TYPES = {
+    ".csv": "text/csv",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".htm": "text/html",
+    ".html": "text/html",
+    ".jpeg": "image/jpeg",
+    ".jpg": "image/jpeg",
+    ".markdown": "text/markdown",
+    ".md": "text/markdown",
+    ".pdf": "application/pdf",
+    ".png": "image/png",
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ".txt": "text/plain",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
 
 
 class IngestionService:
@@ -42,10 +61,12 @@ class IngestionService:
         store: IngestionStore,
         settings: Settings | None = None,
         encoder: HybridEncoder | None = None,
+        ingest_adapter: SemikbIngestAdapter | None = None,
     ) -> None:
         self.store = store
         self.settings = settings or Settings()
         self.encoder = encoder or create_hybrid_encoder(self.settings)
+        self.ingest_adapter = ingest_adapter or SemikbIngestAdapter(self.settings)
 
     def submit_payload(
         self,
@@ -97,12 +118,11 @@ class IngestionService:
         self._validate_submission(metadata, content)
         source_hash = hashlib.sha256(content).hexdigest()
         suffix = Path(filename).suffix.lower()
-        media_type = content_type or mimetypes.guess_type(filename)[0] or "application/octet-stream"
-        parser_version = (
-            "direct-text-v1"
-            if suffix in _DIRECT_TEXT_SUFFIXES
-            else f"mineru-{self.settings.mineru_model_version}-v1"
+        media_type = content_type or _CANONICAL_MEDIA_TYPES.get(
+            suffix,
+            "application/octet-stream",
         )
+        route = self.ingest_adapter.resolve(filename, content, media_type)
         source_ref = self.store.store_source(
             document_id=metadata["document_id"],
             revision=metadata["revision"],
@@ -115,14 +135,17 @@ class IngestionService:
             document_id=metadata["document_id"],
             revision=metadata["revision"],
             filename=Path(filename).name,
-            file_type=suffix.lstrip(".") or "binary",
+            file_type=route.source_format.value,
             source_hash=source_hash,
             source_ref=source_ref,
             idempotency_key=(
                 f"{metadata['document_id']}:{metadata['revision']}:{source_hash}"
             ),
-            parser_version=parser_version,
-            chunker_version="semantic-v1",
+            parse_contract_version=CONTRACT_VERSION,
+            parser_name=route.parser_id,
+            parser_version="pending",
+            provider_name=route.provider,
+            chunker_version=self.ingest_adapter.chunker_version,
             embedding_version=(
                 "deterministic-demo-v1"
                 if self.settings.demo_mode
@@ -152,8 +175,16 @@ class IngestionService:
         content: bytes,
         metadata: dict[str, Any],
         created_by: str = "demo_admin",
+        *,
+        content_type: str | None = None,
     ) -> IngestionJob:
-        job = self.submit_file(filename, content, metadata, created_by)
+        job = self.submit_file(
+            filename,
+            content,
+            metadata,
+            created_by,
+            content_type=content_type,
+        )
         return self.process(job.job_id) if job.status is IngestionStatus.QUEUED else job
 
     def process(self, job_id: str) -> IngestionJob:
@@ -215,6 +246,7 @@ class IngestionService:
         metadata = replay_payload["metadata"]
         document_id = job.document_id
         revision = job.revision
+        parse_session: ParsedIngestSession | None = None
         try:
             self.store.update_job(
                 job.job_id,
@@ -231,15 +263,34 @@ class IngestionService:
             self.store.update_job(
                 job.job_id,
                 IngestionStatus.PARSING,
-                "Parsing source into normalized Markdown and image assets.",
+                "Parsing source through the governed exact-format adapter.",
                 30,
             )
-            parsed = self._parse_source(job, source_content)
-            markdown_bytes = parsed.markdown.encode("utf-8")
+            parse_session = self._parse_source(
+                job,
+                source_content,
+                replay_payload.get("content_type"),
+            )
+            parsed = parse_session.document
+            provenance = parsed.provenance
+            self.store.set_job_parse_audit(
+                job.job_id,
+                parse_contract_version=parsed.contract_version,
+                parser_name=provenance.parser_name,
+                parser_version=provenance.parser_version,
+                provider_name=provenance.provider_name,
+                provider_version=provenance.provider_version,
+                upstream_project=provenance.upstream_project,
+                upstream_commit=provenance.upstream_commit,
+                chunker_version=self.ingest_adapter.chunker_version,
+                warning_codes=[warning.code for warning in parsed.warnings],
+                metrics=parsed.metrics.model_dump(mode="json"),
+            )
+            markdown_bytes = parsed.normalized_markdown.encode("utf-8")
             parsed_ref = self.store.store_parsed_markdown(
                 document_id=document_id,
                 revision=revision,
-                parser_version=job.parser_version,
+                parser_version=f"{provenance.parser_name}-{provenance.parser_version}",
                 source_hash=job.source_hash,
                 content=markdown_bytes,
             )
@@ -247,30 +298,33 @@ class IngestionService:
             image_payloads = self._materialize_images(
                 metadata,
                 parsed,
+                parse_session,
                 source_hash=job.source_hash,
             )
-            build_payload = {
-                **metadata,
-                "content": parsed.markdown,
-                "source_filename": job.filename,
-                "source_ref": source_ref.model_dump(mode="json"),
-                "parsed_ref": parsed_ref.model_dump(mode="json"),
-                "images": image_payloads,
-                "parser_version": job.parser_version,
-                "chunker_version": job.chunker_version,
-                "embedding_version": job.embedding_version,
-                "index_version": job.index_version,
-            }
-            document, chunks, images = self._build_records(build_payload, job.source_hash)
+            table_payloads = self._materialize_tables(
+                metadata,
+                parsed,
+                source_hash=job.source_hash,
+            )
+            document, chunks, images, tables = build_governed_records(
+                metadata=metadata,
+                parsed=parsed,
+                source_ref=source_ref,
+                parsed_ref=parsed_ref,
+                image_payloads=image_payloads,
+                table_payloads=table_payloads,
+                job=job,
+                chunker_version=self.ingest_adapter.chunker_version,
+            )
             target_lifecycle = DocumentLifecycle(metadata.get("lifecycle", "staged"))
 
             self.store.update_job(
                 job.job_id,
                 IngestionStatus.QUALITY_CHECK,
-                "Checking governance metadata, chunk integrity, and image captions.",
+                "Checking governance, chunk integrity, assets, and parser provenance.",
                 55,
             )
-            self._quality_check(document, chunks, images, target_lifecycle)
+            self._quality_check(document, chunks, images, tables, target_lifecycle)
 
             self.store.update_job(
                 job.job_id,
@@ -282,12 +336,21 @@ class IngestionService:
                 75,
             )
             embeddings = self._encode_chunks(chunks)
-            self.store.stage_document(document, chunks, images, embeddings)
+            if tables:
+                self.store.stage_document(
+                    document,
+                    chunks,
+                    images,
+                    embeddings,
+                    tables=tables,
+                )
+            else:
+                self.store.stage_document(document, chunks, images, embeddings)
             self.store.set_job_counts(
                 job.job_id,
                 chunks_count=len(chunks),
                 images_count=len(images),
-                tables_count=sum(chunk.chunk_type is ChunkType.TABLE for chunk in chunks),
+                tables_count=len(tables),
             )
             self.store.update_job(
                 job.job_id,
@@ -296,7 +359,16 @@ class IngestionService:
                 90,
             )
             if target_lifecycle is DocumentLifecycle.PUBLISHED:
-                self.store.publish_document(document, chunks, images, embeddings)
+                if tables:
+                    self.store.publish_document(
+                        document,
+                        chunks,
+                        images,
+                        embeddings,
+                        tables=tables,
+                    )
+                else:
+                    self.store.publish_document(document, chunks, images, embeddings)
                 message = "Published the validated revision to the active knowledge index."
             else:
                 self.store.finalize_inactive_document(
@@ -319,66 +391,94 @@ class IngestionService:
             except Exception:
                 pass
             latest = self.store.get_job(job.job_id) or job
+            error_code, safe_message = self._failure_details(exc)
             return self.store.update_job(
                 job.job_id,
                 IngestionStatus.FAILED,
-                (
-                    "Document remains unpublished. Review the failed stage, source file, "
-                    "and governed metadata before retrying."
-                ),
+                f"Document remains unpublished. {safe_message}",
                 latest.progress,
-                error_code=type(exc).__name__.upper(),
+                error_code=error_code,
             )
+        finally:
+            if parse_session is not None:
+                parse_session.discard_remaining()
 
-    def _parse_source(self, job: IngestionJob, content: bytes) -> ParsedDocument:
-        suffix = Path(job.filename).suffix.lower()
-        if suffix in _DIRECT_TEXT_SUFFIXES:
-            return ParsedDocument(markdown=content.decode("utf-8"))
-        return MinerUPrecisionClient(self.settings).parse_file(
+    def _parse_source(
+        self,
+        job: IngestionJob,
+        content: bytes,
+        declared_media_type: str | None,
+    ) -> ParsedIngestSession:
+        return self.ingest_adapter.parse(
             job.filename,
             content,
-            f"{job.document_id}-{job.revision}-{job.source_hash[:12]}",
+            correlation_id=f"{job.document_id}-{job.revision}-{job.source_hash[:12]}",
+            declared_media_type=declared_media_type,
         )
 
     def _materialize_images(
         self,
         metadata: dict[str, Any],
         parsed: ParsedDocument,
+        session: ParsedIngestSession,
         *,
         source_hash: str,
     ) -> list[dict[str, Any]]:
-        image_payloads = [dict(item) for item in metadata.get("images", [])]
-        for index, parsed_image in enumerate(parsed.images, start=1):
-            image_hash = hashlib.sha256(parsed_image.content).hexdigest()
-            image_id = (
-                f"{metadata['document_id']}-{metadata['revision']}-MINERU-"
-                f"{image_hash[:12]}"
+        materialized: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
+        provenance = parsed.provenance
+        for index, image_draft in enumerate(parsed.images, start=1):
+            image_id = scoped_id(
+                metadata["document_id"],
+                metadata["revision"],
+                "IMAGE",
+                index,
             )
+            content = session.pop_image_bytes(image_draft.asset_id)
             object_ref = self.store.store_image_asset(
                 document_id=metadata["document_id"],
                 revision=metadata["revision"],
                 image_id=image_id,
-                filename=parsed_image.filename,
-                content=parsed_image.content,
-                content_type=parsed_image.content_type,
+                filename=image_draft.payload.filename,
+                content=content,
+                content_type=image_draft.payload.content_type,
                 source_hash=source_hash,
             )
-            image_payloads.append(
+            self.store.load_object(object_ref)
+            materialized.append(
                 {
                     "image_id": image_id,
-                    "image_type": "document_figure",
-                    "caption": parsed_image.caption,
-                    "caption_source": "mineru",
-                    "caption_confidence": 0.8 if parsed_image.caption else 0.0,
-                    "source_page": parsed_image.source_page or f"MinerU image {index}",
+                    "source_asset_id": image_draft.asset_id,
+                    "image_type": image_draft.image_type,
+                    "caption": image_draft.caption,
+                    "caption_source": image_draft.caption_source.value,
+                    "caption_confidence": image_draft.caption_confidence,
+                    "ocr_text": image_draft.ocr_text,
+                    "detection_summary": image_draft.detection_summary,
+                    "source_location": image_draft.location.model_dump(mode="json"),
+                    "source_page": location_label(image_draft.location),
+                    "related_chunk_draft_ids": list(
+                        image_draft.related_chunk_draft_ids
+                    ),
+                    "parser_name": provenance.parser_name,
+                    "parser_version": provenance.parser_version,
+                    "provider_name": provenance.provider_name,
+                    "provider_version": provenance.provider_version,
                     "object_ref": object_ref.model_dump(mode="json"),
                 }
             )
+            seen_ids.add(image_id)
 
         root = Path(__file__).resolve().parents[3]
         allowed_assets = (root / "data" / "assets").resolve()
-        materialized: list[dict[str, Any]] = []
-        for image_payload in image_payloads:
+        for raw_payload in metadata.get("images", []):
+            image_payload = dict(raw_payload)
+            image_id = str(image_payload["image_id"])
+            if image_id in seen_ids:
+                raise IngestError(
+                    IngestErrorCode.CONTRACT_VIOLATION,
+                    "Two image assets resolved to the same governed identifier.",
+                )
             if image_payload.get("object_ref"):
                 object_ref = ObjectRef.model_validate(image_payload["object_ref"])
                 self.store.load_object(object_ref)
@@ -394,7 +494,7 @@ class IngestionService:
                 object_ref = self.store.store_image_asset(
                     document_id=metadata["document_id"],
                     revision=metadata["revision"],
-                    image_id=image_payload["image_id"],
+                    image_id=image_id,
                     filename=source_path.name,
                     content=content,
                     content_type=(
@@ -407,7 +507,69 @@ class IngestionService:
             else:
                 raise ValueError("Image metadata requires a stored object reference or source asset.")
             materialized.append(
-                {**image_payload, "object_ref": object_ref.model_dump(mode="json")}
+                {
+                    **image_payload,
+                    "source_asset_id": image_payload.get("source_asset_id", image_id),
+                    "source_location": image_payload.get("source_location", {}),
+                    "related_chunk_draft_ids": [],
+                    "parser_name": image_payload.get("parser_name", "declared-metadata"),
+                    "parser_version": image_payload.get("parser_version", "1"),
+                    "object_ref": object_ref.model_dump(mode="json"),
+                }
+            )
+            seen_ids.add(image_id)
+        return materialized
+
+    def _materialize_tables(
+        self,
+        metadata: dict[str, Any],
+        parsed: ParsedDocument,
+        *,
+        source_hash: str,
+    ) -> list[dict[str, Any]]:
+        materialized: list[dict[str, Any]] = []
+        for index, table_draft in enumerate(parsed.tables, start=1):
+            table_id = scoped_id(
+                metadata["document_id"],
+                metadata["revision"],
+                "TABLE",
+                index,
+            )
+            artifact = {
+                "schema_version": "semikb-table-asset-v1",
+                "table_id": table_id,
+                "source_asset_id": table_draft.asset_id,
+                "title": table_draft.title,
+                "headers": list(table_draft.headers),
+                "row_count": table_draft.row_count,
+                "column_count": table_draft.column_count,
+                "location": table_draft.location.model_dump(mode="json"),
+                "markdown": table_draft.markdown,
+                "html": table_draft.html,
+            }
+            content = json.dumps(
+                artifact,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+            object_ref = self.store.store_table_asset(
+                document_id=metadata["document_id"],
+                revision=metadata["revision"],
+                table_id=table_id,
+                content=content,
+                source_hash=source_hash,
+            )
+            self.store.load_object(object_ref)
+            materialized.append(
+                {
+                    **artifact,
+                    "source_page": location_label(table_draft.location),
+                    "related_chunk_draft_ids": list(
+                        table_draft.related_chunk_draft_ids
+                    ),
+                    "object_ref": object_ref.model_dump(mode="json"),
+                }
             )
         return materialized
 
@@ -435,156 +597,73 @@ class IngestionService:
         document: DocumentRevision,
         chunks: list[Chunk],
         images: list[ImageAsset],
+        tables: list[TableAsset],
         target_lifecycle: DocumentLifecycle,
     ) -> None:
         if (
             target_lifecycle is DocumentLifecycle.PUBLISHED
             and document.approval_status is not ApprovalStatus.APPROVED
         ):
-            raise ValueError("Only an approved revision can be published.")
+            raise IngestError(
+                IngestErrorCode.QUALITY_GATE_FAILED,
+                "Only an approved revision can be published.",
+            )
         if not chunks:
-            raise ValueError("No semantic chunks were generated.")
+            raise IngestError(
+                IngestErrorCode.EMPTY_PARSE_RESULT,
+                "No semantic chunks were generated.",
+            )
         if any(not chunk.chunk_text.strip() for chunk in chunks):
-            raise ValueError("Empty chunks cannot pass the quality gate.")
+            raise IngestError(
+                IngestErrorCode.QUALITY_GATE_FAILED,
+                "Empty chunks cannot pass the quality gate.",
+            )
+        if not document.parser_name or not document.parser_version:
+            raise IngestError(
+                IngestErrorCode.CONTRACT_VIOLATION,
+                "Parser provenance is required for governed publication.",
+            )
+        image_ids = {image.image_id for image in images}
+        table_ids = {table.table_id for table in tables}
+        if len(image_ids) != len(images) or len(table_ids) != len(tables):
+            raise IngestError(
+                IngestErrorCode.CONTRACT_VIOLATION,
+                "Asset identifiers must be unique within one revision.",
+            )
+        for chunk in chunks:
+            if not set(chunk.image_ids).issubset(image_ids):
+                raise IngestError(
+                    IngestErrorCode.CONTRACT_VIOLATION,
+                    "A chunk references an image that was not materialized.",
+                )
+            if not set(chunk.table_ids).issubset(table_ids):
+                raise IngestError(
+                    IngestErrorCode.CONTRACT_VIOLATION,
+                    "A chunk references a table that was not materialized.",
+                )
         for image in images:
             if not image.caption.strip():
-                raise ValueError("Image caption is required for text-to-image retrieval.")
+                raise IngestError(
+                    IngestErrorCode.QUALITY_GATE_FAILED,
+                    "Image caption is required for text-to-image retrieval.",
+                )
             if image.caption_source != "human" and image.caption_confidence < 0.5:
-                raise ValueError("Low-confidence generated image captions require review.")
+                raise IngestError(
+                    IngestErrorCode.QUALITY_GATE_FAILED,
+                    "Low-confidence generated image captions require review.",
+                )
+        for table in tables:
+            if not table.markdown.strip() or not table.html.strip():
+                raise IngestError(
+                    IngestErrorCode.QUALITY_GATE_FAILED,
+                    "Table assets require both Markdown and HTML representations.",
+                )
 
     @staticmethod
-    def _build_records(
-        payload: dict[str, Any],
-        source_hash: str,
-    ) -> tuple[DocumentRevision, list[Chunk], list[ImageAsset]]:
-        source_ref = ObjectRef.model_validate(payload["source_ref"])
-        parsed_ref = ObjectRef.model_validate(payload["parsed_ref"])
-        shared = {
-            key: value
-            for key in (
-                "fab",
-                "product",
-                "process_layer",
-                "tool_id",
-                "chamber",
-                "recipe_id",
-                "recipe_version",
-            )
-            if (value := payload.get(key)) is not None
-        }
-        document = DocumentRevision(
-            document_id=payload["document_id"],
-            revision=payload["revision"],
-            title=payload["title"],
-            document_type=payload["document_type"],
-            approval_status=ApprovalStatus(payload.get("approval_status", "approved")),
-            lifecycle=DocumentLifecycle.STAGED,
-            effective_at=(
-                datetime.fromisoformat(payload["effective_at"])
-                if payload.get("effective_at")
-                else datetime.now(UTC)
-            ),
-            expires_at=(
-                datetime.fromisoformat(payload["expires_at"])
-                if payload.get("expires_at")
-                else None
-            ),
-            supersedes_revision=payload.get("supersedes_revision"),
-            source_hash=source_hash,
-            source_ref=source_ref,
-            parsed_ref=parsed_ref,
-            source_kind=payload.get("source_kind", "user_upload"),
-            source_uri=payload.get("source_uri", f"upload://{payload['source_filename']}"),
-            source_license=payload.get("source_license", "internal"),
-            access_scope_key=payload.get("access_scope_key", "demo_engineering"),
-            parser_version=payload["parser_version"],
-            chunker_version=payload["chunker_version"],
-            embedding_version=payload["embedding_version"],
-            index_version=payload["index_version"],
-            **shared,
+    def _failure_details(exc: Exception) -> tuple[str, str]:
+        if isinstance(exc, IngestError):
+            return exc.code.value, exc.safe_message
+        return (
+            type(exc).__name__.upper(),
+            "Review the failed stage, source file, and governed metadata before retrying.",
         )
-        chunks: list[Chunk] = []
-        for number, (path, text) in enumerate(chunk_markdown(payload["content"]), start=1):
-            chunks.append(
-                Chunk(
-                    chunk_id=f"{document.document_id}-{document.revision}-{number:03d}",
-                    document_id=document.document_id,
-                    revision=document.revision,
-                    chunk_text=text,
-                    title_path=path,
-                    page_or_section=" > ".join(path) or "正文",
-                    approval_status=document.approval_status,
-                    lifecycle=DocumentLifecycle.STAGED,
-                    effective_at=document.effective_at,
-                    expires_at=document.expires_at,
-                    access_scope_key=document.access_scope_key,
-                    metadata={
-                        "source_uri": document.source_uri,
-                        "document_title": document.title,
-                    },
-                    parser_version=document.parser_version,
-                    chunker_version=document.chunker_version,
-                    embedding_version=payload["embedding_version"],
-                    index_version=document.index_version,
-                    **shared,
-                )
-            )
-        images: list[ImageAsset] = []
-        for index, image_payload in enumerate(payload.get("images", []), start=1):
-            object_ref = ObjectRef.model_validate(image_payload["object_ref"])
-            image = ImageAsset(
-                image_id=image_payload["image_id"],
-                document_id=document.document_id,
-                revision=document.revision,
-                parent_chunk_id=chunks[0].chunk_id if chunks else None,
-                object_ref=object_ref,
-                image_type=image_payload["image_type"],
-                caption=image_payload["caption"],
-                caption_source=image_payload.get("caption_source", "human"),
-                caption_confidence=image_payload.get("caption_confidence", 1.0),
-                ocr_text=image_payload.get("ocr_text", ""),
-                detection_summary=image_payload.get("detection_summary", ""),
-                source_page=image_payload.get("source_page", ""),
-                related_case_id=image_payload.get("related_case_id"),
-                demo_source_path=image_payload.get("source_path"),
-                access_scope_key=document.access_scope_key,
-                approval_status=document.approval_status,
-                lifecycle=DocumentLifecycle.STAGED,
-                effective_at=document.effective_at,
-                expires_at=document.expires_at,
-            )
-            images.append(image)
-            chunks.append(
-                Chunk(
-                    chunk_id=f"{document.document_id}-{document.revision}-IMAGE-{index:03d}",
-                    document_id=document.document_id,
-                    revision=document.revision,
-                    parent_chunk_id=image.parent_chunk_id,
-                    chunk_type=ChunkType.IMAGE_TEXT,
-                    chunk_text=" ".join(
-                        part
-                        for part in (image.caption, image.ocr_text, image.detection_summary)
-                        if part
-                    ),
-                    title_path=[document.title, "图文证据"],
-                    page_or_section=image.source_page or "图像附件",
-                    approval_status=document.approval_status,
-                    lifecycle=DocumentLifecycle.STAGED,
-                    effective_at=document.effective_at,
-                    expires_at=document.expires_at,
-                    access_scope_key=document.access_scope_key,
-                    image_ids=[image.image_id],
-                    metadata={
-                        "image_type": image.image_type,
-                        "related_case_id": image.related_case_id,
-                        "source_uri": document.source_uri,
-                        "document_title": document.title,
-                    },
-                    parser_version=document.parser_version,
-                    chunker_version=document.chunker_version,
-                    embedding_version=payload["embedding_version"],
-                    index_version=document.index_version,
-                    **shared,
-                )
-            )
-        return document, chunks, images

@@ -45,6 +45,10 @@ MONGO_INDEX_SPECS: dict[str, tuple[MongoIndexSpec, ...]] = {
         _index("image_id", "image_id", unique=True),
         _index("document_id_revision", "document_id", "revision"),
     ),
+    "table_assets": (
+        _index("table_id", "table_id", unique=True),
+        _index("document_id_revision", "document_id", "revision"),
+    ),
     "ingestion_jobs": (
         _index("job_id", "job_id", unique=True),
         _index("idempotency_key", "idempotency_key", unique=True),

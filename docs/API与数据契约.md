@@ -165,17 +165,18 @@ Dense/Sparse/HyDE 分数、路由排名、RRF、Rerank、选择原因、组件�
 
 ## 知识与运维接口
 
-### T9-4.4.2 文档解析内部契约
+### T9-4.4 文档解析与受控入库内部契约
 
-独立包 `semikb_ingest` 已实现内部契约 `semikb-ingest-v1`。未来受控入库层只允许通过
+独立包 `semikb_ingest` 已实现内部契约 `semikb-ingest-v1`。受控入库层只允许通过
 `IngestDispatcher` 获得 `ParsedDocument`，其中包含 `ChunkDraft`、`ImageAssetDraft`、
 `TableAssetDraft`、Parse Provenance、警告和指标；该包不接收审批、权限、Fab/Tool/Recipe、对象路径、
 Embedding 或索引字段。扩展名、MIME、Magic Bytes 和 OOXML 容器成员必须一致，未知格式或未注册
 Parser/Provider 明确失败；只有 PDF 路由声明 MinerU。
 
-T9-4.4.3 已在独立包内完成九格式适配器，但尚未改变现有 API 和 Worker 运行路径。下方
-“Markdown/TXT 直读、其他二进制调用 MinerU”仍是当前线上事实，直到 T9-4.4.4 受控接入后才更新；
-不能仅凭适配器单元验收宣称 DOCX/XLSX/PPTX/图片已经能够通过线上任务入库。
+T9-4.4.4 已把该契约接入现有 API、Worker 和受控发布服务。Markdown/TXT/HTML、DOCX、XLSX/CSV、
+PPTX 分别使用专用本地适配器，PDF 只走显式 MinerU Provider，JPG/JPEG/PNG 只走显式 Qwen VLM
+Provider；未知格式、类型冲突或 Provider 未配置均使用稳定错误码失败，不存在“所有二进制统一交给
+MinerU”的隐藏回退。此结论是本地代码与自动测试结果，不替代 T9-4.4.5 的 ECS/浏览器真实闭环。
 
 | 方法 | 路径 | 作用 |
 | --- | --- | --- |
@@ -196,9 +197,12 @@ T9-4.4.3 已在独立包内完成九格式适配器，但尚未改变现有 API 
 
 ## 关键模型
 
-- `DocumentRevision`：版本、审批状态、有效期、权限范围、MinIO 原件引用。
-- `Chunk`：正文/表格/图文检索单元，MongoDB 保存正文，Milvus 只保存向量及过滤字段。
-- `ImageAsset`：真实图片对象引用、图注、OCR、检测摘要及 Case 关联。
+- `DocumentRevision`：版本、审批状态、有效期、权限范围、MinIO 原件/解析件引用，以及 Parser、Provider、
+  上游 Commit、警告和解析指标。
+- `Chunk`：正文/表格/图文检索单元，保留图片/表格稳定引用和解析来源；MongoDB 保存正文，Milvus 只
+  保存向量及过滤字段。
+- `ImageAsset`：真实图片对象引用、图注、OCR、检测摘要、源位置、解析来源及 Case 关联。
+- `TableAsset`：表格 Markdown/HTML、表头、行列数、源位置和 MinIO `table.json` 引用。
 - `IngestionJob` + `IngestionEvent`：任务状态及不可抵赖阶段时间线。
 - `RetrievalTrace`：查询、过滤器、Dense/Sparse/RRF/Rerank 分数、动态截断原因与最终证据；
   包含 `actor_user_id`，避免跨用户泄露检索轨迹。
@@ -209,8 +213,9 @@ T9-4.4.3 已在独立包内完成九格式适配器，但尚未改变现有 API 
 - `EvaluationRun`：冻结数据集 Hash、`dense/hybrid/reranked/full` 配置、组件版本、任务所有权、
   Recall@5/MRR/nDCG@5/负例准确率/图片召回/延迟、Case 结果和 baseline 差异。
 
-上传接口暂支持最大 200 MiB。`.md`/`.txt` 直接归一化；其他受 MinerU 支持的二进制格式交给
-MinerU Precision API。`DEMO_MODE=true` 时在请求内同步处理，便于无外部服务演示；
+上传接口暂支持最大 200 MiB。上传格式由 `semikb_ingest` 的扩展名、MIME、Magic Bytes 和 OOXML
+成员联合识别，并交给对应专用适配器；只有 PDF 使用 MinerU Precision API，图片使用 Qwen VLM。
+`DEMO_MODE=true` 时在请求内同步处理，便于无外部服务演示；
 `DEMO_MODE=false` 时 API 只保存原件和可重放元数据，然后向 Celery 投递 Job，由 Worker 执行
 解析、分块、Embedding、暂存和发布。重复请求命中相同幂等键时复用原 Job，不重复发布。
 

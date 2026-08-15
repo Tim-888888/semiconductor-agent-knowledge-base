@@ -35,3 +35,6 @@ Transitive runtime packages and exact artifact hashes are recorded in
 `requirements.lock`. The adapters are project-owned implementations that use these
 public APIs. Knowhere was consulted at the pinned commit for block-order and asset
 accumulation ideas, but no Knowhere source file was copied in T9-4.4.3.
+
+T9-4.4.4 integrated the project-owned adapter contract with the governed ingestion
+pipeline. It added no third-party dependency and copied no Knowhere source file.

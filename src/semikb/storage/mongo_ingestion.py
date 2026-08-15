@@ -17,8 +17,16 @@ from semikb.contracts.models import (
     IngestionJob,
     IngestionStatus,
     ObjectRef,
+    TableAsset,
 )
 from semikb.storage.clients import StorageClientFactory
+
+_REVISION_COLLECTIONS = (
+    "document_catalog",
+    "chunk_catalog",
+    "image_assets",
+    "table_assets",
+)
 
 
 def _model_document(model: Any) -> dict[str, Any]:
@@ -183,11 +191,43 @@ class MongoIngestionRepository:
             },
         )
 
+    def set_job_parse_audit(
+        self,
+        job_id: str,
+        *,
+        parse_contract_version: str,
+        parser_name: str,
+        parser_version: str,
+        provider_name: str | None,
+        provider_version: str | None,
+        upstream_project: str | None,
+        upstream_commit: str | None,
+        chunker_version: str,
+        warning_codes: Sequence[str],
+        metrics: dict[str, object],
+    ) -> IngestionJob:
+        return self._set_job_values(
+            job_id,
+            {
+                "parse_contract_version": parse_contract_version,
+                "parser_name": parser_name,
+                "parser_version": parser_version,
+                "provider_name": provider_name,
+                "provider_version": provider_version,
+                "upstream_project": upstream_project,
+                "upstream_commit": upstream_commit,
+                "chunker_version": chunker_version,
+                "parse_warning_codes": list(warning_codes),
+                "parse_metrics": dict(metrics),
+            },
+        )
+
     def stage_document(
         self,
         document: DocumentRevision,
         chunks: Sequence[Chunk],
         images: Sequence[ImageAsset],
+        tables: Sequence[TableAsset] = (),
     ) -> None:
         with self._factory.mongodb() as client:
             database = client[self._database_name]
@@ -232,6 +272,20 @@ class MongoIngestionRepository:
                         for image in images
                     ]
                 )
+            database.table_assets.delete_many(
+                {"document_id": document.document_id, "revision": document.revision}
+            )
+            if tables:
+                database.table_assets.bulk_write(
+                    [
+                        ReplaceOne(
+                            {"table_id": table.table_id},
+                            _model_document(table),
+                            upsert=True,
+                        )
+                        for table in tables
+                    ]
+                )
 
     def publish_document(self, document: DocumentRevision) -> None:
         now = datetime.now(UTC)
@@ -252,6 +306,10 @@ class MongoIngestionRepository:
                 selector,
                 {"$set": {"lifecycle": DocumentLifecycle.PUBLISHED.value}},
             )
+            database.table_assets.update_many(
+                selector,
+                {"$set": {"lifecycle": DocumentLifecycle.PUBLISHED.value}},
+            )
 
     def supersede_previous(self, document: DocumentRevision) -> list[str]:
         if not document.supersedes_revision:
@@ -266,7 +324,7 @@ class MongoIngestionRepository:
                 record["chunk_id"]
                 for record in database.chunk_catalog.find(selector, {"chunk_id": 1})
             ]
-            for collection_name in ("document_catalog", "chunk_catalog", "image_assets"):
+            for collection_name in _REVISION_COLLECTIONS:
                 database[collection_name].update_many(
                     selector,
                     {"$set": {"lifecycle": DocumentLifecycle.SUPERSEDED.value}},
@@ -282,7 +340,7 @@ class MongoIngestionRepository:
         }
         with self._factory.mongodb() as client:
             database = client[self._database_name]
-            for collection_name in ("document_catalog", "chunk_catalog", "image_assets"):
+            for collection_name in _REVISION_COLLECTIONS:
                 database[collection_name].update_many(
                     selector,
                     {"$set": {"lifecycle": DocumentLifecycle.PUBLISHED.value}},
@@ -312,7 +370,7 @@ class MongoIngestionRepository:
         selector = {"document_id": document_id, "revision": revision}
         with self._factory.mongodb() as client:
             database = client[self._database_name]
-            for collection_name in ("document_catalog", "chunk_catalog", "image_assets"):
+            for collection_name in _REVISION_COLLECTIONS:
                 database[collection_name].update_many(
                     selector,
                     {"$set": {"lifecycle": lifecycle.value}},
@@ -326,7 +384,7 @@ class MongoIngestionRepository:
                 record["chunk_id"]
                 for record in database.chunk_catalog.find(selector, {"chunk_id": 1})
             ]
-            for collection_name in ("document_catalog", "chunk_catalog", "image_assets"):
+            for collection_name in _REVISION_COLLECTIONS:
                 database[collection_name].update_many(
                     selector,
                     {"$set": {"lifecycle": DocumentLifecycle.QUARANTINED.value}},
@@ -356,7 +414,12 @@ class MongoIngestionRepository:
                         "embedding_output_type": embedding_output_type,
                         "sparse_encoder_version": sparse_encoder_version,
                         "normalization": normalization,
+                        "parse_contract_version": document.parse_contract_version,
+                        "parser_name": document.parser_name,
                         "parser_version": document.parser_version,
+                        "provider_name": document.provider_name,
+                        "provider_version": document.provider_version,
+                        "upstream_commit": document.upstream_commit,
                         "chunker_version": document.chunker_version,
                         "last_document_id": document.document_id,
                         "last_revision": document.revision,

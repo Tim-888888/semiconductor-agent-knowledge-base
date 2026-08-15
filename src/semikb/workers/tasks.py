@@ -6,6 +6,8 @@ from semikb.workers.celery_app import celery_app
 
 _TRANSIENT_INGESTION_ERRORS = {
     "CONNECTIONERROR",
+    "INGEST_PARSER_TIMEOUT",
+    "INGEST_PARSER_UNAVAILABLE",
     "MILVUSEXCEPTION",
     "MINERUERROR",
     "S3ERROR",

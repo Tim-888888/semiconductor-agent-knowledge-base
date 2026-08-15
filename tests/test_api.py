@@ -13,6 +13,7 @@ from semikb.contracts.models import IngestionStatus
 from semikb.rag_ingestion.service import IngestionService
 from semikb.rag_retrieval.encoders import DeterministicHybridEncoder
 from semikb.storage.memory import DemoStore
+from semikb_ingest import IngestErrorCode
 
 
 @pytest.fixture(autouse=True)
@@ -152,6 +153,62 @@ def test_api_accepts_markdown_upload_as_an_ingestion_job() -> None:
     )
     assert response.status_code == 201
     assert response.json()["status"] == "published"
+
+
+@pytest.mark.parametrize(
+    ("filename", "content", "content_type", "status_code", "error_code"),
+    [
+        (
+            "unsupported.exe",
+            b"MZ synthetic",
+            "application/octet-stream",
+            415,
+            IngestErrorCode.UNSUPPORTED_FORMAT.value,
+        ),
+        (
+            "mismatch.pdf",
+            b"%PDF-1.7\nsynthetic",
+            "text/plain",
+            422,
+            IngestErrorCode.FILE_TYPE_MISMATCH.value,
+        ),
+    ],
+)
+def test_upload_api_returns_stable_exact_format_errors(
+    filename: str,
+    content: bytes,
+    content_type: str,
+    status_code: int,
+    error_code: str,
+) -> None:
+    get_container.cache_clear()
+    client = TestClient(app)
+    token_response = client.post(
+        "/api/v1/auth/demo-token",
+        json={
+            "user_id": "knowledge_admin",
+            "roles": ["knowledge_admin"],
+            "access_scope_keys": ["demo_engineering"],
+        },
+    )
+    headers = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
+    metadata = {
+        "document_id": f"UPLOAD-ERROR-{status_code}",
+        "revision": "R1",
+        "title": "Upload error contract",
+        "document_type": "training_note",
+    }
+
+    response = client.post(
+        "/api/v1/ingestion-jobs/upload",
+        data={"metadata": __import__("json").dumps(metadata)},
+        files={"file": (filename, content, content_type)},
+        headers=headers,
+    )
+
+    assert response.status_code == status_code
+    assert response.json()["detail"]["code"] == error_code
+    assert response.json()["detail"]["message"]
 
 
 def test_queue_submission_failure_marks_job_failed(monkeypatch: pytest.MonkeyPatch) -> None:
