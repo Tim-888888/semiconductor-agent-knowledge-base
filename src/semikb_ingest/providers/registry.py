@@ -35,3 +35,6 @@ class ProviderRegistry:
                 f"Provider {provider_name!r} is not configured for this format.",
             )
         return provider
+
+    def get(self, provider_name: str) -> ProviderClient | None:
+        return self._providers.get(provider_name)

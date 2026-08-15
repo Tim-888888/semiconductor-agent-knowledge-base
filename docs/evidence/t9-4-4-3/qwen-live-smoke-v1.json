@@ -1,0 +1,20 @@
+{
+  "schema_version": "semikb-qwen-vision-smoke-v1",
+  "verified_at": "2026-08-15",
+  "provider": "qwen-vl",
+  "model": "qwen3.7-plus",
+  "endpoint_family": "dashscope-openai-compatible",
+  "input": "data/assets/wafer_maps/etch03_chamber_b_edge_ring.png",
+  "result": {
+    "status": "passed",
+    "chunks": 1,
+    "images": 1,
+    "chunk_type": "image_text",
+    "caption_chars": 248,
+    "ocr_chars": 0,
+    "detection_summary_chars": 257,
+    "asset_byte_roundtrip": true
+  },
+  "secrets_recorded": false,
+  "generated_text_recorded": false
+}

@@ -1,0 +1,43 @@
+{
+  "schema_version": "semikb-t9-4-4-3-dependency-impact-v1",
+  "verified_at": "2026-08-15",
+  "python": "3.12",
+  "direct_dependencies": {
+    "beautifulsoup4": "4.15.0",
+    "lxml": "6.1.1",
+    "markdownify": "1.2.3",
+    "openpyxl": "3.1.5",
+    "pillow": "12.3.0",
+    "python-docx": "1.2.0",
+    "python-pptx": "1.0.2"
+  },
+  "transitive_new_dependencies": {
+    "et-xmlfile": "2.0.0",
+    "soupsieve": "2.9.2",
+    "xlsxwriter": "3.2.9"
+  },
+  "requirements_lock": {
+    "platform": "linux",
+    "python_version": "3.12",
+    "packages": 105,
+    "require_hashes_dry_run": "passed"
+  },
+  "project_wheel": {
+    "previous_bytes": 190277,
+    "current_bytes": 219489,
+    "delta_bytes": 29212,
+    "entries": 96
+  },
+  "local_windows_measurement": {
+    "downloaded_wheels_total_bytes": 12614098,
+    "new_installed_distribution_bytes": 28954251
+  },
+  "docker_image_measurement": {
+    "performed": false,
+    "reason": "The local Docker Desktop Linux daemon was not running; ECS images and services are intentionally unchanged in T9-4.4.3.",
+    "next_gate": "Measure the rebuilt Linux API/Worker image during T9-4.4.4 integration before deployment."
+  },
+  "new_services": [],
+  "local_models": [],
+  "gpu_required": false
+}

@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     qwen_api_base_url: str = ""
     qwen_api_key: str = ""
     qwen_model: str = ""
+    qwen_vision_model: str = "qwen3.7-plus"
+    qwen_vision_timeout_seconds: int = Field(default=60, ge=5, le=600)
     hyde_enabled: bool = True
     hyde_max_output_tokens: int = Field(default=256, ge=32, le=2048)
     retrieval_recall_k: int = Field(default=20, ge=2, le=100)

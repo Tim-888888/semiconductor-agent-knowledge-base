@@ -1,0 +1,33 @@
+{
+  "schema_version": "semikb-t9-4-4-3-adapters-v1",
+  "verified_at": "2026-08-15",
+  "stage": "T9-4.4.3",
+  "status": "passed",
+  "formats": {
+    "markdown": ["headings", "paragraphs", "lists", "tables", "code_blocks"],
+    "text": ["utf8_and_gb18030_decode", "paragraphs"],
+    "html": ["noise_removal", "headings", "paragraphs", "lists", "tables", "code_blocks", "no_external_fetch"],
+    "pdf": ["mineru_provider", "content_list_pages", "headings", "paragraphs", "tables", "images", "archive_safety"],
+    "docx": ["document_order", "headings", "paragraphs", "lists", "tables", "images", "exact_asset_dedup"],
+    "xlsx": ["visible_sheets", "table_regions", "headers", "units", "merged_cells", "cached_formula_values", "no_formula_execution"],
+    "csv": ["encoding", "delimiter", "headers", "units", "rows"],
+    "pptx": ["slide_order", "titles", "text_boxes", "tables", "images", "speaker_notes", "bbox"],
+    "image": ["real_asset", "dimension_gate", "qwen_vlm", "ocr", "caption", "detection_summary", "image_text"]
+  },
+  "fallback_policy": {
+    "cross_format_fallback": false,
+    "unconfigured_pdf_or_image_provider": "INGEST_PARSER_NOT_CONFIGURED",
+    "provider_timeout": "INGEST_PARSER_TIMEOUT",
+    "provider_429_or_5xx": "INGEST_PARSER_UNAVAILABLE"
+  },
+  "verification": {
+    "adapter_tests": "17 passed",
+    "contract_and_adapter_tests": "53 passed",
+    "backend_full_suite": "283 passed, 1 warning",
+    "ruff": "passed",
+    "frozen_json_schema": "passed",
+    "wheel_build": "passed",
+    "credential_scan": "passed"
+  },
+  "known_boundary": "Adapters are not connected to rag_ingestion, Worker, MinIO, MongoDB, Milvus, API, or ECS until T9-4.4.4 and T9-4.4.5."
+}

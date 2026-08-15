@@ -1,6 +1,7 @@
 """Stable document parsing boundary for the semiconductor knowledge base."""
 
 from semikb_ingest.errors import IngestError, IngestErrorCode
+from semikb_ingest.factory import build_dispatcher, build_parser_registry
 from semikb_ingest.models import (
     BinaryPayload,
     CaptionSource,
@@ -20,6 +21,8 @@ from semikb_ingest.service import IngestDispatcher
 
 __all__ = [
     "BinaryPayload",
+    "build_dispatcher",
+    "build_parser_registry",
     "CaptionSource",
     "ChunkDraft",
     "ChunkType",
