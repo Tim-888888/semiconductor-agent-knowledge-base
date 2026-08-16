@@ -1,0 +1,40 @@
+{
+  "schema_version": "semikb-corpus-publication-review-spec-v1",
+  "reviews": [
+    {
+      "request_id": "t9446d-publish-uci-secom-v1",
+      "corpus_id": "public-uci-secom-179",
+      "selected_paths": [
+        "secom/secom.data",
+        "secom/secom_labels.data"
+      ],
+      "source_type": "dataset",
+      "content_origin": "real",
+      "source_url": "https://archive.ics.uci.edu/dataset/179/secom",
+      "license_name": "CC BY 4.0",
+      "license_status": "verified",
+      "redistribution_policy": "restricted",
+      "license_notes": "Attribution is required; raw files remain in private object storage.",
+      "access_scope_key": "demo_engineering",
+      "review_note": "Reviewed the official source snapshot, bounded table profiles, declared labels, warning inventory, and private raw-data handling.",
+      "retrieval_policy": "standard"
+    },
+    {
+      "request_id": "t9446d-publish-arxiv-wafer-map-v1",
+      "corpus_id": "public-arxiv-wafer-map-2411-11029",
+      "selected_paths": [
+        "wafer-map-2411.11029.pdf"
+      ],
+      "source_type": "paper",
+      "content_origin": "real",
+      "source_url": "https://arxiv.org/abs/2411.11029",
+      "license_name": "arXiv distribution terms",
+      "license_status": "declared",
+      "redistribution_policy": "restricted",
+      "license_notes": "Preserve source attribution; the downloaded PDF remains private.",
+      "access_scope_key": "demo_engineering",
+      "review_note": "Reviewed document provenance, normalized Markdown, parser warnings, source attribution, and private raw-PDF handling.",
+      "retrieval_policy": "standard"
+    }
+  ]
+}

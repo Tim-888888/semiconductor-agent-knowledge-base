@@ -361,6 +361,29 @@ class MongoIngestionRepository:
             ]
         return (document.get("index_version") if document else None, chunk_ids)
 
+    def published_revision_snapshot(
+        self,
+        document_id: str,
+        revision: str,
+    ) -> tuple[
+        dict[str, Any] | None,
+        list[dict[str, Any]],
+        list[dict[str, Any]],
+        list[dict[str, Any]],
+    ]:
+        selector = {
+            "document_id": document_id,
+            "revision": revision,
+            "lifecycle": DocumentLifecycle.PUBLISHED.value,
+        }
+        with self._factory.mongodb() as client:
+            database = client[self._database_name]
+            document = database.document_catalog.find_one(selector, {"_id": 0})
+            chunks = list(database.chunk_catalog.find(selector, {"_id": 0}))
+            images = list(database.image_assets.find(selector, {"_id": 0}))
+            tables = list(database.table_assets.find(selector, {"_id": 0}))
+        return document, chunks, images, tables
+
     def finalize_inactive_document(
         self,
         document_id: str,

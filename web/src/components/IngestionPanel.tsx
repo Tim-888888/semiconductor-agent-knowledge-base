@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import {
   AlertTriangle,
   ArchiveX,
@@ -17,6 +17,8 @@ import {
 import type {
   CorpusStandardizationJob,
   CorpusStandardizationMetadata,
+  CorpusPublicationBatch,
+  CorpusPublicationReview,
   DocumentLifecycleOperationRecord,
   IngestionJob,
   KnowledgeDocumentRevisionSummary,
@@ -30,6 +32,8 @@ type Props = {
   selectedJob?: IngestionJob;
   corpusJobs: CorpusStandardizationJob[];
   selectedCorpusJob?: CorpusStandardizationJob;
+  publicationBatches: CorpusPublicationBatch[];
+  selectedPublicationBatch?: CorpusPublicationBatch;
   documents: KnowledgeDocumentSummary[];
   selectedDocument?: KnowledgeDocumentSummary;
   revisions: KnowledgeDocumentRevisionSummary[];
@@ -46,6 +50,9 @@ type Props = {
     sidecar: string
   ) => Promise<boolean>;
   onRetryCorpus: (jobId: string) => Promise<void>;
+  onPublishCorpus: (review: CorpusPublicationReview) => Promise<boolean>;
+  onSelectPublication: (batchId: string) => void;
+  onRetryPublication: (batchId: string) => Promise<void>;
   onRefresh: () => Promise<void>;
   onSelectDocument: (documentId: string) => void;
   onSelectRevision: (revision: KnowledgeDocumentRevisionSummary) => void;
@@ -124,6 +131,8 @@ export function IngestionPanel(props: Props) {
     selectedJob,
     corpusJobs,
     selectedCorpusJob,
+    publicationBatches,
+    selectedPublicationBatch,
     documents,
     selectedDocument,
     revisions,
@@ -136,13 +145,16 @@ export function IngestionPanel(props: Props) {
     onSelectCorpus,
     onUploadCorpus,
     onRetryCorpus,
+    onPublishCorpus,
+    onSelectPublication,
+    onRetryPublication,
     onRefresh,
     onSelectDocument,
     onSelectRevision,
     onLifecycleAction,
     onRetryLifecycle
   } = props;
-  const [mode, setMode] = useState<"jobs" | "corpus" | "documents">("jobs");
+  const [mode, setMode] = useState<"jobs" | "corpus" | "publication" | "documents">("jobs");
   const [showUpload, setShowUpload] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [metadata, setMetadata] = useState<UploadMetadata>(initialMetadata);
@@ -151,6 +163,28 @@ export function IngestionPanel(props: Props) {
   const [sidecar, setSidecar] = useState(sidecarTemplate);
   const [lifecycleAction, setLifecycleAction] = useState<"withdraw" | "restore" | null>(null);
   const [reason, setReason] = useState("");
+  const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
+  const [warningsAcknowledged, setWarningsAcknowledged] = useState(false);
+  const [publicationSourceUrl, setPublicationSourceUrl] = useState("");
+  const [publicationLicense, setPublicationLicense] = useState("");
+  const [publicationScope, setPublicationScope] = useState("demo_engineering");
+  const [publicationNote, setPublicationNote] = useState("");
+
+  useEffect(() => {
+    const publishable = selectedCorpusJob?.report?.files
+      .filter((item) => item.standardized_ref && !["archive", "unsupported"].includes(item.role))
+      .map((item) => item.file_id) ?? [];
+    setSelectedFileIds(publishable);
+    setWarningsAcknowledged(false);
+    setPublicationSourceUrl(selectedCorpusJob?.metadata.source_uri ?? "");
+    setPublicationLicense(
+      selectedCorpusJob?.metadata.source_license === "unknown"
+        ? ""
+        : selectedCorpusJob?.metadata.source_license ?? ""
+    );
+    setPublicationScope(selectedCorpusJob?.metadata.access_scope_key || "demo_engineering");
+    setPublicationNote("");
+  }, [selectedCorpusJob]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -179,7 +213,30 @@ export function IngestionPanel(props: Props) {
     setShowUpload(false);
   }
 
-  function switchMode(next: "jobs" | "corpus" | "documents") {
+  async function submitPublication(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedCorpusJob?.report || !warningsAcknowledged || !selectedFileIds.length) return;
+    const succeeded = await onPublishCorpus({
+      request_id: `web-corpus-publish-${crypto.randomUUID()}`,
+      standardization_job_id: selectedCorpusJob.job_id,
+      expected_snapshot_hash: selectedCorpusJob.snapshot_hash,
+      selected_file_ids: selectedFileIds,
+      acknowledged_warning_codes: selectedCorpusJob.report.warning_codes,
+      source_type: "curated_corpus",
+      content_origin: "real",
+      source_url: publicationSourceUrl,
+      license_name: publicationLicense,
+      license_status: "declared",
+      redistribution_policy: "restricted",
+      license_notes: selectedCorpusJob.metadata.use_restrictions ?? "",
+      access_scope_key: publicationScope,
+      review_note: publicationNote,
+      retrieval_policy: "standard"
+    });
+    if (succeeded) setWarningsAcknowledged(false);
+  }
+
+  function switchMode(next: "jobs" | "corpus" | "publication" | "documents") {
     setMode(next);
     setShowUpload(false);
     setLifecycleAction(null);
@@ -206,6 +263,7 @@ export function IngestionPanel(props: Props) {
         <div className="segmented" aria-label="知识运营视图">
           <button type="button" className={mode === "jobs" ? "active" : ""} onClick={() => switchMode("jobs")}>入库任务</button>
           <button type="button" className={mode === "corpus" ? "active" : ""} onClick={() => switchMode("corpus")}>语料标准化</button>
+          <button type="button" className={mode === "publication" ? "active" : ""} onClick={() => switchMode("publication")}>审核发布</button>
           <button type="button" className={mode === "documents" ? "active" : ""} onClick={() => switchMode("documents")}>知识文档</button>
         </div>
         <button className="icon-button" type="button" title="刷新数据" onClick={() => void onRefresh()} disabled={loading}><RefreshCw size={17} className={loading ? "spin" : ""} /></button>
@@ -338,6 +396,35 @@ export function IngestionPanel(props: Props) {
           <div className="event-timeline"><h4><History size={16} />阶段事件</h4>{selectedCorpusJob.events.map((event) => <div className="event-item" key={event.event_id}><span className="event-marker" /><div><strong>{event.status} · {event.progress}%</strong><p>{event.message}</p><small>{formatDate(event.created_at)} · attempt {event.attempt}</small></div></div>)}</div>
           {selectedCorpusJob.status === "failed" && <button className="command-button" type="button" disabled={loading} onClick={() => void onRetryCorpus(selectedCorpusJob.job_id)}><RotateCcw size={17} />重试标准化</button>}
         </aside>}
+      </div>
+    </>}
+
+    {mode === "publication" && <>
+      <form className="upload-band" onSubmit={submitPublication} data-testid="corpus-publication-form">
+        <div className="band-heading"><div><span className="section-label">REVIEWED PUBLICATION</span><h3>从审核区发布到活动知识索引</h3></div><StatusPill value={selectedCorpusJob?.status ?? "unavailable"} /></div>
+        <div className="warning-band"><ShieldCheck size={16} /><div><strong>服务端重新校验</strong><span>发布前会再次核对 Snapshot Hash、警告、许可、权限和所选文件；每个成功项还会读回 MongoDB、Milvus 与 MinIO。</span></div></div>
+        <div className="form-grid">
+          <label className="field-wide"><span>待审核语料快照</span><select value={selectedCorpusJob?.job_id ?? ""} onChange={(event) => onSelectCorpus(event.target.value)}><option value="">请选择</option>{corpusJobs.filter((job) => job.status === "review_required").map((job) => <option key={job.job_id} value={job.job_id}>{job.metadata.display_name} · {job.metadata.snapshot_version}</option>)}</select></label>
+          <Field label="来源 URL" value={publicationSourceUrl} onChange={setPublicationSourceUrl} wide required />
+          <Field label="许可名称" value={publicationLicense} onChange={setPublicationLicense} required />
+          <Field label="权限 Scope" value={publicationScope} onChange={setPublicationScope} required />
+          <Field label="审核说明" value={publicationNote} onChange={setPublicationNote} wide required />
+        </div>
+        {selectedCorpusJob?.report && <div className="corpus-file-list publication-selection"><h4><FileText size={16} />选择受审标准化产物</h4>{selectedCorpusJob.report.files.map((file) => {
+          const publishable = Boolean(file.standardized_ref) && !["archive", "unsupported"].includes(file.role);
+          return <label className={`corpus-file-item ${publishable ? "" : "disabled"}`} key={file.file_id}><input type="checkbox" disabled={!publishable} checked={selectedFileIds.includes(file.file_id)} onChange={(event) => setSelectedFileIds((current) => event.target.checked ? [...current, file.file_id] : current.filter((id) => id !== file.file_id))} /><div><strong>{file.relative_path}</strong><span>{file.role} · {publishable ? "可发布" : "不进入索引"}</span></div>{file.warning_codes.length > 0 && <small>{file.warning_codes.join(" · ")}</small>}</label>;
+        })}</div>}
+        <label className="publication-ack"><input type="checkbox" checked={warningsAcknowledged} onChange={(event) => setWarningsAcknowledged(event.target.checked)} /><span>我已复核 Snapshot Hash、全部警告代码、许可与权限范围，并确认仅发布上方勾选的有界产物。</span></label>
+        <div className="form-actions"><button className="command-button" type="submit" disabled={loading || selectedCorpusJob?.status !== "review_required" || !selectedFileIds.length || !warningsAcknowledged || !publicationSourceUrl.trim() || !publicationLicense.trim() || publicationNote.trim().length < 12}><ShieldCheck size={17} />提交受控发布</button></div>
+      </form>
+
+      <div className="operations-split">
+        <div className="data-table-wrap"><table>
+          <thead><tr><th>发布批次</th><th>状态</th><th>进度</th><th>结果</th><th>更新时间</th></tr></thead>
+          <tbody>{publicationBatches.map((batch) => <tr key={batch.batch_id} className={selectedPublicationBatch?.batch_id === batch.batch_id ? "active-row" : ""}><td><button className="table-link" type="button" onClick={() => onSelectPublication(batch.batch_id)}><strong>{batch.batch_id.slice(-12)}</strong><span>{batch.items.length} 个受审产物</span></button></td><td><StatusPill value={batch.status} /></td><td><div className="progress"><span style={{ width: `${batch.progress}%` }} /></div><small>{batch.progress}%</small></td><td>{batch.published_count} 成功 / {batch.failed_count} 失败</td><td>{formatDate(batch.finished_at ?? batch.created_at)}</td></tr>)}</tbody>
+        </table>{!publicationBatches.length && <EmptyState icon={<ShieldCheck size={30} />} title="暂无语料发布批次" />}</div>
+
+        {selectedPublicationBatch && <aside className="job-detail" data-testid="corpus-publication-detail"><div className="detail-title"><div><span className="section-label">PUBLICATION RECONCILIATION</span><h3>{selectedPublicationBatch.batch_id.slice(-12)}</h3></div><StatusPill value={selectedPublicationBatch.status} /></div><div className="detail-metrics"><Metric label="已发布" value={selectedPublicationBatch.published_count} /><Metric label="失败" value={selectedPublicationBatch.failed_count} /></div>{selectedPublicationBatch.safe_error_summary && <div className="warning-band"><AlertTriangle size={16} /><div><strong>{selectedPublicationBatch.error_code}</strong><span>{selectedPublicationBatch.safe_error_summary}</span></div></div>}<div className="corpus-file-list"><h4><ShieldCheck size={16} />逐文件核对</h4>{selectedPublicationBatch.items.map((item) => <div className="corpus-file-item" key={item.file_id}><div><strong>{item.relative_path}</strong><span>{item.artifact_kind} · {item.document_id}</span></div><StatusPill value={item.status} />{item.reconciliation && <small>Mongo {item.reconciliation.document_count} / Chunk {item.reconciliation.chunk_count} / Vector {item.reconciliation.vector_count} / Object {item.reconciliation.object_count} · {item.reconciliation.passed ? "一致" : "需复核"}</small>}{item.safe_error_summary && <small>{item.error_code} · {item.safe_error_summary}</small>}</div>)}</div>{selectedPublicationBatch.status === "failed" && <button className="command-button" type="button" disabled={loading} onClick={() => void onRetryPublication(selectedPublicationBatch.batch_id)}><RotateCcw size={17} />仅重试失败项</button>}</aside>}
       </div>
     </>}
 

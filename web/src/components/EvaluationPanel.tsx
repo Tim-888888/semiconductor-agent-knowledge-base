@@ -8,11 +8,12 @@ import {
   SearchCheck,
   TriangleAlert
 } from "lucide-react";
-import type { EvaluationDataset, EvaluationRun } from "../types";
+import type { EvaluationDataset, EvaluationReleaseFreeze, EvaluationRun } from "../types";
 import { EmptyState, formatDate, formatMetric, Metric, StatusPill } from "./Common";
 
 type Props = {
   datasets: EvaluationDataset[];
+  freezes: EvaluationReleaseFreeze[];
   runs: EvaluationRun[];
   selectedRun?: EvaluationRun;
   loading: boolean;
@@ -30,7 +31,7 @@ const profiles: { value: EvaluationRun["retrieval_profile"]; label: string }[] =
   { value: "full", label: "Full / 条件 HyDE" }
 ];
 
-export function EvaluationPanel({ datasets, runs, selectedRun, loading, onSelect, onRun, onRetry, onRefresh, onOpenTrace }: Props) {
+export function EvaluationPanel({ datasets, freezes, runs, selectedRun, loading, onSelect, onRun, onRetry, onRefresh, onOpenTrace }: Props) {
   const [datasetVersion, setDatasetVersion] = useState("t5-live-v1");
   const [profile, setProfile] = useState<EvaluationRun["retrieval_profile"]>("full");
   const [baselineRunId, setBaselineRunId] = useState("");
@@ -69,6 +70,12 @@ export function EvaluationPanel({ datasets, runs, selectedRun, loading, onSelect
       <button className="command-button" type="submit" disabled={loading || !datasetVersion}><ClipboardCheck size={17} />创建运行</button>
     </form>
 
+    <section className="run-snapshot" data-testid="evaluation-release-freezes">
+      <strong>Release Freeze</strong>
+      {freezes.length === 0 && <span>尚未冻结，holdout 不可运行</span>}
+      {freezes.slice(0, 3).map((freeze) => <span key={freeze.freeze_id}>{freeze.release_version} · {freeze.status} · {freeze.freeze_hash.slice(0, 12)}</span>)}
+    </section>
+
     <div className="evaluation-split">
       <aside className="run-index">
         <div className="index-heading"><span className="section-label">EVALUATION RUNS</span><strong>{runs.length}</strong></div>
@@ -86,7 +93,7 @@ export function EvaluationPanel({ datasets, runs, selectedRun, loading, onSelect
             <div className="heading-actions"><StatusPill value={selectedRun.status} />{selectedRun.status === "failed" && <button className="icon-button" type="button" title="重试评估" onClick={() => void onRetry(selectedRun.evaluation_run_id)} disabled={loading}><RotateCcw size={17} /></button>}</div>
           </div>
 
-          <section className="run-snapshot"><span>purpose={selectedRun.dataset_purpose}</span><span>leakage={selectedRun.dataset_leakage_status}</span><span>sealed={selectedRun.dataset_sealed_at ? formatDate(selectedRun.dataset_sealed_at) : "no"}</span><span>opened={selectedRun.dataset_opened_at ? formatDate(selectedRun.dataset_opened_at) : "no"}</span></section>
+          <section className="run-snapshot"><span>purpose={selectedRun.dataset_purpose}</span><span>leakage={selectedRun.dataset_leakage_status}</span><span>sealed={selectedRun.dataset_sealed_at ? formatDate(selectedRun.dataset_sealed_at) : "no"}</span><span>opened={selectedRun.dataset_opened_at ? formatDate(selectedRun.dataset_opened_at) : "no"}</span>{selectedRun.release_freeze_hash && <span>freeze={selectedRun.release_freeze_hash.slice(0, 12)}</span>}</section>
 
           <div className="metric-grid evaluation-metrics">
             <Metric label="Recall@5" value={formatMetric(selectedRun.aggregate_metrics.recall_at_5)} tone="good" />

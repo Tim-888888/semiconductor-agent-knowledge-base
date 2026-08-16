@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from semikb.config import Settings
+from semikb.contracts.corpus_publication import CorpusPublicationReconciliation
 from semikb.contracts.models import (
     Chunk,
     DocumentLifecycle,
@@ -206,3 +207,56 @@ class ProductionIngestionStore:
         chunk_ids = self.mongo.compensate_document(document_id, revision)
         if index_version:
             self.vectors.delete_chunks(index_version, chunk_ids)
+
+    def reconcile_published_document(
+        self,
+        document_id: str,
+        revision: str,
+    ) -> CorpusPublicationReconciliation:
+        """Verify one revision across MongoDB, MinIO and Milvus after publication."""
+
+        document, chunks, images, tables = self.mongo.published_revision_snapshot(
+            document_id,
+            revision,
+        )
+        if document is None:
+            return CorpusPublicationReconciliation(warning_codes=["DOCUMENT_NOT_PUBLISHED"])
+
+        object_refs = [document.get("source_ref"), document.get("parsed_ref")]
+        object_refs.extend(item.get("object_ref") for item in images)
+        object_refs.extend(item.get("object_ref") for item in tables)
+        verified_objects = 0
+        warnings: list[str] = []
+        for raw_ref in object_refs:
+            if not raw_ref:
+                continue
+            try:
+                self.load_object(ObjectRef.model_validate(raw_ref))
+                verified_objects += 1
+            except Exception:
+                warnings.append("OBJECT_READBACK_FAILED")
+
+        chunk_ids = sorted(str(item["chunk_id"]) for item in chunks)
+        vector_ids = self.vectors.published_chunk_ids(
+            str(document["index_version"]),
+            chunk_ids,
+        )
+        passed = (
+            bool(chunk_ids)
+            and chunk_ids == vector_ids
+            and verified_objects == len([item for item in object_refs if item])
+            and not warnings
+        )
+        return CorpusPublicationReconciliation(
+            document_count=1,
+            chunk_count=len(chunk_ids),
+            image_count=len(images),
+            table_count=len(tables),
+            vector_count=len(vector_ids),
+            object_count=verified_objects,
+            published_chunk_ids=chunk_ids,
+            published_image_ids=sorted(str(item["image_id"]) for item in images),
+            published_table_ids=sorted(str(item["table_id"]) for item in tables),
+            passed=passed,
+            warning_codes=sorted(set(warnings)),
+        )

@@ -156,6 +156,81 @@ def test_api_accepts_markdown_upload_as_an_ingestion_job() -> None:
     assert response.json()["status"] == "staged"
 
 
+def test_api_publishes_only_reviewed_corpus_outputs_and_exposes_reconciliation() -> None:
+    get_container.cache_clear()
+    client = TestClient(app)
+    token_response = client.post(
+        "/api/v1/auth/demo-token",
+        json={
+            "user_id": "knowledge_admin",
+            "roles": ["knowledge_admin"],
+            "access_scope_keys": ["demo_engineering"],
+        },
+    )
+    headers = {"Authorization": f"Bearer {token_response.json()['access_token']}"}
+    standardization = client.post(
+        "/api/v1/corpus-standardization-jobs/upload",
+        data={
+            "metadata": json.dumps(
+                {
+                    "corpus_id": "api-corpus-publication",
+                    "snapshot_version": "v1",
+                    "display_name": "API corpus publication",
+                    "source_kind": "user_upload",
+                    "source_uri": "https://example.com/api-corpus",
+                    "source_license": "Declared demo terms",
+                    "access_scope_key": "demo_engineering",
+                    "corpus_kind": "document_collection",
+                }
+            )
+        },
+        files=[
+            (
+                "files",
+                (
+                    "generic-note.md",
+                    b"# Generic note\n\nCheck chamber pressure and RF match before release.",
+                    "text/markdown",
+                ),
+            )
+        ],
+        headers=headers,
+    )
+    assert standardization.status_code == 201
+    job = standardization.json()
+    assert job["status"] == "review_required"
+    selected = [
+        item["file_id"]
+        for item in job["report"]["files"]
+        if item["standardized_ref"]
+    ]
+    publication = client.post(
+        "/api/v1/corpus-publication-batches",
+        json={
+            "request_id": "api-publication-review-1",
+            "standardization_job_id": job["job_id"],
+            "expected_snapshot_hash": job["snapshot_hash"],
+            "selected_file_ids": selected,
+            "acknowledged_warning_codes": job["report"]["warning_codes"],
+            "source_type": "curated_corpus",
+            "content_origin": "real",
+            "source_url": "https://example.com/api-corpus",
+            "license_name": "Declared demo terms",
+            "license_status": "declared",
+            "redistribution_policy": "restricted",
+            "license_notes": "Interview demonstration only.",
+            "access_scope_key": "demo_engineering",
+            "review_note": "Reviewed the source, license, warnings, and selected artifacts.",
+            "retrieval_policy": "standard",
+        },
+        headers=headers,
+    )
+    assert publication.status_code == 202
+    batch = publication.json()
+    assert batch["status"] == "completed"
+    assert batch["items"][0]["reconciliation"]["passed"] is True
+
+
 def test_upload_api_returns_stable_conflict_for_changed_idempotent_metadata() -> None:
     get_container.cache_clear()
     client = TestClient(app)
@@ -396,6 +471,39 @@ def test_evaluation_api_requires_admin_and_exposes_reproducible_run() -> None:
     datasets = client.get("/api/v1/evaluation-datasets", headers=admin_headers)
     assert datasets.status_code == 200
     assert datasets.json()[0]["dataset_version"] == "demo-v1"
+
+    holdout = client.post(
+        "/api/v1/evaluation-datasets",
+        headers=admin_headers,
+        json={
+            "dataset_version": "api-sealed-holdout-v1",
+            "source_kind": "private-holdout",
+            "description": "Sealed API redaction test",
+            "purpose": "holdout",
+            "source_snapshot_hash": "a" * 64,
+            "leakage_status": "cleared",
+            "seal": True,
+            "cases": [
+                {
+                    "case_id": "sealed-case-1",
+                    "question": "This question must remain sealed.",
+                    "expected_chunk_ids": ["SOP-ETCH-03-R2-002"],
+                    "actor_scope": {
+                        "user_id": "holdout-evaluator",
+                        "roles": ["engineer"],
+                        "access_scope_keys": ["internal_controlled"],
+                    },
+                }
+            ],
+        },
+    )
+    assert holdout.status_code == 201
+    assert holdout.json()["cases_redacted"] is True
+    assert "cases" not in holdout.json()
+    listed = client.get("/api/v1/evaluation-datasets", headers=admin_headers).json()
+    sealed = next(item for item in listed if item["dataset_version"] == "api-sealed-holdout-v1")
+    assert sealed["cases_redacted"] is True
+    assert "cases" not in sealed
 
 
 def test_corpus_standardization_api_requires_admin_and_returns_review_inventory() -> None:

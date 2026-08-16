@@ -22,6 +22,22 @@ from semikb.contracts.corpus import (
     TabularDataProfile,
     TabularSheetProfile,
 )
+from semikb.contracts.corpus_publication import (
+    CorpusPublicationArtifactKind,
+    CorpusPublicationBatch,
+    CorpusPublicationEvent,
+    CorpusPublicationItem,
+    CorpusPublicationItemStatus,
+    CorpusPublicationReconciliation,
+    CorpusPublicationReview,
+    CorpusPublicationStatus,
+)
+from semikb.contracts.evaluation_governance import (
+    CreateEvaluationReleaseFreezeRequest,
+    EvaluationReleaseFreeze,
+    EvaluationReleaseFreezeStatus,
+    RegisterEvaluationDatasetRequest,
+)
 from semikb.contracts.models import (
     ActorScope,
     AffectedRecordCounts,
@@ -85,6 +101,18 @@ from semikb.contracts.streaming import (
 )
 
 __all__ = [
+    "CorpusPublicationArtifactKind",
+    "CorpusPublicationBatch",
+    "CorpusPublicationEvent",
+    "CorpusPublicationItem",
+    "CorpusPublicationItemStatus",
+    "CorpusPublicationReconciliation",
+    "CorpusPublicationReview",
+    "CorpusPublicationStatus",
+    "CreateEvaluationReleaseFreezeRequest",
+    "EvaluationReleaseFreeze",
+    "EvaluationReleaseFreezeStatus",
+    "RegisterEvaluationDatasetRequest",
     "ActorScope",
     "CorpusFileAnnotation",
     "CorpusFileManifest",

@@ -186,7 +186,7 @@ def test_hyde_and_image_boost_use_structured_modes_for_unseen_phrasing() -> None
     assert image[1] == pytest.approx(standard[1] + 0.08)
 
 
-def test_holdout_dataset_is_sealed_audited_and_opened_once(tmp_path: Path) -> None:
+def test_holdout_dataset_requires_a_release_freeze_before_opening(tmp_path: Path) -> None:
     payload = {
         "dataset_version": "holdout-v1",
         "source_kind": "synthetic",
@@ -211,14 +211,15 @@ def test_holdout_dataset_is_sealed_audited_and_opened_once(tmp_path: Path) -> No
     store = DemoStore()
     evaluation = EvaluationService(store, object(), tmp_path)
 
-    first = evaluation.create_run("holdout-v1")
-    second = evaluation.create_run("holdout-v1")
+    with pytest.raises(ValueError, match="frozen into a release snapshot"):
+        evaluation.create_run("holdout-v1")
 
-    assert first.dataset_purpose is EvaluationDatasetPurpose.HOLDOUT
-    assert first.dataset_leakage_status is EvaluationLeakageStatus.CLEARED
-    assert first.dataset_opened_at is not None
-    assert second.dataset_opened_at == first.dataset_opened_at
-    assert first.source_snapshot_hash == "a" * 64
+    stored = store.get_evaluation_dataset("holdout-v1")
+    assert stored is not None
+    assert stored.purpose is EvaluationDatasetPurpose.HOLDOUT
+    assert stored.leakage_status is EvaluationLeakageStatus.CLEARED
+    assert stored.opened_at is None
+    assert stored.source_snapshot_hash == "a" * 64
 
 
 def test_invalid_profile_does_not_open_holdout_dataset(tmp_path: Path) -> None:

@@ -88,6 +88,28 @@ class MilvusChunkRepository:
         if remaining:
             raise RuntimeError("Milvus still contains withdrawn chunk projections.")
 
+    def published_chunk_ids(
+        self,
+        index_version: str,
+        chunk_ids: Sequence[str],
+    ) -> list[str]:
+        """Read back the exact published vector projections for reconciliation."""
+
+        if not chunk_ids:
+            return []
+        with self._factory.milvus() as client:
+            stored = client.query(
+                collection_name(index_version),
+                ids=list(chunk_ids),
+                output_fields=["chunk_id", "lifecycle"],
+                consistency_level="Strong",
+            )
+        return sorted(
+            str(item["chunk_id"])
+            for item in stored
+            if item.get("lifecycle") == DocumentLifecycle.PUBLISHED.value
+        )
+
     def activate_alias(self, index_version: str) -> None:
         physical_collection = collection_name(index_version)
         alias = "semikb_chunks_active"

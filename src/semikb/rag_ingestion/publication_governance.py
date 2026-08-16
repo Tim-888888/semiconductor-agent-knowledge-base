@@ -75,11 +75,12 @@ def validate_publication_governance(
     ):
         raise PublicationGovernanceError("source_manifest_snapshot_hash_mismatch")
 
-    actual_artifacts: set[SourceIndexArtifact] = set()
-    if any(chunk.chunk_type is not ChunkType.IMAGE_TEXT for chunk in chunks):
-        actual_artifacts.add(SourceIndexArtifact.DOCUMENT_CHUNKS)
-    if images or any(chunk.chunk_type is ChunkType.IMAGE_TEXT for chunk in chunks):
-        actual_artifacts.add(SourceIndexArtifact.IMAGE_TEXT)
+    actual_artifacts = set(document.source_index_artifacts)
+    if not actual_artifacts:
+        if any(chunk.chunk_type is not ChunkType.IMAGE_TEXT for chunk in chunks):
+            actual_artifacts.add(SourceIndexArtifact.DOCUMENT_CHUNKS)
+        if images or any(chunk.chunk_type is ChunkType.IMAGE_TEXT for chunk in chunks):
+            actual_artifacts.add(SourceIndexArtifact.IMAGE_TEXT)
     declared_artifacts = set(manifest.ingestion_policy.index_artifacts)
     if not actual_artifacts.issubset(declared_artifacts):
         raise PublicationGovernanceError("source_ingestion_policy_mismatch")

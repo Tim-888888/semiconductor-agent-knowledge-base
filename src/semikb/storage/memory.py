@@ -8,6 +8,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from threading import RLock
 
+from semikb.contracts.evaluation_governance import (
+    EvaluationReleaseFreeze,
+    EvaluationReleaseFreezeStatus,
+)
 from semikb.contracts.models import (
     ActiveConversationContext,
     ActorScope,
@@ -61,6 +65,7 @@ class DemoStore:
         self.message_requests: dict[tuple[str, str, str], AgentMessageRequestRecord] = {}
         self.evaluation_datasets: dict[str, EvaluationDataset] = {}
         self.evaluation_runs: dict[str, EvaluationRun] = {}
+        self.evaluation_release_freezes: dict[str, EvaluationReleaseFreeze] = {}
         self.index_releases: dict[str, dict[str, str]] = {}
         self.objects: dict[tuple[str, str], bytes] = {}
         self.replay_payloads: dict[str, dict[str, object]] = {}
@@ -423,6 +428,51 @@ class DemoStore:
                 DocumentLifecycle.QUARANTINED,
             )
 
+    def reconcile_published_document(self, document_id: str, revision: str):
+        from semikb.contracts.corpus_publication import CorpusPublicationReconciliation
+
+        document = self.documents.get((document_id, revision))
+        chunks = sorted(
+            chunk.chunk_id
+            for chunk in self.chunks.values()
+            if chunk.document_id == document_id
+            and chunk.revision == revision
+            and chunk.lifecycle is DocumentLifecycle.PUBLISHED
+        )
+        images = sorted(
+            image.image_id
+            for image in self.images.values()
+            if image.document_id == document_id
+            and image.revision == revision
+            and image.lifecycle is DocumentLifecycle.PUBLISHED
+        )
+        tables = sorted(
+            table.table_id
+            for table in self.tables.values()
+            if table.document_id == document_id
+            and table.revision == revision
+            and table.lifecycle is DocumentLifecycle.PUBLISHED
+        )
+        refs = [] if document is None else [document.source_ref, document.parsed_ref]
+        refs.extend(self.images[item].object_ref for item in images)
+        refs.extend(self.tables[item].object_ref for item in tables)
+        object_count = sum(
+            1 for ref in refs if ref and (ref.bucket, ref.object_key) in self.objects
+        )
+        passed = bool(document and chunks) and object_count == len([ref for ref in refs if ref])
+        return CorpusPublicationReconciliation(
+            document_count=1 if document and document.lifecycle is DocumentLifecycle.PUBLISHED else 0,
+            chunk_count=len(chunks),
+            image_count=len(images),
+            table_count=len(tables),
+            vector_count=len(chunks),
+            object_count=object_count,
+            published_chunk_ids=chunks,
+            published_image_ids=images,
+            published_table_ids=tables,
+            passed=passed,
+        )
+
     def save_trace(self, trace: RetrievalTrace) -> RetrievalTrace:
         self.traces[trace.trace_id] = trace
         return trace
@@ -715,6 +765,70 @@ class DemoStore:
             dataset = dataset.model_copy(update={"opened_at": opened_at})
             self.evaluation_datasets[dataset_version] = dataset
         return dataset
+
+    def save_evaluation_release_freeze(
+        self,
+        freeze: EvaluationReleaseFreeze,
+    ) -> EvaluationReleaseFreeze:
+        existing = next(
+            (
+                item
+                for item in self.evaluation_release_freezes.values()
+                if item.release_version == freeze.release_version
+            ),
+            None,
+        )
+        if existing and existing.freeze_hash != freeze.freeze_hash:
+            raise ValueError("The release version already has a different immutable freeze.")
+        self.evaluation_release_freezes.setdefault(freeze.freeze_id, freeze)
+        return existing or freeze
+
+    def get_evaluation_release_freeze(
+        self,
+        freeze_id: str,
+    ) -> EvaluationReleaseFreeze | None:
+        return self.evaluation_release_freezes.get(freeze_id)
+
+    def list_evaluation_release_freezes(self) -> list[EvaluationReleaseFreeze]:
+        return sorted(
+            self.evaluation_release_freezes.values(),
+            key=lambda item: item.created_at,
+            reverse=True,
+        )
+
+    def find_frozen_release_for_holdout(
+        self,
+        dataset_version: str,
+        dataset_hash: str,
+    ) -> EvaluationReleaseFreeze | None:
+        return next(
+            (
+                item
+                for item in self.list_evaluation_release_freezes()
+                if item.holdout_dataset_version == dataset_version
+                and item.holdout_dataset_hash == dataset_hash
+                and item.status is EvaluationReleaseFreezeStatus.FROZEN
+            ),
+            None,
+        )
+
+    def mark_evaluation_release_opened(
+        self,
+        freeze_id: str,
+        opened_at: datetime,
+    ) -> EvaluationReleaseFreeze:
+        freeze = self.evaluation_release_freezes.get(freeze_id)
+        if freeze is None:
+            raise KeyError(freeze_id)
+        if freeze.status is EvaluationReleaseFreezeStatus.FROZEN:
+            freeze = freeze.model_copy(
+                update={
+                    "status": EvaluationReleaseFreezeStatus.OPENED,
+                    "opened_at": opened_at,
+                }
+            )
+            self.evaluation_release_freezes[freeze_id] = freeze
+        return freeze
 
     def claim_evaluation_run(
         self,

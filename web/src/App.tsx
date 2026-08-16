@@ -17,6 +17,7 @@ import {
   cancelMessageRequest,
   createThread,
   getCorpusStandardizationJob,
+  getCorpusPublicationBatch,
   getEvaluation,
   getEvaluationCaseTrace,
   getJob,
@@ -24,6 +25,8 @@ import {
   getThread,
   getTrace,
   listEvaluationDatasets,
+  listEvaluationReleaseFreezes,
+  listCorpusPublicationBatches,
   listCorpusStandardizationJobs,
   listEvaluations,
   listJobs,
@@ -34,12 +37,14 @@ import {
   resolveAsset,
   retryEvaluation,
   retryCorpusStandardizationJob,
+  retryCorpusPublication,
   retryJob,
   retryKnowledgeDocumentOperation,
   runEvaluation,
   sendMessageStream,
   uploadDocument,
   uploadCorpus,
+  publishCorpus,
   restoreKnowledgeDocumentRevision,
   withdrawKnowledgeDocumentRevision
 } from "./api";
@@ -52,7 +57,10 @@ import type {
   AssetAccess,
   CorpusStandardizationJob,
   CorpusStandardizationMetadata,
+  CorpusPublicationBatch,
+  CorpusPublicationReview,
   EvaluationDataset,
+  EvaluationReleaseFreeze,
   EvaluationRun,
   IngestionJob,
   KnowledgeDocumentRevisionSummary,
@@ -79,6 +87,8 @@ function App() {
   const [selectedJob, setSelectedJob] = useState<IngestionJob>();
   const [corpusJobs, setCorpusJobs] = useState<CorpusStandardizationJob[]>([]);
   const [selectedCorpusJob, setSelectedCorpusJob] = useState<CorpusStandardizationJob>();
+  const [publicationBatches, setPublicationBatches] = useState<CorpusPublicationBatch[]>([]);
+  const [selectedPublicationBatch, setSelectedPublicationBatch] = useState<CorpusPublicationBatch>();
   const [knowledgeDocuments, setKnowledgeDocuments] = useState<KnowledgeDocumentSummary[]>([]);
   const [selectedKnowledgeDocument, setSelectedKnowledgeDocument] = useState<KnowledgeDocumentSummary>();
   const [documentRevisions, setDocumentRevisions] = useState<KnowledgeDocumentRevisionSummary[]>([]);
@@ -87,6 +97,7 @@ function App() {
   const [datasets, setDatasets] = useState<EvaluationDataset[]>([]);
   const [evaluations, setEvaluations] = useState<EvaluationRun[]>([]);
   const [selectedEvaluation, setSelectedEvaluation] = useState<EvaluationRun>();
+  const [evaluationFreezes, setEvaluationFreezes] = useState<EvaluationReleaseFreeze[]>([]);
   const [query, setQuery] = useState(starterQuestion);
   const [asset, setAsset] = useState<AssetAccess | null>(null);
   const [assetError, setAssetError] = useState("");
@@ -111,6 +122,9 @@ function App() {
   const hasPendingCorpusJobs = corpusJobs.some((job) =>
     !["review_required", "failed"].includes(job.status)
   );
+  const hasPendingPublications = publicationBatches.some((batch) =>
+    !["completed", "failed"].includes(batch.status)
+  );
   const hasPendingEvaluations = evaluations.some((run) => ["queued", "running"].includes(run.status));
   const activeImageSelection = useMemo(() => {
     const latestAssistant = [...(thread?.messages ?? [])]
@@ -128,13 +142,15 @@ function App() {
 
   async function initializeWorkspace(demoAccessKey: string) {
     await bootstrapToken(demoAccessKey);
-    const [existingThreads, nextJobs, nextCorpusJobs, nextTraces, nextEvaluations, nextDatasets, documentPage] = await Promise.all([
+    const [existingThreads, nextJobs, nextCorpusJobs, nextPublications, nextTraces, nextEvaluations, nextDatasets, nextFreezes, documentPage] = await Promise.all([
       listThreads(),
       listJobs(),
       listCorpusStandardizationJobs(),
+      listCorpusPublicationBatches(),
       listTraces(),
       listEvaluations(),
       listEvaluationDatasets(),
+      listEvaluationReleaseFreezes(),
       listKnowledgeDocuments()
     ]);
     const initialDocument = documentPage.items[0];
@@ -150,6 +166,8 @@ function App() {
     setSelectedJob(nextJobs[0]);
     setCorpusJobs(nextCorpusJobs);
     setSelectedCorpusJob(nextCorpusJobs[0]);
+    setPublicationBatches(nextPublications);
+    setSelectedPublicationBatch(nextPublications[0]);
     setKnowledgeDocuments(documentPage.items);
     setSelectedKnowledgeDocument(initialDocument);
     setDocumentRevisions(initialRevisions);
@@ -159,6 +177,7 @@ function App() {
     setEvaluations(nextEvaluations);
     setSelectedEvaluation(nextEvaluations[0]);
     setDatasets(nextDatasets);
+    setEvaluationFreezes(nextFreezes);
   }
 
   useEffect(() => {
@@ -202,14 +221,15 @@ function App() {
   }
 
   useEffect(() => {
-    if (!hasPendingJobs && !hasPendingCorpusJobs && !hasPendingEvaluations) return;
+    if (!hasPendingJobs && !hasPendingCorpusJobs && !hasPendingPublications && !hasPendingEvaluations) return;
     const timer = window.setInterval(() => {
       if (hasPendingJobs) void refreshJobs();
       if (hasPendingCorpusJobs) void refreshCorpusJobs();
+      if (hasPendingPublications) void refreshPublicationBatches();
       if (hasPendingEvaluations) void refreshEvaluations();
     }, 2500);
     return () => window.clearInterval(timer);
-  }, [hasPendingCorpusJobs, hasPendingEvaluations, hasPendingJobs]);
+  }, [hasPendingCorpusJobs, hasPendingEvaluations, hasPendingJobs, hasPendingPublications]);
 
   useEffect(() => () => {
     if (asset?.local_object_url) URL.revokeObjectURL(asset.url);
@@ -279,6 +299,15 @@ function App() {
     );
   }
 
+  async function refreshPublicationBatches(preferredId?: string) {
+    const batches = await listCorpusPublicationBatches();
+    setPublicationBatches(batches);
+    const targetId = preferredId ?? selectedPublicationBatch?.batch_id;
+    setSelectedPublicationBatch(
+      batches.find((batch) => batch.batch_id === targetId) ?? batches[0]
+    );
+  }
+
   async function refreshKnowledgeDocuments(
     preferredDocumentId?: string,
     preferredRevision?: string
@@ -307,9 +336,14 @@ function App() {
   }
 
   async function refreshEvaluations(preferredId?: string) {
-    const [nextRuns, nextDatasets] = await Promise.all([listEvaluations(), listEvaluationDatasets()]);
+    const [nextRuns, nextDatasets, nextFreezes] = await Promise.all([
+      listEvaluations(),
+      listEvaluationDatasets(),
+      listEvaluationReleaseFreezes()
+    ]);
     setEvaluations(nextRuns);
     setDatasets(nextDatasets);
+    setEvaluationFreezes(nextFreezes);
     const targetId = preferredId ?? selectedEvaluation?.evaluation_run_id;
     const target = nextRuns.find((run) => run.evaluation_run_id === targetId) ?? nextRuns[0];
     setSelectedEvaluation(target);
@@ -581,6 +615,32 @@ function App() {
     );
   }
 
+  async function submitCorpusPublication(review: CorpusPublicationReview) {
+    let succeeded = false;
+    await runAction(async () => {
+      const batch = await publishCorpus(review);
+      await refreshPublicationBatches(batch.batch_id);
+      setNotice(`语料发布批次 ${batch.batch_id.slice(-8)} 已创建`);
+      succeeded = true;
+    }, "语料发布提交失败。");
+    return succeeded;
+  }
+
+  async function selectCorpusPublication(batchId: string) {
+    await runAction(
+      async () => setSelectedPublicationBatch(await getCorpusPublicationBatch(batchId)),
+      "语料发布详情读取失败。"
+    );
+  }
+
+  async function retryPublication(batchId: string) {
+    await runAction(async () => {
+      const batch = await retryCorpusPublication(batchId);
+      await refreshPublicationBatches(batch.batch_id);
+      setNotice("失败发布项已重新排队");
+    }, "语料发布重试失败。");
+  }
+
   async function selectIngestionJob(jobId: string) {
     await runAction(async () => setSelectedJob(await getJob(jobId)), "任务详情读取失败。");
   }
@@ -750,6 +810,8 @@ function App() {
         selectedJob={selectedJob}
         corpusJobs={corpusJobs}
         selectedCorpusJob={selectedCorpusJob}
+        publicationBatches={publicationBatches}
+        selectedPublicationBatch={selectedPublicationBatch}
         documents={knowledgeDocuments}
         selectedDocument={selectedKnowledgeDocument}
         revisions={documentRevisions}
@@ -759,16 +821,19 @@ function App() {
         onSelect={(jobId) => void selectIngestionJob(jobId)}
         onUpload={upload}
         onRetry={retryIngestion}
-        onRefresh={async () => { await Promise.all([refreshJobs(), refreshCorpusJobs(), refreshKnowledgeDocuments()]); }}
+        onRefresh={async () => { await Promise.all([refreshJobs(), refreshCorpusJobs(), refreshPublicationBatches(), refreshKnowledgeDocuments()]); }}
         onSelectCorpus={(jobId) => void selectCorpusJob(jobId)}
         onUploadCorpus={submitCorpus}
         onRetryCorpus={retryCorpus}
+        onPublishCorpus={submitCorpusPublication}
+        onSelectPublication={(batchId) => void selectCorpusPublication(batchId)}
+        onRetryPublication={retryPublication}
         onSelectDocument={(documentId) => void selectKnowledgeDocument(documentId)}
         onSelectRevision={setSelectedDocumentRevision}
         onLifecycleAction={changeDocumentLifecycle}
         onRetryLifecycle={retryDocumentLifecycleOperation}
       />}
-      {view === "evaluation" && <EvaluationPanel datasets={datasets} runs={evaluations} selectedRun={selectedEvaluation} loading={actionLoading} onSelect={(runId) => void selectEvaluation(runId)} onRun={createEvaluation} onRetry={retryEvaluationRun} onRefresh={() => refreshEvaluations()} onOpenTrace={openEvaluationTrace} />}
+      {view === "evaluation" && <EvaluationPanel datasets={datasets} freezes={evaluationFreezes} runs={evaluations} selectedRun={selectedEvaluation} loading={actionLoading} onSelect={(runId) => void selectEvaluation(runId)} onRun={createEvaluation} onRetry={retryEvaluationRun} onRefresh={() => refreshEvaluations()} onOpenTrace={openEvaluationTrace} />}
     </main>
 
     {asset && assetModalOpen && <div className="asset-modal" role="dialog" aria-modal="true" aria-label="受控图片预览" data-testid="asset-modal">

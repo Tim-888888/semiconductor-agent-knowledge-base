@@ -8,6 +8,7 @@ from typing import Protocol
 from pymongo import MongoClient, ReturnDocument
 
 from semikb.config import Settings
+from semikb.contracts.evaluation_governance import EvaluationReleaseFreeze
 from semikb.contracts.models import (
     EvaluationDataset,
     EvaluationRun,
@@ -42,6 +43,30 @@ class EvaluationRepository(Protocol):
 
     def prepare_evaluation_retry(self, evaluation_run_id: str) -> EvaluationRun: ...
 
+    def save_evaluation_release_freeze(
+        self,
+        freeze: EvaluationReleaseFreeze,
+    ) -> EvaluationReleaseFreeze: ...
+
+    def get_evaluation_release_freeze(
+        self,
+        freeze_id: str,
+    ) -> EvaluationReleaseFreeze | None: ...
+
+    def list_evaluation_release_freezes(self) -> list[EvaluationReleaseFreeze]: ...
+
+    def find_frozen_release_for_holdout(
+        self,
+        dataset_version: str,
+        dataset_hash: str,
+    ) -> EvaluationReleaseFreeze | None: ...
+
+    def mark_evaluation_release_opened(
+        self,
+        freeze_id: str,
+        opened_at: datetime,
+    ) -> EvaluationReleaseFreeze: ...
+
 
 def _without_mongo_id(document: dict[str, object]) -> dict[str, object]:
     return {key: value for key, value in document.items() if key != "_id"}
@@ -61,6 +86,7 @@ class MongoEvaluationRepository:
         self.database = self.client[settings.mongodb_database]
         self.datasets = self.database["evaluation_datasets"]
         self.runs = self.database["evaluation_runs"]
+        self.freezes = self.database["evaluation_release_freezes"]
 
     def save_evaluation_dataset(self, dataset: EvaluationDataset) -> EvaluationDataset:
         self.datasets.update_one(
@@ -186,4 +212,68 @@ class MongoEvaluationRepository:
         existing = self.get_evaluation_run(evaluation_run_id)
         if existing is None:
             raise KeyError(evaluation_run_id)
+        return existing
+
+    def save_evaluation_release_freeze(
+        self,
+        freeze: EvaluationReleaseFreeze,
+    ) -> EvaluationReleaseFreeze:
+        self.freezes.update_one(
+            {"release_version": freeze.release_version},
+            {"$setOnInsert": freeze.model_dump(mode="python")},
+            upsert=True,
+        )
+        document = self.freezes.find_one(
+            {"release_version": freeze.release_version}, {"_id": 0}
+        )
+        stored = EvaluationReleaseFreeze.model_validate(document)
+        if stored.freeze_hash != freeze.freeze_hash:
+            raise ValueError("The release version already has a different immutable freeze.")
+        return stored
+
+    def get_evaluation_release_freeze(
+        self,
+        freeze_id: str,
+    ) -> EvaluationReleaseFreeze | None:
+        document = self.freezes.find_one({"freeze_id": freeze_id}, {"_id": 0})
+        return EvaluationReleaseFreeze.model_validate(document) if document else None
+
+    def list_evaluation_release_freezes(self) -> list[EvaluationReleaseFreeze]:
+        return [
+            EvaluationReleaseFreeze.model_validate(document)
+            for document in self.freezes.find({}, {"_id": 0}).sort("created_at", -1)
+        ]
+
+    def find_frozen_release_for_holdout(
+        self,
+        dataset_version: str,
+        dataset_hash: str,
+    ) -> EvaluationReleaseFreeze | None:
+        document = self.freezes.find_one(
+            {
+                "holdout_dataset_version": dataset_version,
+                "holdout_dataset_hash": dataset_hash,
+                "status": "frozen",
+            },
+            {"_id": 0},
+            sort=[("created_at", -1)],
+        )
+        return EvaluationReleaseFreeze.model_validate(document) if document else None
+
+    def mark_evaluation_release_opened(
+        self,
+        freeze_id: str,
+        opened_at: datetime,
+    ) -> EvaluationReleaseFreeze:
+        document = self.freezes.find_one_and_update(
+            {"freeze_id": freeze_id, "status": "frozen"},
+            {"$set": {"status": "opened", "opened_at": opened_at}},
+            projection={"_id": 0},
+            return_document=ReturnDocument.AFTER,
+        )
+        if document:
+            return EvaluationReleaseFreeze.model_validate(_without_mongo_id(document))
+        existing = self.get_evaluation_release_freeze(freeze_id)
+        if existing is None:
+            raise KeyError(freeze_id)
         return existing

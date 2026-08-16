@@ -4,7 +4,10 @@ import type {
   AssetAccess,
   CorpusStandardizationJob,
   CorpusStandardizationMetadata,
+  CorpusPublicationBatch,
+  CorpusPublicationReview,
   EvaluationDataset,
+  EvaluationReleaseFreeze,
   EvaluationRun,
   IngestionJob,
   KnowledgeDocumentListResponse,
@@ -213,6 +216,20 @@ export async function uploadCorpus(
   });
 }
 
+export const listCorpusPublicationBatches = () =>
+  request<CorpusPublicationBatch[]>("/corpus-publication-batches");
+export const getCorpusPublicationBatch = (batchId: string) =>
+  request<CorpusPublicationBatch>(`/corpus-publication-batches/${batchId}`);
+export const publishCorpus = (review: CorpusPublicationReview) =>
+  request<CorpusPublicationBatch>("/corpus-publication-batches", {
+    method: "POST",
+    body: JSON.stringify(review)
+  });
+export const retryCorpusPublication = (batchId: string) =>
+  request<CorpusPublicationBatch>(`/corpus-publication-batches/${batchId}/retry`, {
+    method: "POST"
+  });
+
 export function listKnowledgeDocuments(input: {
   query?: string;
   lifecycle?: string;
@@ -275,6 +292,8 @@ export const getTrace = (traceId: string) =>
 
 export const listEvaluationDatasets = () =>
   request<EvaluationDataset[]>("/evaluation-datasets");
+export const listEvaluationReleaseFreezes = () =>
+  request<EvaluationReleaseFreeze[]>("/evaluation-release-freezes");
 export const listEvaluations = () => request<EvaluationRun[]>("/evaluation-runs");
 export const getEvaluation = (runId: string) =>
   request<EvaluationRun>(`/evaluation-runs/${runId}`);

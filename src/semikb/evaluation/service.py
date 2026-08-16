@@ -12,6 +12,11 @@ from statistics import mean
 from typing import Any, Protocol
 
 from semikb.config import Settings
+from semikb.contracts.evaluation_governance import (
+    CreateEvaluationReleaseFreezeRequest,
+    EvaluationReleaseFreeze,
+    RegisterEvaluationDatasetRequest,
+)
 from semikb.contracts.models import (
     ActorScope,
     Chunk,
@@ -54,11 +59,13 @@ class EvaluationService:
         retrieval: EvaluationRetrieval,
         dataset_root: Path,
         settings: Settings | None = None,
+        publication_repository: Any | None = None,
     ) -> None:
         self.repository = repository
         self.dataset_root = dataset_root
         self.retrieval = retrieval
         self.settings = settings or Settings(_env_file=None, demo_mode=True)
+        self.publication_repository = publication_repository
 
     def create_run(
         self,
@@ -70,12 +77,29 @@ class EvaluationService:
     ) -> EvaluationRun:
         if retrieval_profile not in _PROFILE_OPTIONS:
             raise ValueError(f"Unsupported retrieval profile: {retrieval_profile}")
-        dataset = self._load_dataset(dataset_version)
+        dataset = self.repository.get_evaluation_dataset(dataset_version)
+        if dataset is None:
+            dataset = self._load_dataset(dataset_version)
         dataset = self.repository.save_evaluation_dataset(dataset)
+        release_freeze = None
         if dataset.purpose is EvaluationDatasetPurpose.HOLDOUT:
+            release_freeze = self.repository.find_frozen_release_for_holdout(
+                dataset.dataset_version,
+                dataset.dataset_hash,
+            )
+            if release_freeze is None:
+                raise ValueError(
+                    "A sealed holdout can run only after code, configuration, corpus, and datasets "
+                    "have been frozen into a release snapshot."
+                )
+            opened_at = datetime.now(UTC)
+            release_freeze = self.repository.mark_evaluation_release_opened(
+                release_freeze.freeze_id,
+                opened_at,
+            )
             dataset = self.repository.mark_evaluation_dataset_opened(
                 dataset.dataset_version,
-                datetime.now(UTC),
+                opened_at,
             )
         if baseline_run_id:
             baseline = self.repository.get_evaluation_run(baseline_run_id)
@@ -92,6 +116,8 @@ class EvaluationService:
             dataset_opened_at=dataset.opened_at,
             dataset_leakage_status=dataset.leakage_status,
             source_snapshot_hash=dataset.source_snapshot_hash,
+            release_freeze_id=(release_freeze.freeze_id if release_freeze else None),
+            release_freeze_hash=(release_freeze.freeze_hash if release_freeze else None),
             baseline_run_id=baseline_run_id,
             requested_by=requested_by,
             retrieval_profile=retrieval_profile,
@@ -166,6 +192,122 @@ class EvaluationService:
 
     def list_datasets(self) -> list[EvaluationDataset]:
         return self.repository.list_evaluation_datasets()
+
+    def register_dataset(
+        self,
+        request: RegisterEvaluationDatasetRequest,
+    ) -> EvaluationDataset:
+        existing = self.repository.get_evaluation_dataset(request.dataset_version)
+        if existing is not None:
+            same_request = (
+                existing.source_kind == request.source_kind
+                and existing.description == request.description
+                and existing.purpose is request.purpose
+                and existing.source_snapshot_hash == request.source_snapshot_hash.lower()
+                and existing.leakage_status is request.leakage_status
+                and existing.cases == request.cases
+                and bool(existing.sealed_at) is request.seal
+            )
+            if not same_request:
+                raise ValueError(
+                    f"Dataset version {request.dataset_version!r} already has different content."
+                )
+            return existing
+        sealed_at = datetime.now(UTC) if request.seal else None
+        canonical_payload = {
+            "dataset_version": request.dataset_version,
+            "source_kind": request.source_kind,
+            "description": request.description,
+            "purpose": request.purpose.value,
+            "sealed_at": sealed_at.isoformat() if sealed_at else None,
+            "source_snapshot_hash": request.source_snapshot_hash.lower(),
+            "leakage_status": request.leakage_status.value,
+            "cases": [case.model_dump(mode="json") for case in request.cases],
+        }
+        canonical = json.dumps(
+            canonical_payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        dataset = EvaluationDataset(
+            dataset_version=request.dataset_version,
+            dataset_hash=hashlib.sha256(canonical).hexdigest(),
+            source_kind=request.source_kind,
+            description=request.description,
+            purpose=request.purpose,
+            sealed_at=sealed_at,
+            source_snapshot_hash=request.source_snapshot_hash.lower(),
+            leakage_status=request.leakage_status,
+            case_count=len(request.cases),
+            cases=request.cases,
+        )
+        return self.repository.save_evaluation_dataset(dataset)
+
+    def create_release_freeze(
+        self,
+        request: CreateEvaluationReleaseFreezeRequest,
+        *,
+        created_by: str,
+    ) -> EvaluationReleaseFreeze:
+        if self.publication_repository is not None:
+            for batch_id in request.publication_batch_ids:
+                batch = self.publication_repository.get(batch_id)
+                if batch is None or batch.status.value != "completed":
+                    raise ValueError("Every release publication batch must exist and be completed.")
+        versions = {
+            EvaluationDatasetPurpose.DEVELOPMENT: request.development_dataset_version,
+            EvaluationDatasetPurpose.CALIBRATION: request.calibration_dataset_version,
+            EvaluationDatasetPurpose.REGRESSION: request.regression_dataset_version,
+            EvaluationDatasetPurpose.HOLDOUT: request.holdout_dataset_version,
+        }
+        datasets: dict[EvaluationDatasetPurpose, EvaluationDataset] = {}
+        for purpose, version in versions.items():
+            dataset = self.repository.get_evaluation_dataset(version)
+            if dataset is None:
+                raise ValueError(f"Evaluation dataset {version!r} is not registered.")
+            if dataset.purpose is not purpose:
+                raise ValueError(f"Evaluation dataset {version!r} has the wrong purpose.")
+            if purpose is EvaluationDatasetPurpose.HOLDOUT and dataset.opened_at is not None:
+                raise ValueError("An opened holdout cannot be reused in a new release freeze.")
+            datasets[purpose] = dataset
+        dataset_hashes = {
+            purpose.value: dataset.dataset_hash for purpose, dataset in datasets.items()
+        }
+        retrieval_config = self._retrieval_config("full")
+        component_versions = self._configured_component_versions()
+        canonical_payload = {
+            "request": request.model_dump(mode="json"),
+            "dataset_hashes": dataset_hashes,
+            "retrieval_config": retrieval_config,
+            "component_versions": component_versions,
+        }
+        freeze_hash = hashlib.sha256(
+            json.dumps(
+                canonical_payload,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+        holdout = datasets[EvaluationDatasetPurpose.HOLDOUT]
+        freeze = EvaluationReleaseFreeze(
+            release_version=request.release_version,
+            source_commit=request.source_commit,
+            publication_batch_ids=request.publication_batch_ids,
+            dataset_hashes=dataset_hashes,
+            holdout_dataset_version=holdout.dataset_version,
+            holdout_dataset_hash=holdout.dataset_hash,
+            retrieval_config=retrieval_config,
+            component_versions=component_versions,
+            freeze_hash=freeze_hash,
+            created_by=created_by,
+            notes=request.notes,
+        )
+        return self.repository.save_evaluation_release_freeze(freeze)
+
+    def list_release_freezes(self) -> list[EvaluationReleaseFreeze]:
+        return self.repository.list_evaluation_release_freezes()
 
     def prepare_retry(self, evaluation_run_id: str) -> EvaluationRun:
         return self.repository.prepare_evaluation_retry(evaluation_run_id)

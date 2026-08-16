@@ -83,6 +83,7 @@ def build_governed_records(
         retrieval_policy=RetrievalPolicy(
             metadata.get("retrieval_policy", RetrievalPolicy.STANDARD.value)
         ),
+        source_index_artifacts=metadata.get("source_index_artifacts", []),
         **shared,
     )
     chunk_id_by_draft = {
@@ -163,6 +164,9 @@ def _build_chunks(
                     "document_title": document.title,
                     "document_type": document.document_type,
                     "retrieval_policy": document.retrieval_policy.value,
+                    "source_index_artifacts": [
+                        item.value for item in document.source_index_artifacts
+                    ],
                     "source_location": draft.location.model_dump(mode="json"),
                     "parse_contract_version": parsed.contract_version,
                     "provider_name": parsed.provenance.provider_name,
@@ -270,6 +274,9 @@ def _append_unreferenced_image_chunks(
                     "document_title": document.title,
                     "document_type": document.document_type,
                     "retrieval_policy": document.retrieval_policy.value,
+                    "source_index_artifacts": [
+                        item.value for item in document.source_index_artifacts
+                    ],
                 },
                 parser_name=document.parser_name,
                 parser_version=document.parser_version,

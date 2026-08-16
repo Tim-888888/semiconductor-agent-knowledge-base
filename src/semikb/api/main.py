@@ -35,6 +35,14 @@ from semikb.contracts.corpus import (
     CorpusStandardizationStatus,
     CorpusUploadedFile,
 )
+from semikb.contracts.corpus_publication import (
+    CorpusPublicationReview,
+    CorpusPublicationStatus,
+)
+from semikb.contracts.evaluation_governance import (
+    CreateEvaluationReleaseFreezeRequest,
+    RegisterEvaluationDatasetRequest,
+)
 from semikb.contracts.models import (
     ActorScope,
     CreateEvaluationRunRequest,
@@ -44,6 +52,7 @@ from semikb.contracts.models import (
     DocumentLifecycleOperationRecord,
     DocumentLifecycleOperationStatus,
     DocumentRevisionSelector,
+    EvaluationDataset,
     EvaluationStatus,
     IngestDocumentRequest,
     IngestionStatus,
@@ -56,6 +65,7 @@ from semikb.contracts.models import (
     WithdrawDocumentRevisionRequest,
 )
 from semikb.contracts.streaming import StreamMessageRequest, encode_sse_event
+from semikb.rag_ingestion.corpus_publication import CorpusPublicationError
 from semikb.rag_ingestion.document_lifecycle import (
     LifecycleStateConflictError,
     LifecycleValidationError,
@@ -67,6 +77,7 @@ from semikb.storage.conversations import (
     MessageRequestInProgressError,
     ThreadBusyError,
 )
+from semikb.storage.corpus_publication import CorpusPublicationConflictError
 from semikb.storage.corpus_standardization import CorpusStandardizationConflictError
 from semikb.storage.external import health_payload
 from semikb.storage.knowledge_documents import (
@@ -90,6 +101,14 @@ def _require_knowledge_admin(actor_scope: ActorScope) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Knowledge administrator role required.",
         )
+
+
+def _evaluation_dataset_payload(dataset: EvaluationDataset) -> dict[str, object]:
+    payload = dataset.model_dump(mode="json")
+    if dataset.purpose.value == "holdout" and dataset.opened_at is None:
+        payload.pop("cases", None)
+        payload["cases_redacted"] = True
+    return payload
 
 
 app = FastAPI(title="Semiconductor Agent Knowledge Base", version="0.1.0")
@@ -624,6 +643,80 @@ def retry_corpus_standardization_job(
     return job.model_dump(mode="json")
 
 
+@app.post("/api/v1/corpus-publication-batches", status_code=status.HTTP_202_ACCEPTED)
+def create_corpus_publication_batch(
+    review: CorpusPublicationReview,
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> dict[str, object]:
+    _require_knowledge_admin(actor_scope)
+    try:
+        batch = container.corpus_publication.submit(
+            review,
+            created_by=actor_scope.user_id,
+        )
+        if container.settings.demo_mode:
+            batch = container.corpus_publication.process(batch.batch_id)
+        else:
+            _enqueue_corpus_publication(container, batch.batch_id)
+    except CorpusPublicationConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except CorpusPublicationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": exc.code, "message": exc.safe_message},
+        ) from exc
+    return batch.model_dump(mode="json")
+
+
+@app.get("/api/v1/corpus-publication-batches")
+def list_corpus_publication_batches(
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> list[dict[str, object]]:
+    _require_knowledge_admin(actor_scope)
+    return [
+        batch.model_dump(mode="json") for batch in container.corpus_publication.list()
+    ]
+
+
+@app.get("/api/v1/corpus-publication-batches/{batch_id}")
+def get_corpus_publication_batch(
+    batch_id: str,
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> dict[str, object]:
+    _require_knowledge_admin(actor_scope)
+    batch = container.corpus_publication.get(batch_id)
+    if batch is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Corpus publication batch not found.",
+        )
+    return batch.model_dump(mode="json")
+
+
+@app.post("/api/v1/corpus-publication-batches/{batch_id}/retry")
+def retry_corpus_publication_batch(
+    batch_id: str,
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> dict[str, object]:
+    _require_knowledge_admin(actor_scope)
+    try:
+        batch = container.corpus_publication.prepare_retry(batch_id)
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Corpus publication batch not found.",
+        ) from exc
+    if container.settings.demo_mode:
+        batch = container.corpus_publication.process(batch.batch_id)
+    else:
+        _enqueue_corpus_publication(container, batch.batch_id)
+    return batch.model_dump(mode="json")
+
+
 @app.get(
     "/api/v1/knowledge-documents",
     response_model=KnowledgeDocumentListResponse,
@@ -861,6 +954,30 @@ def _enqueue_corpus_standardization(
         ) from exc
 
 
+def _enqueue_corpus_publication(
+    container: ApplicationContainer,
+    batch_id: str,
+) -> None:
+    from semikb.workers.tasks import process_corpus_publication
+
+    batch = container.corpus_publication.get(batch_id)
+    if batch is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Corpus publication batch not found.",
+        )
+    if batch.status is not CorpusPublicationStatus.QUEUED:
+        return
+    try:
+        process_corpus_publication.delay(batch_id)
+    except Exception as exc:
+        container.corpus_publication.mark_queue_submission_failed(batch_id)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Corpus publication queue is unavailable. Retry the failed batch later.",
+        ) from exc
+
+
 def _ingest_http_exception(exc: IngestError) -> HTTPException:
     return HTTPException(
         status_code=exc.descriptor.http_status,
@@ -979,7 +1096,59 @@ def list_evaluation_datasets(
     actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
 ) -> list[dict[str, object]]:
     _require_knowledge_admin(actor_scope)
-    return [dataset.model_dump(mode="json") for dataset in container.evaluation.list_datasets()]
+    return [
+        _evaluation_dataset_payload(dataset)
+        for dataset in container.evaluation.list_datasets()
+    ]
+
+
+@app.post("/api/v1/evaluation-datasets", status_code=status.HTTP_201_CREATED)
+def register_evaluation_dataset(
+    request: RegisterEvaluationDatasetRequest,
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> dict[str, object]:
+    _require_knowledge_admin(actor_scope)
+    try:
+        dataset = container.evaluation.register_dataset(request)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+    return _evaluation_dataset_payload(dataset)
+
+
+@app.post("/api/v1/evaluation-release-freezes", status_code=status.HTTP_201_CREATED)
+def create_evaluation_release_freeze(
+    request: CreateEvaluationReleaseFreezeRequest,
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> dict[str, object]:
+    _require_knowledge_admin(actor_scope)
+    try:
+        freeze = container.evaluation.create_release_freeze(
+            request,
+            created_by=actor_scope.user_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    return freeze.model_dump(mode="json")
+
+
+@app.get("/api/v1/evaluation-release-freezes")
+def list_evaluation_release_freezes(
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> list[dict[str, object]]:
+    _require_knowledge_admin(actor_scope)
+    return [
+        freeze.model_dump(mode="json")
+        for freeze in container.evaluation.list_release_freezes()
+    ]
 
 
 @app.get("/api/v1/evaluation-runs")

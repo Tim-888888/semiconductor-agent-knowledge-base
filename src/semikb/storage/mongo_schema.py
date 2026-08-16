@@ -91,6 +91,16 @@ MONGO_INDEX_SPECS: dict[str, tuple[MongoIndexSpec, ...]] = {
         ),
         _index("status_created_at", "status", "created_at"),
     ),
+    "corpus_publication_batches": (
+        _index("batch_id", "batch_id", unique=True),
+        _index("review_request_id", "review.request_id", unique=True),
+        _index(
+            "standardization_job_status_created_at",
+            "review.standardization_job_id",
+            "status",
+            "created_at",
+        ),
+    ),
     "index_releases": (
         _index("index_version", "index_version", unique=True),
     ),
@@ -100,6 +110,12 @@ MONGO_INDEX_SPECS: dict[str, tuple[MongoIndexSpec, ...]] = {
     ),
     "evaluation_datasets": (
         _index("dataset_version", "dataset_version", unique=True),
+        _index("purpose_created_at", "purpose", "created_at"),
+    ),
+    "evaluation_release_freezes": (
+        _index("freeze_id", "freeze_id", unique=True),
+        _index("release_version", "release_version", unique=True),
+        _index("holdout_hash_status", "holdout_dataset_hash", "status"),
     ),
     "evaluation_runs": (
         _index("evaluation_run_id", "evaluation_run_id", unique=True),

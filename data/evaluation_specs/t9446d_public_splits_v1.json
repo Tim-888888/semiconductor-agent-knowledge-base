@@ -1,0 +1,91 @@
+{
+  "schema_version": "semikb-evaluation-public-spec-v1",
+  "datasets": [
+    {
+      "dataset_version": "t9446d-development-v1",
+      "purpose": "development",
+      "description": "Visible development questions for corpus publication plumbing.",
+      "cases": [
+        {
+          "case_id": "dev-secom-profile-001",
+          "question": "SECOM 的 secom.data 数据画像记录了多少列？",
+          "expected_artifacts": [
+            {"corpus_id": "public-uci-secom-179", "relative_path": "secom/secom.data"}
+          ],
+          "tags": ["table", "development"]
+        }
+      ]
+    },
+    {
+      "dataset_version": "t9446d-calibration-v1",
+      "purpose": "calibration",
+      "description": "Visible calibration questions, never used as holdout evidence.",
+      "cases": [
+        {
+          "case_id": "cal-secom-label-001",
+          "question": "secom_labels.data 标签文件的有界数据画像包含哪些列？",
+          "expected_artifacts": [
+            {"corpus_id": "public-uci-secom-179", "relative_path": "secom/secom_labels.data"}
+          ],
+          "tags": ["label", "calibration"]
+        }
+      ]
+    },
+    {
+      "dataset_version": "demo-public-v1",
+      "purpose": "regression",
+      "description": "Public interview-demo regression questions; not an unbiased generalization metric.",
+      "cases": [
+        {
+          "case_id": "demo-public-secom-001",
+          "question": "SECOM 制造数据表的列数和采样画像是什么？",
+          "expected_artifacts": [
+            {"corpus_id": "public-uci-secom-179", "relative_path": "secom/secom.data"}
+          ],
+          "tags": ["real_corpus", "table_profile"]
+        },
+        {
+          "case_id": "demo-public-secom-label-002",
+          "question": "SECOM 的标签文件在知识库中以什么有界形式保存？",
+          "expected_artifacts": [
+            {"corpus_id": "public-uci-secom-179", "relative_path": "secom/secom_labels.data"}
+          ],
+          "tags": ["real_corpus", "label_profile"]
+        },
+        {
+          "case_id": "demo-public-wafer-paper-003",
+          "question": "这篇晶圆图论文如何讨论 wafer map 缺陷模式或检测任务？",
+          "expected_artifacts": [
+            {"corpus_id": "public-arxiv-wafer-map-2411-11029", "relative_path": "wafer-map-2411.11029.pdf"}
+          ],
+          "tags": ["real_corpus", "paper", "document"]
+        },
+        {
+          "case_id": "demo-public-no-evidence-004",
+          "question": "当前知识库中记录的 EUV 光刻机镜头供应合同编号是什么？",
+          "expected_outcome": "no_evidence",
+          "tags": ["no_evidence", "unknown_question"],
+          "failure_labels": ["unsupported_claim_risk"]
+        },
+        {
+          "case_id": "demo-public-acl-005",
+          "question": "SECOM 制造数据表的列数是多少？",
+          "expected_artifacts": [
+            {"corpus_id": "public-uci-secom-179", "relative_path": "secom/secom.data"}
+          ],
+          "expected_outcome": "no_evidence",
+          "actor_scope": {
+            "user_id": "t9446d-no-scope",
+            "roles": ["engineer"],
+            "access_scope_keys": [],
+            "fabs": [],
+            "products": [],
+            "tool_ids": []
+          },
+          "tags": ["acl", "negative"],
+          "failure_labels": ["acl_leakage"]
+        }
+      ]
+    }
+  ]
+}

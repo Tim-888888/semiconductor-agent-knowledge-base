@@ -2,6 +2,7 @@
 
 from semikb.bootstrap import get_container
 from semikb.contracts.corpus import CorpusStandardizationStatus
+from semikb.contracts.corpus_publication import CorpusPublicationStatus
 from semikb.contracts.models import (
     DocumentLifecycleOperationStatus,
     IngestionStatus,
@@ -89,6 +90,49 @@ def process_corpus_standardization(self, job_id: str) -> dict[str, object]:
             countdown=2 ** (self.request.retries + 1),
         )
     return job.model_dump(mode="json")
+
+
+@celery_app.task(
+    bind=True,
+    name="semikb.corpus.publish",
+    acks_late=True,
+    reject_on_worker_lost=True,
+    max_retries=3,
+    soft_time_limit=1800,
+    time_limit=2100,
+)
+def process_corpus_publication(self, batch_id: str) -> dict[str, object]:
+    service = get_container().corpus_publication
+    existing = service.get(batch_id)
+    if existing is None:
+        raise KeyError(batch_id)
+    if existing.status is CorpusPublicationStatus.FAILED and existing.error_code in {
+        "CONNECTIONERROR",
+        "MILVUSEXCEPTION",
+        "S3ERROR",
+        "SERVERSELECTIONTIMEOUTERROR",
+        "TIMEOUTERROR",
+    }:
+        existing = service.prepare_retry(batch_id)
+    batch = service.process(existing.batch_id, execution_id=self.request.id)
+    if (
+        batch.status is CorpusPublicationStatus.FAILED
+        and batch.error_code
+        in {
+            "CONNECTIONERROR",
+            "MILVUSEXCEPTION",
+            "S3ERROR",
+            "SERVERSELECTIONTIMEOUTERROR",
+            "TIMEOUTERROR",
+        }
+        and self.request.retries < self.max_retries
+    ):
+        service.prepare_retry(batch_id)
+        raise self.retry(
+            exc=ConnectionError("Transient corpus publication failure."),
+            countdown=2 ** (self.request.retries + 1),
+        )
+    return batch.model_dump(mode="json")
 
 
 @celery_app.task(

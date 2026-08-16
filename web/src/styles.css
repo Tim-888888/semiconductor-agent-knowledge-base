@@ -263,6 +263,10 @@ td small { margin-top: 4px; color: #87918c; font-size: 9px; overflow-wrap: anywh
 .corpus-file-item strong, .corpus-file-item span { display: block; overflow-wrap: anywhere; }
 .corpus-file-item div > span, .corpus-file-item > span { margin-top: 3px; color: var(--muted); }
 .corpus-file-item small { grid-column: 1 / -1; color: var(--amber); overflow-wrap: anywhere; }
+.publication-selection .corpus-file-item { grid-template-columns: 18px minmax(0, 1fr); align-items: start; cursor: pointer; }
+.publication-selection .corpus-file-item input, .publication-ack input { width: 15px; height: 15px; margin: 1px 0 0; accent-color: var(--green); }
+.publication-selection .corpus-file-item.disabled { cursor: not-allowed; opacity: .55; }
+.publication-ack { display: flex; align-items: flex-start; gap: 9px; padding: 10px 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
 .progress { width: 110px; height: 5px; margin-bottom: 4px; background: #dfe4e0; }
 .progress span { display: block; height: 100%; margin: 0; background: var(--green); }
 .knowledge-documents-view table { min-width: 820px; }

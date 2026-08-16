@@ -377,6 +377,59 @@ export type CorpusStandardizationJob = {
   }>;
 };
 
+export type CorpusPublicationReview = {
+  request_id: string;
+  standardization_job_id: string;
+  expected_snapshot_hash: string;
+  selected_file_ids: string[];
+  acknowledged_warning_codes: string[];
+  source_type: SourceManifestType;
+  content_origin: SourceContentOrigin;
+  source_url: string;
+  license_name: string;
+  license_status: "verified" | "declared";
+  redistribution_policy: "allowed" | "restricted";
+  license_notes: string;
+  access_scope_key: string;
+  review_note: string;
+  retrieval_policy: "standard" | "protected";
+};
+
+export type CorpusPublicationBatch = {
+  batch_id: string;
+  review: CorpusPublicationReview;
+  status: "queued" | "preflight" | "publishing" | "reconciling" | "completed" | "failed";
+  progress: number;
+  attempt: number;
+  published_count: number;
+  failed_count: number;
+  error_code?: string | null;
+  safe_error_summary?: string | null;
+  created_at: string;
+  finished_at?: string | null;
+  items: Array<{
+    file_id: string;
+    relative_path: string;
+    artifact_kind: "document" | "tabular_profile" | "image_text";
+    document_id: string;
+    revision: string;
+    status: "pending" | "publishing" | "published" | "failed";
+    ingestion_job_id?: string | null;
+    error_code?: string | null;
+    safe_error_summary?: string | null;
+    reconciliation?: {
+      document_count: number;
+      chunk_count: number;
+      image_count: number;
+      table_count: number;
+      vector_count: number;
+      object_count: number;
+      passed: boolean;
+      warning_codes: string[];
+    } | null;
+  }>;
+};
+
 export type TraceCandidate = {
   chunk_id: string;
   document_id: string;
@@ -459,6 +512,8 @@ export type EvaluationRun = {
   dataset_opened_at?: string | null;
   dataset_leakage_status: "unreviewed" | "cleared" | "contaminated";
   source_snapshot_hash?: string | null;
+  release_freeze_id?: string | null;
+  release_freeze_hash?: string | null;
   baseline_run_id?: string | null;
   requested_by: string;
   status: string;
@@ -474,6 +529,24 @@ export type EvaluationRun = {
   created_at: string;
   started_at?: string | null;
   finished_at?: string | null;
+};
+
+export type EvaluationReleaseFreeze = {
+  freeze_id: string;
+  release_version: string;
+  source_commit: string;
+  publication_batch_ids: string[];
+  dataset_hashes: Record<string, string>;
+  holdout_dataset_version: string;
+  holdout_dataset_hash: string;
+  retrieval_config: Record<string, unknown>;
+  component_versions: Record<string, string>;
+  freeze_hash: string;
+  status: "frozen" | "opened";
+  created_by: string;
+  notes: string;
+  created_at: string;
+  opened_at?: string | null;
 };
 
 export type EvaluationDataset = {

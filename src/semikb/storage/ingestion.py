@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from semikb.contracts.models import (
     Chunk,
@@ -17,6 +17,9 @@ from semikb.contracts.models import (
     TableAsset,
 )
 from semikb.rag_retrieval.encoders import HybridEmbedding
+
+if TYPE_CHECKING:
+    from semikb.contracts.corpus_publication import CorpusPublicationReconciliation
 
 
 class IngestionStore(Protocol):
@@ -156,3 +159,9 @@ class IngestionStore(Protocol):
     ) -> None: ...
 
     def compensate_document(self, document_id: str, revision: str) -> None: ...
+
+    def reconcile_published_document(
+        self,
+        document_id: str,
+        revision: str,
+    ) -> CorpusPublicationReconciliation: ...

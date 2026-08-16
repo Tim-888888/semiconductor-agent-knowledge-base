@@ -341,6 +341,7 @@ class DocumentRevision(BaseModel):
     embedding_version: str = "unknown"
     index_version: str = "v1"
     retrieval_policy: RetrievalPolicy = RetrievalPolicy.STANDARD
+    source_index_artifacts: list[SourceIndexArtifact] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=utc_now)
 
     @model_validator(mode="after")
@@ -1034,6 +1035,8 @@ class EvaluationRun(BaseModel):
     dataset_opened_at: datetime | None = None
     dataset_leakage_status: EvaluationLeakageStatus = EvaluationLeakageStatus.UNREVIEWED
     source_snapshot_hash: str | None = Field(default=None, pattern=r"^[0-9a-fA-F]{64}$")
+    release_freeze_id: str | None = None
+    release_freeze_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     baseline_run_id: str | None = None
     requested_by: str = "system"
     status: EvaluationStatus = EvaluationStatus.QUEUED
@@ -1120,6 +1123,7 @@ class IngestDocumentRequest(BaseModel):
     recipe_id: str | None = None
     recipe_version: str | None = None
     retrieval_policy: RetrievalPolicy = RetrievalPolicy.STANDARD
+    source_index_artifacts: list[SourceIndexArtifact] = Field(default_factory=list)
     images: list[dict[str, Any]] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -1154,6 +1158,7 @@ class IngestUploadMetadata(BaseModel):
     recipe_id: str | None = None
     recipe_version: str | None = None
     retrieval_policy: RetrievalPolicy = RetrievalPolicy.STANDARD
+    source_index_artifacts: list[SourceIndexArtifact] = Field(default_factory=list)
     images: list[dict[str, Any]] = Field(default_factory=list)
 
     @model_validator(mode="after")

@@ -6,3 +6,4 @@ def test_celery_app_registers_ingestion_tasks() -> None:
 
     assert "semikb.ingestion.process" in celery_app.tasks
     assert "semikb.ingestion.retry" in celery_app.tasks
+    assert "semikb.corpus.publish" in celery_app.tasks

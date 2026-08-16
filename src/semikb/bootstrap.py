@@ -11,6 +11,7 @@ from langgraph.store.mongodb import MongoDBStore
 from semikb.agent_runtime.service import ConversationService
 from semikb.config import Settings, get_settings
 from semikb.evaluation.service import EvaluationService
+from semikb.rag_ingestion.corpus_publication import CorpusPublicationService
 from semikb.rag_ingestion.corpus_standardization import CorpusStandardizationService
 from semikb.rag_ingestion.document_lifecycle import (
     KnowledgeDocumentLifecycleService,
@@ -22,6 +23,10 @@ from semikb.rag_retrieval.production_service import ProductionRetrievalService
 from semikb.rag_retrieval.service import RetrievalService
 from semikb.storage.clients import StorageClientFactory
 from semikb.storage.conversations import MongoConversationRepository
+from semikb.storage.corpus_publication import (
+    DemoCorpusPublicationRepository,
+    MongoCorpusPublicationRepository,
+)
 from semikb.storage.corpus_standardization import (
     DemoCorpusStandardizationRepository,
     ProductionCorpusStandardizationStore,
@@ -54,6 +59,19 @@ class ApplicationContainer:
         self.corpus_standardization = CorpusStandardizationService(
             self.corpus_standardization_store,
             settings,
+        )
+        self.corpus_publication_store = (
+            DemoCorpusPublicationRepository()
+            if settings.demo_mode
+            else MongoCorpusPublicationRepository(
+                StorageClientFactory(settings),
+                settings.mongodb_database,
+            )
+        )
+        self.corpus_publication = CorpusPublicationService(
+            self.corpus_publication_store,
+            self.corpus_standardization_store,
+            self.ingestion,
         )
         if settings.demo_mode:
             document_repository = DemoKnowledgeDocumentRepository(self.store)
@@ -88,6 +106,7 @@ class ApplicationContainer:
             self.retrieval,
             root / "data" / "golden_sets",
             settings,
+            publication_repository=self.corpus_publication_store,
         )
         if settings.demo_mode:
             self.conversation_store = self.store
