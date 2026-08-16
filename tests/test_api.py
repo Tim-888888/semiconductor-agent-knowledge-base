@@ -396,3 +396,50 @@ def test_evaluation_api_requires_admin_and_exposes_reproducible_run() -> None:
     datasets = client.get("/api/v1/evaluation-datasets", headers=admin_headers)
     assert datasets.status_code == 200
     assert datasets.json()[0]["dataset_version"] == "demo-v1"
+
+
+def test_corpus_standardization_api_requires_admin_and_returns_review_inventory() -> None:
+    get_container.cache_clear()
+    client = TestClient(app)
+    engineer_token = client.post(
+        "/api/v1/auth/demo-token",
+        json={"user_id": "corpus_engineer", "roles": ["engineer"]},
+    ).json()["access_token"]
+    admin_token = client.post(
+        "/api/v1/auth/demo-token",
+        json={"user_id": "corpus_admin", "roles": ["knowledge_admin"]},
+    ).json()["access_token"]
+    metadata = {
+        "corpus_id": "api-generic-corpus",
+        "snapshot_version": "v1",
+        "display_name": "API generic corpus",
+        "source_kind": "user_upload",
+        "source_license": "unknown",
+        "corpus_kind": "auto",
+    }
+    files = [
+        ("files", ("guide.md", b"# Guide\n\nGeneric process note.", "text/markdown")),
+        ("files", ("signals.csv", b"signal,value\npressure,12\n", "text/csv")),
+    ]
+    denied = client.post(
+        "/api/v1/corpus-standardization-jobs/upload",
+        data={"metadata": json.dumps(metadata)},
+        files=files,
+        headers={"Authorization": f"Bearer {engineer_token}"},
+    )
+    assert denied.status_code == 403
+
+    accepted = client.post(
+        "/api/v1/corpus-standardization-jobs/upload",
+        data={"metadata": json.dumps(metadata)},
+        files=files,
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert accepted.status_code == 201
+    assert accepted.json()["status"] == "review_required"
+    assert accepted.json()["files_count"] == 2
+    assert {item["role"] for item in accepted.json()["report"]["files"]} == {
+        "document",
+        "table",
+    }
+    assert get_container().store.documents.get(("api-generic-corpus", "v1")) is None

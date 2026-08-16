@@ -28,6 +28,13 @@ from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from semikb.api.auth import create_demo_token, get_actor_scope
 from semikb.bootstrap import ApplicationContainer, get_container
 from semikb.config import Settings
+from semikb.contracts.corpus import (
+    CorpusSidecar,
+    CorpusStandardizationError,
+    CorpusStandardizationMetadata,
+    CorpusStandardizationStatus,
+    CorpusUploadedFile,
+)
 from semikb.contracts.models import (
     ActorScope,
     CreateEvaluationRunRequest,
@@ -60,6 +67,7 @@ from semikb.storage.conversations import (
     MessageRequestInProgressError,
     ThreadBusyError,
 )
+from semikb.storage.corpus_standardization import CorpusStandardizationConflictError
 from semikb.storage.external import health_payload
 from semikb.storage.knowledge_documents import (
     LifecycleOperationRequestConflictError,
@@ -497,6 +505,125 @@ def retry_ingestion_job(
     return job.model_dump(mode="json")
 
 
+@app.post("/api/v1/corpus-standardization-jobs/upload", status_code=status.HTTP_201_CREATED)
+async def upload_corpus_standardization_job(
+    files: Annotated[list[UploadFile], File(...)],
+    metadata: Annotated[str, Form(...)],
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+    sidecar: Annotated[str | None, Form()] = None,
+) -> dict[str, object]:
+    """Create an immutable multi-file snapshot and prepare it for human review."""
+
+    _require_knowledge_admin(actor_scope)
+    try:
+        parsed_metadata = CorpusStandardizationMetadata.model_validate(json.loads(metadata))
+        parsed_sidecar = (
+            CorpusSidecar.model_validate(json.loads(sidecar)) if sidecar else CorpusSidecar()
+        )
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid corpus metadata or sidecar JSON.",
+        ) from exc
+    uploads: list[CorpusUploadedFile] = []
+    total_bytes = 0
+    for file in files:
+        content = await file.read()
+        if not content:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Corpus files cannot be empty.",
+            )
+        total_bytes += len(content)
+        if total_bytes > container.settings.max_upload_mib * 1024 * 1024:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"Corpus upload exceeds the {container.settings.max_upload_mib} MiB limit.",
+            )
+        uploads.append(
+            CorpusUploadedFile(
+                relative_path=file.filename or "upload.bin",
+                content_type=file.content_type or "application/octet-stream",
+                content=content,
+            )
+        )
+    try:
+        job = await run_in_threadpool(
+            container.corpus_standardization.submit,
+            uploads,
+            parsed_metadata,
+            parsed_sidecar,
+            actor_scope.user_id,
+        )
+        if container.settings.demo_mode:
+            job = await run_in_threadpool(container.corpus_standardization.process, job.job_id)
+        else:
+            _enqueue_corpus_standardization(container, job.job_id)
+    except CorpusStandardizationConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except CorpusStandardizationError as exc:
+        code = (
+            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+            if exc.code == "CORPUS_UPLOAD_LIMIT_EXCEEDED"
+            else status.HTTP_422_UNPROCESSABLE_ENTITY
+        )
+        raise HTTPException(
+            status_code=code,
+            detail={"code": exc.code, "message": exc.safe_message},
+        ) from exc
+    return job.model_dump(mode="json")
+
+
+@app.get("/api/v1/corpus-standardization-jobs")
+def list_corpus_standardization_jobs(
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> list[dict[str, object]]:
+    _require_knowledge_admin(actor_scope)
+    return [
+        job.model_dump(mode="json")
+        for job in container.corpus_standardization.list_jobs()
+    ]
+
+
+@app.get("/api/v1/corpus-standardization-jobs/{job_id}")
+def get_corpus_standardization_job(
+    job_id: str,
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> dict[str, object]:
+    _require_knowledge_admin(actor_scope)
+    job = container.corpus_standardization.get_job(job_id)
+    if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Corpus standardization job not found.",
+        )
+    return job.model_dump(mode="json")
+
+
+@app.post("/api/v1/corpus-standardization-jobs/{job_id}/retry")
+def retry_corpus_standardization_job(
+    job_id: str,
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> dict[str, object]:
+    _require_knowledge_admin(actor_scope)
+    try:
+        job = container.corpus_standardization.prepare_retry(job_id)
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Corpus standardization job not found.",
+        ) from exc
+    if container.settings.demo_mode:
+        job = container.corpus_standardization.process(job.job_id)
+    else:
+        _enqueue_corpus_standardization(container, job.job_id)
+    return job.model_dump(mode="json")
+
+
 @app.get(
     "/api/v1/knowledge-documents",
     response_model=KnowledgeDocumentListResponse,
@@ -707,6 +834,30 @@ def _enqueue_ingestion(container: ApplicationContainer, job_id: str) -> None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Ingestion task queue is unavailable. Retry the failed job later.",
+        ) from exc
+
+
+def _enqueue_corpus_standardization(
+    container: ApplicationContainer,
+    job_id: str,
+) -> None:
+    from semikb.workers.tasks import process_corpus_standardization
+
+    job = container.corpus_standardization.get_job(job_id)
+    if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Corpus standardization job not found.",
+        )
+    if job.status is not CorpusStandardizationStatus.QUEUED:
+        return
+    try:
+        process_corpus_standardization.delay(job_id)
+    except Exception as exc:
+        container.corpus_standardization.mark_queue_submission_failed(job_id)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Corpus standardization queue is unavailable. Retry the failed job later.",
         ) from exc
 
 

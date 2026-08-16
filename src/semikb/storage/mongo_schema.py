@@ -80,6 +80,17 @@ MONGO_INDEX_SPECS: dict[str, tuple[MongoIndexSpec, ...]] = {
     "ingestion_job_events": (
         _index("job_id_created_at", "job_id", "created_at"),
     ),
+    "corpus_standardization_jobs": (
+        _index("job_id", "job_id", unique=True),
+        _index("idempotency_key", "idempotency_key", unique=True),
+        _index(
+            "corpus_snapshot_version",
+            "metadata.corpus_id",
+            "metadata.snapshot_version",
+            unique=True,
+        ),
+        _index("status_created_at", "status", "created_at"),
+    ),
     "index_releases": (
         _index("index_version", "index_version", unique=True),
     ),

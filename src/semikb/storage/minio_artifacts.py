@@ -21,6 +21,13 @@ def _segment(value: str, field: str) -> str:
     return value
 
 
+def _object_path(value: str) -> str:
+    parts = value.split("/")
+    if not parts or any(not part or part in {".", ".."} for part in parts):
+        raise ValueError("Unsafe corpus object path.")
+    return "/".join(quote(part, safe="._-") for part in parts)
+
+
 class MinioArtifactRepository:
     """Stores immutable source and derived artifacts under deterministic keys."""
 
@@ -147,6 +154,74 @@ class MinioArtifactRepository:
             asset_id=table_id,
             source_sha256=source_hash,
             content_class="table",
+        )
+
+    def store_corpus_raw(
+        self,
+        *,
+        corpus_id: str,
+        snapshot_hash: str,
+        category: str,
+        relative_path: str,
+        content: bytes,
+        content_type: str,
+    ) -> ObjectRef:
+        return self._store_corpus_object(
+            bucket="semikb-raw",
+            corpus_id=corpus_id,
+            snapshot_hash=snapshot_hash,
+            category=category,
+            relative_path=relative_path,
+            content=content,
+            content_type=content_type,
+        )
+
+    def store_corpus_derived(
+        self,
+        *,
+        corpus_id: str,
+        snapshot_hash: str,
+        category: str,
+        relative_path: str,
+        content: bytes,
+        content_type: str,
+    ) -> ObjectRef:
+        return self._store_corpus_object(
+            bucket="semikb-derived",
+            corpus_id=corpus_id,
+            snapshot_hash=snapshot_hash,
+            category=category,
+            relative_path=relative_path,
+            content=content,
+            content_type=content_type,
+        )
+
+    def _store_corpus_object(
+        self,
+        *,
+        bucket: str,
+        corpus_id: str,
+        snapshot_hash: str,
+        category: str,
+        relative_path: str,
+        content: bytes,
+        content_type: str,
+    ) -> ObjectRef:
+        digest = hashlib.sha256(content).hexdigest()
+        key = (
+            f"corpora/{_segment(corpus_id, 'corpus_id')}/"
+            f"{_segment(snapshot_hash, 'snapshot_hash')}/"
+            f"{_segment(category, 'category')}/{_object_path(relative_path)}"
+        )
+        return self._put(
+            bucket,
+            key,
+            content,
+            content_type,
+            digest,
+            corpus_id=corpus_id,
+            snapshot_hash=snapshot_hash,
+            content_class=category,
         )
 
     def load_object(self, object_ref: ObjectRef) -> bytes:

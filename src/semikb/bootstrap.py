@@ -11,6 +11,7 @@ from langgraph.store.mongodb import MongoDBStore
 from semikb.agent_runtime.service import ConversationService
 from semikb.config import Settings, get_settings
 from semikb.evaluation.service import EvaluationService
+from semikb.rag_ingestion.corpus_standardization import CorpusStandardizationService
 from semikb.rag_ingestion.document_lifecycle import (
     KnowledgeDocumentLifecycleService,
     NoopVectorProjectionRepository,
@@ -21,6 +22,10 @@ from semikb.rag_retrieval.production_service import ProductionRetrievalService
 from semikb.rag_retrieval.service import RetrievalService
 from semikb.storage.clients import StorageClientFactory
 from semikb.storage.conversations import MongoConversationRepository
+from semikb.storage.corpus_standardization import (
+    DemoCorpusStandardizationRepository,
+    ProductionCorpusStandardizationStore,
+)
 from semikb.storage.evaluations import MongoEvaluationRepository
 from semikb.storage.knowledge_documents import (
     DemoKnowledgeDocumentRepository,
@@ -41,6 +46,15 @@ class ApplicationContainer:
         )
         shared_encoder = None if settings.demo_mode else create_hybrid_encoder(settings)
         self.ingestion = IngestionService(self.ingestion_store, settings, encoder=shared_encoder)
+        self.corpus_standardization_store = (
+            DemoCorpusStandardizationRepository()
+            if settings.demo_mode
+            else ProductionCorpusStandardizationStore(settings)
+        )
+        self.corpus_standardization = CorpusStandardizationService(
+            self.corpus_standardization_store,
+            settings,
+        )
         if settings.demo_mode:
             document_repository = DemoKnowledgeDocumentRepository(self.store)
             lifecycle_vectors = NoopVectorProjectionRepository()

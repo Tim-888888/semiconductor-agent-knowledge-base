@@ -2,6 +2,8 @@ import type {
   AgentResponse,
   AgentStreamEvent,
   AssetAccess,
+  CorpusStandardizationJob,
+  CorpusStandardizationMetadata,
   EvaluationDataset,
   EvaluationRun,
   IngestionJob,
@@ -184,6 +186,31 @@ export async function uploadDocument(file: File, metadata: UploadMetadata): Prom
   body.set("file", file);
   body.set("metadata", JSON.stringify(metadata));
   return request<IngestionJob>("/ingestion-jobs/upload", { method: "POST", body });
+}
+
+export const listCorpusStandardizationJobs = () =>
+  request<CorpusStandardizationJob[]>("/corpus-standardization-jobs");
+export const getCorpusStandardizationJob = (jobId: string) =>
+  request<CorpusStandardizationJob>(`/corpus-standardization-jobs/${jobId}`);
+export const retryCorpusStandardizationJob = (jobId: string) =>
+  request<CorpusStandardizationJob>(`/corpus-standardization-jobs/${jobId}/retry`, {
+    method: "POST"
+  });
+export async function uploadCorpus(
+  files: File[],
+  metadata: CorpusStandardizationMetadata,
+  sidecar?: string
+): Promise<CorpusStandardizationJob> {
+  const body = new FormData();
+  files.forEach((file) => {
+    body.append("files", file, file.webkitRelativePath || file.name);
+  });
+  body.set("metadata", JSON.stringify(metadata));
+  if (sidecar?.trim()) body.set("sidecar", sidecar.trim());
+  return request<CorpusStandardizationJob>("/corpus-standardization-jobs/upload", {
+    method: "POST",
+    body
+  });
 }
 
 export function listKnowledgeDocuments(input: {

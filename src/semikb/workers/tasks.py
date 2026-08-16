@@ -1,10 +1,12 @@
 """Task entry points with idempotent service-level behavior."""
 
 from semikb.bootstrap import get_container
+from semikb.contracts.corpus import CorpusStandardizationStatus
 from semikb.contracts.models import (
     DocumentLifecycleOperationStatus,
     IngestionStatus,
 )
+from semikb.rag_ingestion.corpus_standardization import TRANSIENT_CORPUS_FAILURE_CODES
 from semikb.workers.celery_app import celery_app
 
 _TRANSIENT_INGESTION_ERRORS = {
@@ -53,6 +55,39 @@ def process_ingestion_job(job_id: str) -> dict[str, object]:
 def retry_ingestion_job(job_id: str) -> dict[str, object]:
     job = get_container().ingestion.prepare_retry(job_id)
     process_ingestion_job.delay(job.job_id)
+    return job.model_dump(mode="json")
+
+
+@celery_app.task(
+    bind=True,
+    name="semikb.corpus.standardize",
+    acks_late=True,
+    reject_on_worker_lost=True,
+    max_retries=3,
+    soft_time_limit=1500,
+    time_limit=1800,
+)
+def process_corpus_standardization(self, job_id: str) -> dict[str, object]:
+    service = get_container().corpus_standardization
+    existing = service.get_job(job_id)
+    if existing is None:
+        raise KeyError(job_id)
+    if (
+        existing.status is CorpusStandardizationStatus.FAILED
+        and (existing.error_code or "").upper() in TRANSIENT_CORPUS_FAILURE_CODES
+    ):
+        existing = service.prepare_retry(job_id)
+    job = service.process(existing.job_id)
+    if (
+        job.status is CorpusStandardizationStatus.FAILED
+        and (job.error_code or "").upper() in TRANSIENT_CORPUS_FAILURE_CODES
+        and self.request.retries < self.max_retries
+    ):
+        service.prepare_retry(job_id)
+        raise self.retry(
+            exc=ConnectionError("Transient corpus standardization failure."),
+            countdown=2 ** (self.request.retries + 1),
+        )
     return job.model_dump(mode="json")
 
 

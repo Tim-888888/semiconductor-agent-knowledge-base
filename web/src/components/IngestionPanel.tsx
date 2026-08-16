@@ -6,6 +6,7 @@ import {
   FileText,
   FileUp,
   FlaskConical,
+  FolderArchive,
   History,
   RefreshCw,
   RotateCcw,
@@ -14,6 +15,8 @@ import {
   X
 } from "lucide-react";
 import type {
+  CorpusStandardizationJob,
+  CorpusStandardizationMetadata,
   DocumentLifecycleOperationRecord,
   IngestionJob,
   KnowledgeDocumentRevisionSummary,
@@ -25,6 +28,8 @@ import { EmptyState, formatDate, labelForStage, Metric, StatusPill } from "./Com
 type Props = {
   jobs: IngestionJob[];
   selectedJob?: IngestionJob;
+  corpusJobs: CorpusStandardizationJob[];
+  selectedCorpusJob?: CorpusStandardizationJob;
   documents: KnowledgeDocumentSummary[];
   selectedDocument?: KnowledgeDocumentSummary;
   revisions: KnowledgeDocumentRevisionSummary[];
@@ -34,6 +39,13 @@ type Props = {
   onSelect: (jobId: string) => void;
   onUpload: (file: File, metadata: UploadMetadata) => Promise<boolean>;
   onRetry: (jobId: string) => Promise<void>;
+  onSelectCorpus: (jobId: string) => void;
+  onUploadCorpus: (
+    files: File[],
+    metadata: CorpusStandardizationMetadata,
+    sidecar: string
+  ) => Promise<boolean>;
+  onRetryCorpus: (jobId: string) => Promise<void>;
   onRefresh: () => Promise<void>;
   onSelectDocument: (documentId: string) => void;
   onSelectRevision: (revision: KnowledgeDocumentRevisionSummary) => void;
@@ -44,6 +56,32 @@ type Props = {
   ) => Promise<void>;
   onRetryLifecycle: (operationId: string) => Promise<void>;
 };
+
+const initialCorpusMetadata = (): CorpusStandardizationMetadata => ({
+  corpus_id: `corpus-${Date.now().toString().slice(-8)}`,
+  snapshot_version: "v1",
+  display_name: "",
+  source_kind: "user_upload",
+  source_license: "unknown",
+  corpus_kind: "auto"
+});
+
+const sidecarTemplate = JSON.stringify({
+  sidecar_schema_version: "semikb-corpus-sidecar-v1",
+  profile: {
+    profile_schema_version: "semikb-corpus-profile-v1",
+    corpus_kind: "auto",
+    include_globs: ["**/*", "*"],
+    exclude_globs: ["**/.DS_Store", "**/Thumbs.db", "**/__MACOSX/**"],
+    role_rules: [],
+    relation_rules: [],
+    tabular_sample_rows: 200,
+    tabular_max_columns: 256,
+    generate_image_text: true
+  },
+  files: [],
+  relations: []
+}, null, 2);
 
 const initialMetadata = (): UploadMetadata => ({
   document_id: `DOC-${Date.now().toString().slice(-8)}`,
@@ -84,6 +122,8 @@ export function IngestionPanel(props: Props) {
   const {
     jobs,
     selectedJob,
+    corpusJobs,
+    selectedCorpusJob,
     documents,
     selectedDocument,
     revisions,
@@ -93,16 +133,22 @@ export function IngestionPanel(props: Props) {
     onSelect,
     onUpload,
     onRetry,
+    onSelectCorpus,
+    onUploadCorpus,
+    onRetryCorpus,
     onRefresh,
     onSelectDocument,
     onSelectRevision,
     onLifecycleAction,
     onRetryLifecycle
   } = props;
-  const [mode, setMode] = useState<"jobs" | "documents">("jobs");
+  const [mode, setMode] = useState<"jobs" | "corpus" | "documents">("jobs");
   const [showUpload, setShowUpload] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [metadata, setMetadata] = useState<UploadMetadata>(initialMetadata);
+  const [corpusFiles, setCorpusFiles] = useState<File[]>([]);
+  const [corpusMetadata, setCorpusMetadata] = useState<CorpusStandardizationMetadata>(initialCorpusMetadata);
+  const [sidecar, setSidecar] = useState(sidecarTemplate);
   const [lifecycleAction, setLifecycleAction] = useState<"withdraw" | "restore" | null>(null);
   const [reason, setReason] = useState("");
 
@@ -123,7 +169,17 @@ export function IngestionPanel(props: Props) {
     setReason("");
   }
 
-  function switchMode(next: "jobs" | "documents") {
+  async function submitCorpus(event: FormEvent) {
+    event.preventDefault();
+    if (!corpusFiles.length) return;
+    if (!await onUploadCorpus(corpusFiles, corpusMetadata, sidecar)) return;
+    setCorpusFiles([]);
+    setCorpusMetadata(initialCorpusMetadata());
+    setSidecar(sidecarTemplate);
+    setShowUpload(false);
+  }
+
+  function switchMode(next: "jobs" | "corpus" | "documents") {
     setMode(next);
     setShowUpload(false);
     setLifecycleAction(null);
@@ -149,10 +205,12 @@ export function IngestionPanel(props: Props) {
       <div className="heading-actions">
         <div className="segmented" aria-label="知识运营视图">
           <button type="button" className={mode === "jobs" ? "active" : ""} onClick={() => switchMode("jobs")}>入库任务</button>
+          <button type="button" className={mode === "corpus" ? "active" : ""} onClick={() => switchMode("corpus")}>语料标准化</button>
           <button type="button" className={mode === "documents" ? "active" : ""} onClick={() => switchMode("documents")}>知识文档</button>
         </div>
         <button className="icon-button" type="button" title="刷新数据" onClick={() => void onRefresh()} disabled={loading}><RefreshCw size={17} className={loading ? "spin" : ""} /></button>
         {mode === "jobs" && <button className="command-button" type="button" onClick={() => setShowUpload((value) => !value)}><Upload size={17} />上传文档</button>}
+        {mode === "corpus" && <button className="command-button" type="button" onClick={() => setShowUpload((value) => !value)}><FolderArchive size={17} />新建快照</button>}
       </div>
     </header>
 
@@ -216,6 +274,69 @@ export function IngestionPanel(props: Props) {
             {selectedJob.events.map((event) => <div className="event-item" key={event.event_id}><span className="event-marker" /><div><strong>{labelForStage(event.stage)} · {event.progress}%</strong><p>{event.message}</p><small>{formatDate(event.created_at)} · attempt {event.attempt}</small></div></div>)}
           </div>
           {selectedJob.status === "failed" && <button className="command-button" type="button" disabled={loading} onClick={() => void onRetry(selectedJob.job_id)}><RotateCcw size={17} />重试失败任务</button>}
+        </aside>}
+      </div>
+    </>}
+
+    {mode === "corpus" && <>
+      {showUpload && <form className="upload-band" onSubmit={submitCorpus} data-testid="corpus-upload-form">
+        <div className="band-heading"><div><span className="section-label">CORPUS SNAPSHOT</span><h3>通用语料标准化</h3></div><button className="icon-button" type="button" title="关闭上传" onClick={() => setShowUpload(false)}><X size={17} /></button></div>
+        <div className="warning-band"><ShieldCheck size={16} /><div><strong>仅进入审核区</strong><span>原件和派生物保存到私有存储，不创建知识文档、Chunk 或 Milvus 向量。</span></div></div>
+        <label className="file-drop"><FolderArchive size={24} /><span>{corpusFiles.length ? `已选择 ${corpusFiles.length} 个文件` : "选择多个文件或一个 ZIP 快照"}</span><input data-testid="corpus-files" type="file" multiple onChange={(event) => {
+          const nextFiles = Array.from(event.target.files ?? []);
+          setCorpusFiles(nextFiles);
+          if (nextFiles.length && !corpusMetadata.display_name) {
+            const displayName = nextFiles.length === 1
+              ? nextFiles[0].name.replace(/\.[^.]+$/, "")
+              : `语料快照 ${new Date().toLocaleDateString()}`;
+            setCorpusMetadata({ ...corpusMetadata, display_name: displayName });
+          }
+        }} /></label>
+        <div className="form-grid">
+          <Field label="Corpus ID" value={corpusMetadata.corpus_id} onChange={(value) => setCorpusMetadata({ ...corpusMetadata, corpus_id: value })} required />
+          <Field label="Snapshot Version" value={corpusMetadata.snapshot_version} onChange={(value) => setCorpusMetadata({ ...corpusMetadata, snapshot_version: value })} required />
+          <Field label="显示名称" value={corpusMetadata.display_name} onChange={(value) => setCorpusMetadata({ ...corpusMetadata, display_name: value })} wide required />
+          <SelectField label="语料类型" value={corpusMetadata.corpus_kind} options={["auto", "document_collection", "tabular_dataset", "image_corpus", "mixed"]} onChange={(value) => setCorpusMetadata({ ...corpusMetadata, corpus_kind: value as CorpusStandardizationMetadata["corpus_kind"] })} />
+          <Field label="来源类型" value={corpusMetadata.source_kind} onChange={(value) => setCorpusMetadata({ ...corpusMetadata, source_kind: value })} required />
+          <Field label="来源许可" value={corpusMetadata.source_license} onChange={(value) => setCorpusMetadata({ ...corpusMetadata, source_license: value })} required />
+          <Field label="来源 URL" value={corpusMetadata.source_uri ?? ""} onChange={(value) => setCorpusMetadata({ ...corpusMetadata, source_uri: value })} wide />
+          <Field label="权限 Scope" value={corpusMetadata.access_scope_key ?? ""} onChange={(value) => setCorpusMetadata({ ...corpusMetadata, access_scope_key: value })} />
+          <Field label="使用限制" value={corpusMetadata.use_restrictions ?? ""} onChange={(value) => setCorpusMetadata({ ...corpusMetadata, use_restrictions: value })} wide />
+        </div>
+        <label className="sidecar-editor"><span>Sidecar / Profile JSON</span><textarea data-testid="corpus-sidecar" rows={14} spellCheck={false} value={sidecar} onChange={(event) => setSidecar(event.target.value)} /></label>
+        <div className="form-actions"><button className="command-button" type="submit" disabled={loading || !corpusFiles.length || !corpusMetadata.display_name.trim()}><FolderArchive size={17} />提交标准化</button></div>
+      </form>}
+
+      <div className="operations-split">
+        <div className="data-table-wrap"><table>
+          <thead><tr><th>语料快照</th><th>阶段</th><th>进度</th><th>清单</th><th>警告</th><th>更新时间</th></tr></thead>
+          <tbody>{corpusJobs.map((job) => <tr key={job.job_id} className={selectedCorpusJob?.job_id === job.job_id ? "active-row" : ""}>
+            <td><button className="table-link" type="button" onClick={() => onSelectCorpus(job.job_id)}><strong>{job.metadata.display_name}</strong><span>{job.metadata.corpus_id} · {job.metadata.snapshot_version}</span></button></td>
+            <td><StatusPill value={job.status} /></td>
+            <td><div className="progress"><span style={{ width: `${job.progress}%` }} /></div><small>{job.progress}%</small></td>
+            <td><strong>{job.files_count} 文件</strong><span>{job.documents_count} 文档 / {job.tables_count} 表 / {job.images_count} 图</span></td>
+            <td>{job.report?.warning_codes.length ?? job.unsupported_count}</td>
+            <td>{formatDate(job.finished_at ?? job.started_at ?? job.created_at)}</td>
+          </tr>)}</tbody>
+        </table>{!corpusJobs.length && <EmptyState icon={<FolderArchive size={30} />} title="暂无语料标准化任务" />}</div>
+
+        {selectedCorpusJob && <aside className="job-detail" data-testid="corpus-job-detail">
+          <div className="detail-title"><div><span className="section-label">STANDARDIZATION REVIEW</span><h3>{selectedCorpusJob.metadata.display_name}</h3></div><StatusPill value={selectedCorpusJob.status} /></div>
+          <div className="detail-metrics"><Metric label="文件" value={selectedCorpusJob.files_count} /><Metric label="未支持" value={selectedCorpusJob.unsupported_count} /></div>
+          <dl className="compact-dl">
+            <div><dt>Job ID</dt><dd>{selectedCorpusJob.job_id}</dd></div>
+            <div><dt>Snapshot Hash</dt><dd>{selectedCorpusJob.snapshot_hash.slice(0, 16)}...</dd></div>
+            <div><dt>识别类型</dt><dd>{selectedCorpusJob.report?.inferred_corpus_kind ?? "等待识别"}</dd></div>
+            <div><dt>来源许可</dt><dd>{selectedCorpusJob.metadata.source_license}</dd></div>
+          </dl>
+          {selectedCorpusJob.safe_error_summary && <div className="warning-band"><AlertTriangle size={17} /><div><strong>{selectedCorpusJob.error_code}</strong><span>{selectedCorpusJob.safe_error_summary}</span></div></div>}
+          {selectedCorpusJob.report && <>
+            <div className="warning-band"><ShieldCheck size={16} /><div><strong>等待人工审核</strong><span>{selectedCorpusJob.report.review_reasons.join(" · ")}</span></div></div>
+            <div className="corpus-file-list"><h4><FileText size={16} />逐文件处理清单</h4>{selectedCorpusJob.report.files.map((file) => <div className="corpus-file-item" key={file.file_id}><div><strong>{file.relative_path}</strong><span>{file.role} · {file.parser_name ?? "未路由"}</span></div><span>{file.standardized_ref ? "已标准化" : "仅保留原件"}</span>{file.warning_codes.length > 0 && <small>{file.warning_codes.join(" · ")}</small>}</div>)}</div>
+            <div className="compact-dl"><div><dt>显式关系</dt><dd>{selectedCorpusJob.report.relations.length}</dd></div><div><dt>警告代码</dt><dd>{selectedCorpusJob.report.warning_codes.join(" · ") || "无"}</dd></div></div>
+          </>}
+          <div className="event-timeline"><h4><History size={16} />阶段事件</h4>{selectedCorpusJob.events.map((event) => <div className="event-item" key={event.event_id}><span className="event-marker" /><div><strong>{event.status} · {event.progress}%</strong><p>{event.message}</p><small>{formatDate(event.created_at)} · attempt {event.attempt}</small></div></div>)}</div>
+          {selectedCorpusJob.status === "failed" && <button className="command-button" type="button" disabled={loading} onClick={() => void onRetryCorpus(selectedCorpusJob.job_id)}><RotateCcw size={17} />重试标准化</button>}
         </aside>}
       </div>
     </>}

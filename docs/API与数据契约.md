@@ -260,6 +260,30 @@ MinerU”的隐藏回退。此结论是本地代码与自动测试结果，不�
 现有冻结 Demo/意图评测 Hash 不变。已经发布的旧内容不会被自动改写；旧 revision 若缺少合格 Manifest，
 仍可按原状态读取，但不能重新发布或恢复，需先由管理员补齐并复核治理元数据。
 
+### T9-4.4.6c-2 Corpus 标准化契约
+
+`CorpusStandardizationMetadata` 固定 Corpus ID、快照版本、显示名、语料类型、来源/许可/URL、权限 Scope
+和使用限制；`CorpusSidecar` 使用版本化 Profile、逐文件注解和显式关系。Profile 只允许通用 include/
+exclude、角色规则、表格采样上限、单字符/Tab/空白分隔符、表头声明和图片文字开关，不能表达预置答案、
+检索分数或来源专用代码。
+
+`CorpusStandardizationJob` 是完整业务状态，包含不可变 Snapshot Hash、状态、进度、尝试次数、安全错误、
+阶段事件和 `CorpusStandardizationReport`。报告保存文件角色、Parser、原件/派生对象引用、Hash、警告、
+有界表格画像和显式关系，不保存原始表格行、Prompt 或密钥。终态 `review_required` 只表示标准化产物可供
+人工审核，不表示已批准或已发布。
+
+管理员 API：
+
+- `POST /api/v1/corpus-standardization-jobs/upload`：上传多个文件或一个 ZIP 与 JSON 元数据/Sidecar；
+- `GET /api/v1/corpus-standardization-jobs`：查看审核任务；
+- `GET /api/v1/corpus-standardization-jobs/{job_id}`：读取逐文件清单、警告和阶段事件；
+- `POST /api/v1/corpus-standardization-jobs/{job_id}/retry`：仅对可重试失败任务重新投递。
+
+普通用户访问上述接口返回 403。上传成功返回 201；生产模式随后投递 `semikb.corpus.standardize`，
+Demo 模式在请求内同步完成标准化。同一
+幂等键和相同内容复用旧任务，内容变化返回 409。标准化服务不调用知识发布 API，也不返回可写入 Milvus
+的 Chunk 契约。
+
 上传接口暂支持最大 200 MiB。上传格式由 `semikb_ingest` 的扩展名、MIME、Magic Bytes 和 OOXML
 成员联合识别，并交给对应专用适配器；只有 PDF 使用 MinerU Precision API，图片使用 Qwen VLM。
 `DEMO_MODE=true` 时在请求内同步处理，便于无外部服务演示；

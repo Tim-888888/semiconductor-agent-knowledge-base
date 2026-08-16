@@ -299,6 +299,84 @@ export type UploadMetadata = {
   retrieval_policy: "standard" | "protected";
 };
 
+export type CorpusStandardizationMetadata = {
+  metadata_schema_version?: "semikb-corpus-metadata-v1";
+  corpus_id: string;
+  snapshot_version: string;
+  display_name: string;
+  source_kind: string;
+  source_uri?: string;
+  source_license: string;
+  use_restrictions?: string;
+  access_scope_key?: string;
+  corpus_kind: "auto" | "document_collection" | "tabular_dataset" | "image_corpus" | "mixed";
+};
+
+export type CorpusFileManifest = {
+  file_id: string;
+  relative_path: string;
+  sha256: string;
+  size_bytes: number;
+  content_type: string;
+  role: "document" | "table" | "image" | "label" | "archive" | "unsupported";
+  source_format?: string | null;
+  parser_name?: string | null;
+  parser_version?: string | null;
+  warning_codes: string[];
+  description: string;
+  standardized_ref?: { bucket: string; object_key: string } | null;
+  tabular_profile?: {
+    sheets: Array<{
+      name: string;
+      observed_rows: number;
+      column_count: number;
+      sample_truncated: boolean;
+      columns_truncated: boolean;
+    }>;
+    raw_rows_vectorized: false;
+  } | null;
+};
+
+export type CorpusStandardizationJob = {
+  job_id: string;
+  metadata: CorpusStandardizationMetadata;
+  snapshot_hash: string;
+  status: "queued" | "validating" | "snapshotting" | "inventorying" | "standardizing" | "review_required" | "failed";
+  progress: number;
+  attempt: number;
+  files_count: number;
+  documents_count: number;
+  tables_count: number;
+  images_count: number;
+  unsupported_count: number;
+  report?: {
+    inferred_corpus_kind: string;
+    warning_codes: string[];
+    review_reasons: string[];
+    files: CorpusFileManifest[];
+    relations: Array<{
+      relation_id: string;
+      from_file_id: string;
+      to_file_id: string;
+      relation_type: string;
+    }>;
+  } | null;
+  error_code?: string | null;
+  safe_error_summary?: string | null;
+  created_by: string;
+  created_at: string;
+  started_at?: string | null;
+  finished_at?: string | null;
+  events: Array<{
+    event_id: string;
+    status: string;
+    message: string;
+    progress: number;
+    attempt: number;
+    created_at: string;
+  }>;
+};
+
 export type TraceCandidate = {
   chunk_id: string;
   document_id: string;

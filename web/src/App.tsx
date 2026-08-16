@@ -16,6 +16,7 @@ import {
   bootstrapToken,
   cancelMessageRequest,
   createThread,
+  getCorpusStandardizationJob,
   getEvaluation,
   getEvaluationCaseTrace,
   getJob,
@@ -23,6 +24,7 @@ import {
   getThread,
   getTrace,
   listEvaluationDatasets,
+  listCorpusStandardizationJobs,
   listEvaluations,
   listJobs,
   listKnowledgeDocumentRevisions,
@@ -31,11 +33,13 @@ import {
   listTraces,
   resolveAsset,
   retryEvaluation,
+  retryCorpusStandardizationJob,
   retryJob,
   retryKnowledgeDocumentOperation,
   runEvaluation,
   sendMessageStream,
   uploadDocument,
+  uploadCorpus,
   restoreKnowledgeDocumentRevision,
   withdrawKnowledgeDocumentRevision
 } from "./api";
@@ -46,6 +50,8 @@ import { Workbench } from "./components/Workbench";
 import type {
   AgentResponse,
   AssetAccess,
+  CorpusStandardizationJob,
+  CorpusStandardizationMetadata,
   EvaluationDataset,
   EvaluationRun,
   IngestionJob,
@@ -71,6 +77,8 @@ function App() {
   const [selectedTrace, setSelectedTrace] = useState<RetrievalTrace>();
   const [jobs, setJobs] = useState<IngestionJob[]>([]);
   const [selectedJob, setSelectedJob] = useState<IngestionJob>();
+  const [corpusJobs, setCorpusJobs] = useState<CorpusStandardizationJob[]>([]);
+  const [selectedCorpusJob, setSelectedCorpusJob] = useState<CorpusStandardizationJob>();
   const [knowledgeDocuments, setKnowledgeDocuments] = useState<KnowledgeDocumentSummary[]>([]);
   const [selectedKnowledgeDocument, setSelectedKnowledgeDocument] = useState<KnowledgeDocumentSummary>();
   const [documentRevisions, setDocumentRevisions] = useState<KnowledgeDocumentRevisionSummary[]>([]);
@@ -100,6 +108,9 @@ function App() {
     return [selectedTrace, ...traces];
   }, [selectedTrace, traces]);
   const hasPendingJobs = jobs.some((job) => !["published", "failed"].includes(job.status));
+  const hasPendingCorpusJobs = corpusJobs.some((job) =>
+    !["review_required", "failed"].includes(job.status)
+  );
   const hasPendingEvaluations = evaluations.some((run) => ["queued", "running"].includes(run.status));
   const activeImageSelection = useMemo(() => {
     const latestAssistant = [...(thread?.messages ?? [])]
@@ -117,9 +128,10 @@ function App() {
 
   async function initializeWorkspace(demoAccessKey: string) {
     await bootstrapToken(demoAccessKey);
-    const [existingThreads, nextJobs, nextTraces, nextEvaluations, nextDatasets, documentPage] = await Promise.all([
+    const [existingThreads, nextJobs, nextCorpusJobs, nextTraces, nextEvaluations, nextDatasets, documentPage] = await Promise.all([
       listThreads(),
       listJobs(),
+      listCorpusStandardizationJobs(),
       listTraces(),
       listEvaluations(),
       listEvaluationDatasets(),
@@ -136,6 +148,8 @@ function App() {
     setThread(activeThread);
     setJobs(nextJobs);
     setSelectedJob(nextJobs[0]);
+    setCorpusJobs(nextCorpusJobs);
+    setSelectedCorpusJob(nextCorpusJobs[0]);
     setKnowledgeDocuments(documentPage.items);
     setSelectedKnowledgeDocument(initialDocument);
     setDocumentRevisions(initialRevisions);
@@ -188,13 +202,14 @@ function App() {
   }
 
   useEffect(() => {
-    if (!hasPendingJobs && !hasPendingEvaluations) return;
+    if (!hasPendingJobs && !hasPendingCorpusJobs && !hasPendingEvaluations) return;
     const timer = window.setInterval(() => {
       if (hasPendingJobs) void refreshJobs();
+      if (hasPendingCorpusJobs) void refreshCorpusJobs();
       if (hasPendingEvaluations) void refreshEvaluations();
     }, 2500);
     return () => window.clearInterval(timer);
-  }, [hasPendingEvaluations, hasPendingJobs]);
+  }, [hasPendingCorpusJobs, hasPendingEvaluations, hasPendingJobs]);
 
   useEffect(() => () => {
     if (asset?.local_object_url) URL.revokeObjectURL(asset.url);
@@ -253,6 +268,15 @@ function App() {
     const targetId = preferredId ?? selectedJob?.job_id;
     const target = nextJobs.find((job) => job.job_id === targetId) ?? nextJobs[0];
     setSelectedJob(target);
+  }
+
+  async function refreshCorpusJobs(preferredId?: string) {
+    const nextJobs = await listCorpusStandardizationJobs();
+    setCorpusJobs(nextJobs);
+    const targetId = preferredId ?? selectedCorpusJob?.job_id;
+    setSelectedCorpusJob(
+      nextJobs.find((job) => job.job_id === targetId) ?? nextJobs[0]
+    );
   }
 
   async function refreshKnowledgeDocuments(
@@ -527,6 +551,36 @@ function App() {
     }, "任务重试失败。");
   }
 
+  async function submitCorpus(
+    files: File[],
+    metadata: CorpusStandardizationMetadata,
+    sidecar: string
+  ) {
+    let succeeded = false;
+    await runAction(async () => {
+      const job = await uploadCorpus(files, metadata, sidecar);
+      await refreshCorpusJobs(job.job_id);
+      setNotice(`语料标准化任务 ${job.job_id.slice(-8)} 已创建`);
+      succeeded = true;
+    }, "语料快照提交失败。");
+    return succeeded;
+  }
+
+  async function retryCorpus(jobId: string) {
+    await runAction(async () => {
+      const job = await retryCorpusStandardizationJob(jobId);
+      await refreshCorpusJobs(job.job_id);
+      setNotice("语料标准化任务已重新排队");
+    }, "语料标准化任务重试失败。");
+  }
+
+  async function selectCorpusJob(jobId: string) {
+    await runAction(
+      async () => setSelectedCorpusJob(await getCorpusStandardizationJob(jobId)),
+      "语料标准化详情读取失败。"
+    );
+  }
+
   async function selectIngestionJob(jobId: string) {
     await runAction(async () => setSelectedJob(await getJob(jobId)), "任务详情读取失败。");
   }
@@ -694,6 +748,8 @@ function App() {
       {view === "ingestion" && <IngestionPanel
         jobs={jobs}
         selectedJob={selectedJob}
+        corpusJobs={corpusJobs}
+        selectedCorpusJob={selectedCorpusJob}
         documents={knowledgeDocuments}
         selectedDocument={selectedKnowledgeDocument}
         revisions={documentRevisions}
@@ -703,7 +759,10 @@ function App() {
         onSelect={(jobId) => void selectIngestionJob(jobId)}
         onUpload={upload}
         onRetry={retryIngestion}
-        onRefresh={async () => { await Promise.all([refreshJobs(), refreshKnowledgeDocuments()]); }}
+        onRefresh={async () => { await Promise.all([refreshJobs(), refreshCorpusJobs(), refreshKnowledgeDocuments()]); }}
+        onSelectCorpus={(jobId) => void selectCorpusJob(jobId)}
+        onUploadCorpus={submitCorpus}
+        onRetryCorpus={retryCorpus}
         onSelectDocument={(documentId) => void selectKnowledgeDocument(documentId)}
         onSelectRevision={setSelectedDocumentRevision}
         onLifecycleAction={changeDocumentLifecycle}
