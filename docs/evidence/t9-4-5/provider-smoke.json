@@ -1,0 +1,197 @@
+{
+  "stage": "T9-4.5",
+  "generated_at": "2026-08-16T12:11:27.528571+00:00",
+  "credential_safe": true,
+  "results": [
+    {
+      "provider": "closeai",
+      "operation": "chat_completion",
+      "status": "ok",
+      "model": "gpt-5.6-luna-2026-07-09",
+      "fallback_used": false,
+      "attempts": [
+        {
+          "schema_version": "semikb-provider-attempt-v1",
+          "provider": "closeai",
+          "operation": "chat_completion",
+          "attempt": 1,
+          "max_attempts": 2,
+          "outcome": "succeeded",
+          "failure_kind": null,
+          "status_code": null,
+          "retryable": false,
+          "retry_after_seconds": null,
+          "latency_ms": 1906.47
+        }
+      ]
+    },
+    {
+      "provider": "qianwen-embedding",
+      "operation": "dense_sparse_embedding",
+      "status": "ok",
+      "model": "qwen3.7-text-embedding",
+      "dense_dimension": 1024,
+      "sparse_terms": 525,
+      "attempts": [
+        {
+          "schema_version": "semikb-provider-attempt-v1",
+          "provider": "qianwen-embedding",
+          "operation": "dense_sparse_embedding",
+          "attempt": 1,
+          "max_attempts": 2,
+          "outcome": "succeeded",
+          "failure_kind": null,
+          "status_code": null,
+          "retryable": false,
+          "retry_after_seconds": null,
+          "latency_ms": 455.89
+        }
+      ]
+    },
+    {
+      "provider": "qianwen-reranker",
+      "operation": "rerank",
+      "status": "ok",
+      "model": "qwen3-rerank",
+      "score_count": 2,
+      "attempts": [
+        {
+          "schema_version": "semikb-provider-attempt-v1",
+          "provider": "qianwen-reranker",
+          "operation": "rerank",
+          "attempt": 1,
+          "max_attempts": 2,
+          "outcome": "succeeded",
+          "failure_kind": null,
+          "status_code": null,
+          "retryable": false,
+          "retry_after_seconds": null,
+          "latency_ms": 247.36
+        }
+      ]
+    },
+    {
+      "provider": "qwen-vl",
+      "operation": "image_understanding",
+      "status": "ok",
+      "model": "qwen3.7-plus",
+      "caption_chars": 214,
+      "attempts": [
+        {
+          "schema_version": "semikb-provider-attempt-v1",
+          "provider": "qwen-vl",
+          "operation": "image_understanding",
+          "attempt": 1,
+          "max_attempts": 2,
+          "outcome": "succeeded",
+          "failure_kind": null,
+          "status_code": null,
+          "retryable": false,
+          "retry_after_seconds": null,
+          "latency_ms": 8498.37
+        }
+      ]
+    },
+    {
+      "provider": "mineru",
+      "operation": "pdf_extraction",
+      "status": "ok",
+      "model": "vlm",
+      "markdown_chars": 83,
+      "pages": 1,
+      "attempts": [
+        {
+          "schema_version": "semikb-provider-attempt-v1",
+          "provider": "mineru",
+          "operation": "create_batch",
+          "attempt": 1,
+          "max_attempts": 1,
+          "outcome": "succeeded",
+          "failure_kind": null,
+          "status_code": null,
+          "retryable": false,
+          "retry_after_seconds": null,
+          "latency_ms": 191.51
+        },
+        {
+          "schema_version": "semikb-provider-attempt-v1",
+          "provider": "mineru",
+          "operation": "upload_source",
+          "attempt": 1,
+          "max_attempts": 2,
+          "outcome": "succeeded",
+          "failure_kind": null,
+          "status_code": null,
+          "retryable": false,
+          "retry_after_seconds": null,
+          "latency_ms": 154.56
+        },
+        {
+          "schema_version": "semikb-provider-attempt-v1",
+          "provider": "mineru",
+          "operation": "poll_batch",
+          "attempt": 1,
+          "max_attempts": 2,
+          "outcome": "succeeded",
+          "failure_kind": null,
+          "status_code": null,
+          "retryable": false,
+          "retry_after_seconds": null,
+          "latency_ms": 52.64
+        },
+        {
+          "schema_version": "semikb-provider-attempt-v1",
+          "provider": "mineru",
+          "operation": "poll_batch",
+          "attempt": 1,
+          "max_attempts": 2,
+          "outcome": "succeeded",
+          "failure_kind": null,
+          "status_code": null,
+          "retryable": false,
+          "retry_after_seconds": null,
+          "latency_ms": 50.79
+        },
+        {
+          "schema_version": "semikb-provider-attempt-v1",
+          "provider": "mineru",
+          "operation": "download_archive",
+          "attempt": 1,
+          "max_attempts": 2,
+          "outcome": "succeeded",
+          "failure_kind": null,
+          "status_code": null,
+          "retryable": false,
+          "retry_after_seconds": null,
+          "latency_ms": 243.44
+        }
+      ]
+    },
+    {
+      "provider": "aliyun-web-mcp",
+      "operation": "web_search",
+      "status": "ok",
+      "allowed_result_count": 0,
+      "attempts": [
+        {
+          "schema_version": "semikb-provider-attempt-v1",
+          "provider": "aliyun-web-mcp",
+          "operation": "web_search",
+          "attempt": 1,
+          "max_attempts": 2,
+          "outcome": "succeeded",
+          "failure_kind": null,
+          "status_code": null,
+          "retryable": false,
+          "retry_after_seconds": null,
+          "latency_ms": 2003.68
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "ok": 6,
+    "failed": 0,
+    "skipped": 0
+  }
+}

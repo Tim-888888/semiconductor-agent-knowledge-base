@@ -9,7 +9,6 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-
 CASES = {
     "embedding": [
         "tests/test_embedding_provider.py::test_qianwen_encoder_rejects_wrong_dimension_and_safe_http_errors",

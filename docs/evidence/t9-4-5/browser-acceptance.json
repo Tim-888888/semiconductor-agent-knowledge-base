@@ -1,0 +1,37 @@
+{
+  "stage": "T9-4.5",
+  "url": "http://112.74.99.143/",
+  "interaction_mode": "in-app-browser",
+  "query": "请从内部知识库检索 ETCH-ALPHA V2.3 chamber pressure 上下限，并说明证据来源。",
+  "trace_id": "trace_83657a2486c6443cb65f981b49429f00",
+  "answer_status": "completed",
+  "structured_result_visible": true,
+  "provider_attempts_visible": [
+    {
+      "provider": "qianwen-embedding",
+      "operation": "dense_sparse_embedding",
+      "attempt": "1/2",
+      "outcome": "succeeded",
+      "latency_ms": 494.4
+    },
+    {
+      "provider": "qianwen-reranker",
+      "operation": "rerank",
+      "attempt": "1/2",
+      "outcome": "succeeded",
+      "latency_ms": 271.14
+    }
+  ],
+  "console_error_count": 0,
+  "console_warning_count": 0,
+  "screenshot_capture": {
+    "status": "blocked_by_browser_tool",
+    "verified_on": [
+      "workbench",
+      "login",
+      "about:blank"
+    ],
+    "reason_code": "page_capture_screenshot_timeout"
+  },
+  "notes": "No screenshot was fabricated. Desktop and mobile screenshots must be recorded again during T9-4.9 final demo acceptance."
+}
