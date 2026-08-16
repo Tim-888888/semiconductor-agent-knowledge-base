@@ -20,9 +20,9 @@ export function StatusPill({ value }: { value: string }) {
   const normalized = value.toLowerCase();
   const tone = ["completed", "published", "selected", "active"].includes(normalized)
     ? "good"
-    : ["failed", "refused", "regressed", "excluded", "insufficient_information"].includes(normalized)
+    : ["failed", "refused", "regressed", "excluded", "insufficient_information", "compensation_required"].includes(normalized)
       ? "bad"
-      : ["queued", "running", "parsing", "embedding", "waiting_for_clarification"].includes(normalized)
+      : ["queued", "running", "parsing", "embedding", "waiting_for_clarification", "blocking", "vector_cleanup", "restore_validating", "restore_indexing"].includes(normalized)
         ? "active"
         : "neutral";
   return <span className={`status-pill status-${tone}`}>{labelForStatus(value)}</span>;
@@ -53,6 +53,17 @@ export function labelForStage(value: string): string {
     embedding: "向量化",
     staged: "暂存",
     published: "已发布",
+    withdrawn: "已下架",
+    superseded: "已替代",
+    expired: "已过期",
+    quarantined: "已隔离",
+    requested: "已请求",
+    blocking: "阻断中",
+    vector_cleanup: "清理向量",
+    restore_validating: "恢复校验",
+    restore_indexing: "重建索引",
+    restored: "已恢复",
+    compensation_required: "需要补偿",
     failed: "失败"
   } as Record<string, string>)[value] ?? value;
 }
@@ -64,6 +75,18 @@ function labelForStatus(value: string): string {
     completed: "完成",
     failed: "失败",
     published: "已发布",
+    withdrawn: "已下架",
+    superseded: "已替代",
+    expired: "已过期",
+    quarantined: "已隔离",
+    staged: "已暂存",
+    requested: "已请求",
+    blocking: "阻断中",
+    vector_cleanup: "清理向量",
+    restore_validating: "恢复校验",
+    restore_indexing: "重建索引",
+    restored: "已恢复",
+    compensation_required: "需要补偿",
     selected: "入选",
     excluded: "排除",
     active: "活动",

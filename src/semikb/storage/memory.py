@@ -112,14 +112,14 @@ class DemoStore:
 
     @staticmethod
     def _is_accessible(chunk: Chunk, actor_scope: ActorScope, current: datetime) -> bool:
-        if "admin" in actor_scope.roles:
-            return True
         if chunk.lifecycle is not DocumentLifecycle.PUBLISHED:
             return False
         if chunk.approval_status is not ApprovalStatus.APPROVED:
             return False
         if chunk.effective_at > current or (chunk.expires_at and chunk.expires_at <= current):
             return False
+        if "admin" in actor_scope.roles:
+            return True
         if chunk.access_scope_key not in actor_scope.access_scope_keys:
             return False
         if chunk.fab and actor_scope.fabs and chunk.fab not in actor_scope.fabs:

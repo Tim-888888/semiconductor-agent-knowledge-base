@@ -75,6 +75,19 @@ class MilvusChunkRepository:
         with self._factory.milvus() as client:
             client.delete(collection_name(index_version), ids=list(chunk_ids))
 
+    def verify_chunks_absent(self, index_version: str, chunk_ids: Sequence[str]) -> None:
+        if not chunk_ids:
+            return
+        with self._factory.milvus() as client:
+            remaining = client.query(
+                collection_name(index_version),
+                ids=list(chunk_ids),
+                output_fields=["chunk_id"],
+                consistency_level="Strong",
+            )
+        if remaining:
+            raise RuntimeError("Milvus still contains withdrawn chunk projections.")
+
     def activate_alias(self, index_version: str) -> None:
         physical_collection = collection_name(index_version)
         alias = "semikb_chunks_active"

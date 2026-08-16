@@ -1,0 +1,34 @@
+{
+  "status": "passed",
+  "selector": {
+    "document_id": "CASE-FA-2026-004",
+    "revision": "R1"
+  },
+  "chunk_count": 5,
+  "image_count": 2,
+  "table_count": 0,
+  "source_hash_preserved": true,
+  "rbac": {
+    "knowledge_admin": 200,
+    "engineer": 403
+  },
+  "idempotency": {
+    "same_request": "reused",
+    "changed_reason": 409
+  },
+  "withdraw_operation_id": "doc_lifecycle_7651c08ea9a348cd8263806354cad75d",
+  "withdraw_status": "withdrawn",
+  "restore_operation_id": "doc_lifecycle_d3bd59de97b0403f8412955b8a934bfa",
+  "restore_status": "restored",
+  "final_lifecycle": "published",
+  "asset_http": {
+    "before": 200,
+    "withdrawn": 403,
+    "restored": 200
+  },
+  "retrieval": {
+    "before": true,
+    "withdrawn": false,
+    "restored": true
+  }
+}

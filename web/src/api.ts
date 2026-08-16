@@ -5,6 +5,9 @@ import type {
   EvaluationDataset,
   EvaluationRun,
   IngestionJob,
+  KnowledgeDocumentListResponse,
+  KnowledgeDocumentRevisionSummary,
+  DocumentLifecycleOperationRecord,
   RetrievalTrace,
   Thread,
   UploadMetadata
@@ -182,6 +185,62 @@ export async function uploadDocument(file: File, metadata: UploadMetadata): Prom
   body.set("metadata", JSON.stringify(metadata));
   return request<IngestionJob>("/ingestion-jobs/upload", { method: "POST", body });
 }
+
+export function listKnowledgeDocuments(input: {
+  query?: string;
+  lifecycle?: string;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<KnowledgeDocumentListResponse> {
+  const params = new URLSearchParams();
+  if (input.query?.trim()) params.set("query", input.query.trim());
+  if (input.lifecycle) params.set("lifecycle", input.lifecycle);
+  params.set("limit", String(input.limit ?? 100));
+  params.set("offset", String(input.offset ?? 0));
+  return request<KnowledgeDocumentListResponse>(`/knowledge-documents?${params.toString()}`);
+}
+
+export const listKnowledgeDocumentRevisions = (documentId: string) =>
+  request<KnowledgeDocumentRevisionSummary[]>(
+    `/knowledge-documents/${encodeURIComponent(documentId)}/revisions`
+  );
+
+export const withdrawKnowledgeDocumentRevision = (
+  documentId: string,
+  revision: string,
+  reason: string,
+  requestId: string
+) => request<DocumentLifecycleOperationRecord>(
+  `/knowledge-documents/${encodeURIComponent(documentId)}/revisions/${encodeURIComponent(revision)}/withdraw`,
+  {
+    method: "POST",
+    body: JSON.stringify({ request_id: requestId, reason })
+  }
+);
+
+export const restoreKnowledgeDocumentRevision = (
+  documentId: string,
+  revision: string,
+  reason: string,
+  requestId: string
+) => request<DocumentLifecycleOperationRecord>(
+  `/knowledge-documents/${encodeURIComponent(documentId)}/revisions/${encodeURIComponent(revision)}/restore`,
+  {
+    method: "POST",
+    body: JSON.stringify({ request_id: requestId, reason })
+  }
+);
+
+export const getKnowledgeDocumentOperation = (operationId: string) =>
+  request<DocumentLifecycleOperationRecord>(
+    `/knowledge-document-operations/${encodeURIComponent(operationId)}`
+  );
+
+export const retryKnowledgeDocumentOperation = (operationId: string) =>
+  request<DocumentLifecycleOperationRecord>(
+    `/knowledge-document-operations/${encodeURIComponent(operationId)}/retry`,
+    { method: "POST" }
+  );
 
 export const listTraces = () => request<RetrievalTrace[]>("/retrieval-traces");
 export const getTrace = (traceId: string) =>

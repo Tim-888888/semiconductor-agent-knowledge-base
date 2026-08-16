@@ -1,0 +1,7 @@
+->  celery@8890a72da7f2: OK
+    * semikb.evaluation.run
+    * semikb.ingestion.process
+    * semikb.ingestion.retry
+    * semikb.knowledge_document.lifecycle
+
+1 node online.

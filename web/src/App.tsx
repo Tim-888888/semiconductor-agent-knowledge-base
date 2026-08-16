@@ -19,19 +19,25 @@ import {
   getEvaluation,
   getEvaluationCaseTrace,
   getJob,
+  getKnowledgeDocumentOperation,
   getThread,
   getTrace,
   listEvaluationDatasets,
   listEvaluations,
   listJobs,
+  listKnowledgeDocumentRevisions,
+  listKnowledgeDocuments,
   listThreads,
   listTraces,
   resolveAsset,
   retryEvaluation,
   retryJob,
+  retryKnowledgeDocumentOperation,
   runEvaluation,
   sendMessageStream,
-  uploadDocument
+  uploadDocument,
+  restoreKnowledgeDocumentRevision,
+  withdrawKnowledgeDocumentRevision
 } from "./api";
 import { EvaluationPanel } from "./components/EvaluationPanel";
 import { IngestionPanel } from "./components/IngestionPanel";
@@ -43,6 +49,9 @@ import type {
   EvaluationDataset,
   EvaluationRun,
   IngestionJob,
+  KnowledgeDocumentRevisionSummary,
+  KnowledgeDocumentSummary,
+  DocumentLifecycleOperationRecord,
   RetrievalTrace,
   StreamUiState,
   Thread,
@@ -62,6 +71,11 @@ function App() {
   const [selectedTrace, setSelectedTrace] = useState<RetrievalTrace>();
   const [jobs, setJobs] = useState<IngestionJob[]>([]);
   const [selectedJob, setSelectedJob] = useState<IngestionJob>();
+  const [knowledgeDocuments, setKnowledgeDocuments] = useState<KnowledgeDocumentSummary[]>([]);
+  const [selectedKnowledgeDocument, setSelectedKnowledgeDocument] = useState<KnowledgeDocumentSummary>();
+  const [documentRevisions, setDocumentRevisions] = useState<KnowledgeDocumentRevisionSummary[]>([]);
+  const [selectedDocumentRevision, setSelectedDocumentRevision] = useState<KnowledgeDocumentRevisionSummary>();
+  const [lifecycleOperation, setLifecycleOperation] = useState<DocumentLifecycleOperationRecord>();
   const [datasets, setDatasets] = useState<EvaluationDataset[]>([]);
   const [evaluations, setEvaluations] = useState<EvaluationRun[]>([]);
   const [selectedEvaluation, setSelectedEvaluation] = useState<EvaluationRun>();
@@ -103,13 +117,18 @@ function App() {
 
   async function initializeWorkspace(demoAccessKey: string) {
     await bootstrapToken(demoAccessKey);
-    const [existingThreads, nextJobs, nextTraces, nextEvaluations, nextDatasets] = await Promise.all([
+    const [existingThreads, nextJobs, nextTraces, nextEvaluations, nextDatasets, documentPage] = await Promise.all([
       listThreads(),
       listJobs(),
       listTraces(),
       listEvaluations(),
-      listEvaluationDatasets()
+      listEvaluationDatasets(),
+      listKnowledgeDocuments()
     ]);
+    const initialDocument = documentPage.items[0];
+    const initialRevisions = initialDocument
+      ? await listKnowledgeDocumentRevisions(initialDocument.document_id)
+      : [];
     const activeThread = existingThreads[0]
       ? await getThread(existingThreads[0].thread_id)
       : await createThread("ETCH-03 异常调查");
@@ -117,6 +136,10 @@ function App() {
     setThread(activeThread);
     setJobs(nextJobs);
     setSelectedJob(nextJobs[0]);
+    setKnowledgeDocuments(documentPage.items);
+    setSelectedKnowledgeDocument(initialDocument);
+    setDocumentRevisions(initialRevisions);
+    setSelectedDocumentRevision(initialRevisions[0]);
     setTraces(nextTraces);
     setSelectedTrace(nextTraces[0]);
     setEvaluations(nextEvaluations);
@@ -230,6 +253,25 @@ function App() {
     const targetId = preferredId ?? selectedJob?.job_id;
     const target = nextJobs.find((job) => job.job_id === targetId) ?? nextJobs[0];
     setSelectedJob(target);
+  }
+
+  async function refreshKnowledgeDocuments(
+    preferredDocumentId?: string,
+    preferredRevision?: string
+  ) {
+    const page = await listKnowledgeDocuments();
+    setKnowledgeDocuments(page.items);
+    const documentId = preferredDocumentId ?? selectedKnowledgeDocument?.document_id;
+    const document = page.items.find((item) => item.document_id === documentId) ?? page.items[0];
+    setSelectedKnowledgeDocument(document);
+    const revisions = document
+      ? await listKnowledgeDocumentRevisions(document.document_id)
+      : [];
+    setDocumentRevisions(revisions);
+    const revisionId = preferredRevision ?? selectedDocumentRevision?.revision;
+    setSelectedDocumentRevision(
+      revisions.find((item) => item.revision === revisionId) ?? revisions[0]
+    );
   }
 
   async function refreshTraces(preferredId?: string) {
@@ -489,6 +531,72 @@ function App() {
     await runAction(async () => setSelectedJob(await getJob(jobId)), "任务详情读取失败。");
   }
 
+  async function selectKnowledgeDocument(documentId: string) {
+    await runAction(async () => {
+      const document = knowledgeDocuments.find((item) => item.document_id === documentId);
+      const revisions = await listKnowledgeDocumentRevisions(documentId);
+      setSelectedKnowledgeDocument(document);
+      setDocumentRevisions(revisions);
+      setSelectedDocumentRevision(revisions[0]);
+      setLifecycleOperation(undefined);
+    }, "知识文档详情读取失败。");
+  }
+
+  async function changeDocumentLifecycle(
+    action: "withdraw" | "restore",
+    revision: KnowledgeDocumentRevisionSummary,
+    reason: string
+  ) {
+    await runAction(async () => {
+      const requestId = `web-${action}-${crypto.randomUUID()}`;
+      let operation = action === "withdraw"
+        ? await withdrawKnowledgeDocumentRevision(
+          revision.document_id,
+          revision.revision,
+          reason,
+          requestId
+        )
+        : await restoreKnowledgeDocumentRevision(
+          revision.document_id,
+          revision.revision,
+          reason,
+          requestId
+        );
+      setLifecycleOperation(operation);
+      operation = await waitForLifecycleOperation(operation);
+      setLifecycleOperation(operation);
+      await refreshKnowledgeDocuments(revision.document_id, revision.revision);
+      setNotice(lifecycleNotice(operation));
+    }, action === "withdraw" ? "文档下架失败。" : "文档恢复失败。");
+  }
+
+  async function retryDocumentLifecycleOperation(operationId: string) {
+    await runAction(async () => {
+      let operation = await retryKnowledgeDocumentOperation(operationId);
+      setLifecycleOperation(operation);
+      operation = await waitForLifecycleOperation(operation);
+      setLifecycleOperation(operation);
+      await refreshKnowledgeDocuments(
+        operation.selector.document_id,
+        operation.selector.revision
+      );
+      setNotice(lifecycleNotice(operation));
+    }, "生命周期补偿任务重试失败。");
+  }
+
+  async function waitForLifecycleOperation(
+    initial: DocumentLifecycleOperationRecord
+  ): Promise<DocumentLifecycleOperationRecord> {
+    let operation = initial;
+    const terminal = new Set(["withdrawn", "restored", "failed", "compensation_required"]);
+    for (let attempt = 0; attempt < 120 && !terminal.has(operation.status); attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 1000));
+      operation = await getKnowledgeDocumentOperation(operation.operation_id);
+      setLifecycleOperation(operation);
+    }
+    return operation;
+  }
+
   async function createEvaluation(input: { dataset_version: string; retrieval_profile: EvaluationRun["retrieval_profile"]; baseline_run_id?: string }) {
     await runAction(async () => {
       const run = await runEvaluation(input);
@@ -583,7 +691,24 @@ function App() {
         onRetryStream={() => void retryStream()}
       />}
       {view === "trace" && <TracePanel traces={traceOptions} trace={selectedTrace} onSelect={(traceId) => void selectTrace(traceId)} onOpenImage={(imageId) => void openImage(imageId)} />}
-      {view === "ingestion" && <IngestionPanel jobs={jobs} selectedJob={selectedJob} loading={actionLoading} onSelect={(jobId) => void selectIngestionJob(jobId)} onUpload={upload} onRetry={retryIngestion} onRefresh={() => refreshJobs()} />}
+      {view === "ingestion" && <IngestionPanel
+        jobs={jobs}
+        selectedJob={selectedJob}
+        documents={knowledgeDocuments}
+        selectedDocument={selectedKnowledgeDocument}
+        revisions={documentRevisions}
+        selectedRevision={selectedDocumentRevision}
+        lifecycleOperation={lifecycleOperation}
+        loading={actionLoading}
+        onSelect={(jobId) => void selectIngestionJob(jobId)}
+        onUpload={upload}
+        onRetry={retryIngestion}
+        onRefresh={async () => { await Promise.all([refreshJobs(), refreshKnowledgeDocuments()]); }}
+        onSelectDocument={(documentId) => void selectKnowledgeDocument(documentId)}
+        onSelectRevision={setSelectedDocumentRevision}
+        onLifecycleAction={changeDocumentLifecycle}
+        onRetryLifecycle={retryDocumentLifecycleOperation}
+      />}
       {view === "evaluation" && <EvaluationPanel datasets={datasets} runs={evaluations} selectedRun={selectedEvaluation} loading={actionLoading} onSelect={(runId) => void selectEvaluation(runId)} onRun={createEvaluation} onRetry={retryEvaluationRun} onRefresh={() => refreshEvaluations()} onOpenTrace={openEvaluationTrace} />}
     </main>
 
@@ -604,6 +729,16 @@ function viewTitle(view: View) {
 
 function messageFrom(value: unknown, fallback: string): string {
   return value instanceof Error ? value.message : fallback;
+}
+
+function lifecycleNotice(operation: DocumentLifecycleOperationRecord): string {
+  if (operation.status === "withdrawn") return "知识文档已下架，检索与资产访问已阻断。";
+  if (operation.status === "restored") return "知识文档已重新校验并恢复到活动索引。";
+  if (operation.status === "compensation_required") {
+    return "文档仍保持不可检索，向量投影需要补偿重试。";
+  }
+  if (operation.status === "failed") return "生命周期校验未通过，文档状态未放开。";
+  return "生命周期任务仍在处理中。";
 }
 
 function newStreamRequestId(): string {

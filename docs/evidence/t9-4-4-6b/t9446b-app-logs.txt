@@ -1,0 +1,83 @@
+api-1  | INFO:     Started server process [7]
+api-1  | INFO:     Waiting for application startup.
+api-1  | INFO:     Application startup complete.
+api-1  | INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+api-1  | INFO:     127.0.0.1:56440 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1  | INFO:     127.0.0.1:51890 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1  | INFO:     127.0.0.1:51206 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1  | INFO:     127.0.0.1:45672 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1  | INFO:     127.0.0.1:55530 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1  | INFO:     127.0.0.1:59502 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1  | INFO:     127.0.0.1:33498 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1  | INFO:     127.0.0.1:45310 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1     | INFO:     127.0.0.1:60556 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1     | INFO:     127.0.0.1:38036 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1     | INFO:     127.0.0.1:56128 - "GET /api/v1/live HTTP/1.1" 200 OK
+worker-1  |
+worker-1  |  -------------- celery@eac6b4dc1d77 v5.6.3 (recovery)
+worker-1  | --- ***** -----
+api-1     | INFO:     127.0.0.1:50742 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1     | INFO:     172.20.0.5:44730 - "POST /api/v1/auth/demo-token HTTP/1.1" 200 OK
+api-1     | INFO:     172.20.0.5:44744 - "GET /api/v1/knowledge-documents HTTP/1.1" 200 OK
+api-1     | INFO:     172.20.0.5:44750 - "POST /api/v1/auth/demo-token HTTP/1.1" 200 OK
+api-1     | INFO:     172.20.0.5:44766 - "GET /api/v1/knowledge-documents HTTP/1.1" 403 Forbidden
+api-1     | INFO:     172.20.0.5:44772 - "POST /api/v1/retrieval/search HTTP/1.1" 200 OK
+api-1     | INFO:     172.20.0.5:44784 - "GET /api/v1/assets/IMG-FA-ETCH-03-2026-004/access HTTP/1.1" 200 OK
+api-1     | INFO:     172.20.0.5:44794 - "POST /api/v1/knowledge-documents/CASE-FA-2026-004/revisions/R1/withdraw HTTP/1.1" 202 Accepted
+api-1     | INFO:     172.20.0.5:44800 - "GET /api/v1/knowledge-document-operations/doc_lifecycle_7651c08ea9a348cd8263806354cad75d HTTP/1.1" 200 OK
+api-1     | INFO:     172.20.0.5:44810 - "GET /api/v1/knowledge-document-operations/doc_lifecycle_7651c08ea9a348cd8263806354cad75d HTTP/1.1" 200 OK
+api-1     | INFO:     172.20.0.5:44818 - "POST /api/v1/knowledge-documents/CASE-FA-2026-004/revisions/R1/withdraw HTTP/1.1" 202 Accepted
+api-1     | INFO:     172.20.0.5:44828 - "POST /api/v1/knowledge-documents/CASE-FA-2026-004/revisions/R1/withdraw HTTP/1.1" 409 Conflict
+api-1     | INFO:     172.20.0.5:44844 - "POST /api/v1/retrieval/search HTTP/1.1" 200 OK
+api-1     | INFO:     172.20.0.5:44850 - "GET /api/v1/assets/IMG-FA-ETCH-03-2026-004/access HTTP/1.1" 403 Forbidden
+api-1     | INFO:     172.20.0.5:44858 - "POST /api/v1/knowledge-documents/CASE-FA-2026-004/revisions/R1/restore HTTP/1.1" 202 Accepted
+worker-1  | -- ******* ---- Linux-6.6.102-6.alnx4.x86_64-x86_64-with-glibc2.36 2026-08-16 04:25:49
+worker-1  | - *** --- * ---
+worker-1  | - ** ---------- [config]
+worker-1  | - ** ---------- .> app:         semikb:0x7f62b617f170
+worker-1  | - ** ---------- .> transport:   redis://:**@redis:6379/0
+worker-1  | - ** ---------- .> results:     redis://:**@redis:6379/0
+worker-1  | - *** --- * --- .> concurrency: 1 (prefork)
+worker-1  | -- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+worker-1  | --- ***** -----
+worker-1  |  -------------- [queues]
+worker-1  |                 .> celery           exchange=celery(direct) key=celery
+worker-1  |
+worker-1  |
+api-1     | INFO:     172.20.0.5:44864 - "GET /api/v1/knowledge-document-operations/doc_lifecycle_d3bd59de97b0403f8412955b8a934bfa HTTP/1.1" 200 OK
+api-1     | INFO:     172.20.0.5:44866 - "GET /api/v1/knowledge-document-operations/doc_lifecycle_d3bd59de97b0403f8412955b8a934bfa HTTP/1.1" 200 OK
+worker-1  | [tasks]
+worker-1  |   . semikb.evaluation.run
+worker-1  |   . semikb.ingestion.process
+worker-1  |   . semikb.ingestion.retry
+worker-1  |   . semikb.knowledge_document.lifecycle
+worker-1  |
+worker-1  | [2026-08-16 04:25:49,283: INFO/MainProcess] Connected to redis://:**@redis:6379/0
+worker-1  | [2026-08-16 04:25:49,286: INFO/MainProcess] mingle: searching for neighbors
+worker-1  | [2026-08-16 04:25:50,295: INFO/MainProcess] mingle: all alone
+worker-1  | [2026-08-16 04:25:50,304: INFO/MainProcess] celery@eac6b4dc1d77 ready.
+worker-1  | [2026-08-16 04:27:11,385: INFO/MainProcess] Task semikb.knowledge_document.lifecycle[74f65801-3804-4996-bd4a-fd7b7592019f] received
+worker-1  | [2026-08-16 04:27:12,489: INFO/ForkPoolWorker-1] HTTP Request: POST https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding "HTTP/1.1 200 OK"
+worker-1  | [2026-08-16 04:27:13,273: INFO/ForkPoolWorker-1] Task semikb.knowledge_document.lifecycle[74f65801-3804-4996-bd4a-fd7b7592019f] succeeded in 1.8877717290306464s: {'operation_id': 'doc_lifecycle_ab4eca332aa84a3181549f194cc10b8c', 'request_id': 't9446b-safety-restore-56241e2c252d4f8fb541e6336f3a7e0a', 'action': 'restore', 'status': 'restored', 'selector': {'document_id': 'CASE-FA-2026-004', 'revision': 'R1'}, 'actor_user_id': 't9446b_verifier', 'reason': 'T9-4.4.6b 验收异常后的安全恢复。', 'before_lifecycle': 'withdrawn', 'after_lifecycle': 'published', 'target_index_version': 'v4', 'affected': {'documents': 1, 'chunks': 5, 'images': 2, 'tables': 0, 'vectors': 5}, 'compensation_status': 'not_required', 'warning_codes': [], 'created_at': '2026-08-16T04:22:22.662000', 'updated_at': '2026-08-16T04:27:13.231989Z', 'completed_at': '2026-08-16T04:27:13.231989Z'}
+worker-1  | [2026-08-16 04:27:50,292: INFO/MainProcess] Task semikb.knowledge_document.lifecycle[07356d1e-9070-4149-82d9-9944ca9a3b05] received
+worker-1  | [2026-08-16 04:27:50,870: INFO/ForkPoolWorker-1] Task semikb.knowledge_document.lifecycle[07356d1e-9070-4149-82d9-9944ca9a3b05] succeeded in 0.5770666190073825s: {'operation_id': 'doc_lifecycle_7651c08ea9a348cd8263806354cad75d', 'request_id': 't9446b-withdraw-9e44283d683b40a8925d966d5d5c3e70', 'action': 'withdraw', 'status': 'withdrawn', 'selector': {'document_id': 'CASE-FA-2026-004', 'revision': 'R1'}, 'actor_user_id': 't9446b_verifier', 'reason': 'T9-4.4.6b ECS 跨存储闭环验收下架。', 'before_lifecycle': 'published', 'after_lifecycle': 'withdrawn', 'target_index_version': None, 'affected': {'documents': 1, 'chunks': 5, 'images': 2, 'tables': 0, 'vectors': 5}, 'compensation_status': 'not_required', 'warning_codes': [], 'created_at': '2026-08-16T04:27:50.078000', 'updated_at': '2026-08-16T04:27:50.830175Z', 'completed_at': '2026-08-16T04:27:50.830175Z'}
+worker-1  | [2026-08-16 04:27:51,403: INFO/MainProcess] Task semikb.knowledge_document.lifecycle[13e23880-e17d-4556-aa78-eec3ab173f9d] received
+worker-1  | [2026-08-16 04:27:51,419: INFO/ForkPoolWorker-1] Task semikb.knowledge_document.lifecycle[13e23880-e17d-4556-aa78-eec3ab173f9d] succeeded in 0.015712688968051225s: {'operation_id': 'doc_lifecycle_7651c08ea9a348cd8263806354cad75d', 'request_id': 't9446b-withdraw-9e44283d683b40a8925d966d5d5c3e70', 'action': 'withdraw', 'status': 'withdrawn', 'selector': {'document_id': 'CASE-FA-2026-004', 'revision': 'R1'}, 'actor_user_id': 't9446b_verifier', 'reason': 'T9-4.4.6b ECS 跨存储闭环验收下架。', 'before_lifecycle': 'published', 'after_lifecycle': 'withdrawn', 'target_index_version': None, 'affected': {'documents': 1, 'chunks': 5, 'images': 2, 'tables': 0, 'vectors': 5}, 'compensation_status': 'not_required', 'warning_codes': [], 'created_at': '2026-08-16T04:27:50.078000', 'updated_at': '2026-08-16T04:27:50.830000', 'completed_at': '2026-08-16T04:27:50.830000'}
+worker-1  | [2026-08-16 04:27:53,485: INFO/MainProcess] Task semikb.knowledge_document.lifecycle[ae348cec-e7d0-49e6-8ead-a91f1e2eaa3a] received
+worker-1  | [2026-08-16 04:27:54,459: INFO/ForkPoolWorker-1] HTTP Request: POST https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding "HTTP/1.1 200 OK"
+worker-1  | [2026-08-16 04:27:55,472: INFO/ForkPoolWorker-1] Task semikb.knowledge_document.lifecycle[ae348cec-e7d0-49e6-8ead-a91f1e2eaa3a] succeeded in 1.9865832040086389s: {'operation_id': 'doc_lifecycle_d3bd59de97b0403f8412955b8a934bfa', 'request_id': 't9446b-restore-9e44283d683b40a8925d966d5d5c3e70', 'action': 'restore', 'status': 'restored', 'selector': {'document_id': 'CASE-FA-2026-004', 'revision': 'R1'}, 'actor_user_id': 't9446b_verifier', 'reason': 'T9-4.4.6b ECS 验收完成并校验恢复。', 'before_lifecycle': 'withdrawn', 'after_lifecycle': 'published', 'target_index_version': 'v4', 'affected': {'documents': 1, 'chunks': 5, 'images': 2, 'tables': 0, 'vectors': 5}, 'compensation_status': 'not_required', 'warning_codes': [], 'created_at': '2026-08-16T04:27:53.457000', 'updated_at': '2026-08-16T04:27:55.432009Z', 'completed_at': '2026-08-16T04:27:55.432009Z'}
+api-1     | INFO:     172.20.0.5:44868 - "GET /api/v1/knowledge-document-operations/doc_lifecycle_d3bd59de97b0403f8412955b8a934bfa HTTP/1.1" 200 OK
+api-1     | INFO:     127.0.0.1:60418 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1     | INFO:     172.20.0.5:44880 - "POST /api/v1/retrieval/search HTTP/1.1" 200 OK
+api-1     | INFO:     172.20.0.5:44882 - "GET /api/v1/assets/IMG-FA-ETCH-03-2026-004/access HTTP/1.1" 200 OK
+api-1     | INFO:     127.0.0.1:59852 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1     | INFO:     127.0.0.1:56838 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1     | INFO:     127.0.0.1:38524 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1     | INFO:     127.0.0.1:60062 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1     | INFO:     127.0.0.1:34718 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1     | INFO:     127.0.0.1:57646 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1     | INFO:     127.0.0.1:39538 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1     | INFO:     127.0.0.1:41128 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1     | INFO:     127.0.0.1:50650 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1     | INFO:     127.0.0.1:39244 - "GET /api/v1/live HTTP/1.1" 200 OK
+api-1     | INFO:     127.0.0.1:43094 - "GET /api/v1/live HTTP/1.1" 200 OK

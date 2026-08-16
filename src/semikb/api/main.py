@@ -15,6 +15,7 @@ from fastapi import (
     Form,
     Header,
     HTTPException,
+    Query,
     Request,
     Response,
     UploadFile,
@@ -32,14 +33,26 @@ from semikb.contracts.models import (
     CreateEvaluationRunRequest,
     CreateMemoryRequest,
     CreateThreadRequest,
+    DocumentLifecycle,
+    DocumentLifecycleOperationRecord,
+    DocumentLifecycleOperationStatus,
+    DocumentRevisionSelector,
     EvaluationStatus,
     IngestDocumentRequest,
     IngestionStatus,
     IngestUploadMetadata,
+    KnowledgeDocumentListResponse,
+    KnowledgeDocumentRevisionSummary,
+    RestoreDocumentRevisionRequest,
     SearchRequest,
     SendMessageRequest,
+    WithdrawDocumentRevisionRequest,
 )
 from semikb.contracts.streaming import StreamMessageRequest, encode_sse_event
+from semikb.rag_ingestion.document_lifecycle import (
+    LifecycleStateConflictError,
+    LifecycleValidationError,
+)
 from semikb.rag_ingestion.service import IngestionIdempotencyConflictError
 from semikb.rag_retrieval.milvus_schema import schema_contract
 from semikb.storage.conversations import (
@@ -48,6 +61,10 @@ from semikb.storage.conversations import (
     ThreadBusyError,
 )
 from semikb.storage.external import health_payload
+from semikb.storage.knowledge_documents import (
+    LifecycleOperationRequestConflictError,
+    RevisionLifecycleConflictError,
+)
 from semikb_ingest import IngestError
 
 
@@ -478,6 +495,198 @@ def retry_ingestion_job(
     except KeyError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ingestion job not found.") from exc
     return job.model_dump(mode="json")
+
+
+@app.get(
+    "/api/v1/knowledge-documents",
+    response_model=KnowledgeDocumentListResponse,
+)
+def list_knowledge_documents(
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+    query: Annotated[str | None, Query(max_length=200)] = None,
+    lifecycle: Annotated[DocumentLifecycle | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> KnowledgeDocumentListResponse:
+    _require_knowledge_admin(actor_scope)
+    return container.knowledge_documents.list_documents(
+        actor_scope,
+        query=query,
+        lifecycle=lifecycle,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@app.get(
+    "/api/v1/knowledge-documents/{document_id}/revisions",
+    response_model=list[KnowledgeDocumentRevisionSummary],
+)
+def list_knowledge_document_revisions(
+    document_id: str,
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> list[KnowledgeDocumentRevisionSummary]:
+    _require_knowledge_admin(actor_scope)
+    return container.knowledge_documents.list_revisions(document_id, actor_scope)
+
+
+@app.post(
+    "/api/v1/knowledge-documents/{document_id}/revisions/{revision}/withdraw",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=DocumentLifecycleOperationRecord,
+)
+def withdraw_knowledge_document_revision(
+    document_id: str,
+    revision: str,
+    request: WithdrawDocumentRevisionRequest,
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> DocumentLifecycleOperationRecord:
+    _require_knowledge_admin(actor_scope)
+    try:
+        operation = container.knowledge_documents.request_withdrawal(
+            DocumentRevisionSelector(document_id=document_id, revision=revision),
+            request,
+            actor_scope,
+        )
+    except Exception as exc:
+        raise _lifecycle_http_exception(exc) from exc
+    operation = _dispatch_lifecycle_operation(container, operation.operation_id)
+    return operation
+
+
+@app.post(
+    "/api/v1/knowledge-documents/{document_id}/revisions/{revision}/restore",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=DocumentLifecycleOperationRecord,
+)
+def restore_knowledge_document_revision(
+    document_id: str,
+    revision: str,
+    request: RestoreDocumentRevisionRequest,
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> DocumentLifecycleOperationRecord:
+    _require_knowledge_admin(actor_scope)
+    try:
+        operation = container.knowledge_documents.request_restore(
+            DocumentRevisionSelector(document_id=document_id, revision=revision),
+            request,
+            actor_scope,
+        )
+    except Exception as exc:
+        raise _lifecycle_http_exception(exc) from exc
+    operation = _dispatch_lifecycle_operation(container, operation.operation_id)
+    return operation
+
+
+@app.get(
+    "/api/v1/knowledge-document-operations/{operation_id}",
+    response_model=DocumentLifecycleOperationRecord,
+)
+def get_knowledge_document_operation(
+    operation_id: str,
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> DocumentLifecycleOperationRecord:
+    _require_knowledge_admin(actor_scope)
+    operation = container.knowledge_documents.get_operation(operation_id)
+    if operation is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Knowledge document operation not found.",
+        )
+    if "admin" not in actor_scope.roles and operation.actor_user_id != actor_scope.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Knowledge document operation access denied.",
+        )
+    return operation
+
+
+@app.post(
+    "/api/v1/knowledge-document-operations/{operation_id}/retry",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=DocumentLifecycleOperationRecord,
+)
+def retry_knowledge_document_operation(
+    operation_id: str,
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> DocumentLifecycleOperationRecord:
+    _require_knowledge_admin(actor_scope)
+    existing = container.knowledge_documents.get_operation(operation_id)
+    if existing is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Knowledge document operation not found.",
+        )
+    if "admin" not in actor_scope.roles and existing.actor_user_id != actor_scope.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Knowledge document operation access denied.",
+        )
+    operation = container.knowledge_documents.prepare_retry(operation_id)
+    if operation.status not in {
+        DocumentLifecycleOperationStatus.WITHDRAWN,
+        DocumentLifecycleOperationStatus.RESTORED,
+    }:
+        operation = _dispatch_lifecycle_operation(container, operation.operation_id)
+    return operation
+
+
+def _dispatch_lifecycle_operation(
+    container: ApplicationContainer,
+    operation_id: str,
+) -> DocumentLifecycleOperationRecord:
+    if container.settings.demo_mode:
+        return container.knowledge_documents.process(operation_id)
+    from semikb.workers.tasks import process_document_lifecycle_operation
+
+    try:
+        process_document_lifecycle_operation.delay(operation_id)
+    except Exception:
+        return container.knowledge_documents.mark_dispatch_failed(operation_id)
+    operation = container.knowledge_documents.get_operation(operation_id)
+    if operation is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Knowledge document operation not found.",
+        )
+    return operation
+
+
+def _lifecycle_http_exception(exc: Exception) -> HTTPException:
+    if isinstance(exc, KeyError):
+        return HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Knowledge document revision not found.",
+        )
+    if isinstance(exc, PermissionError):
+        return HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Knowledge document revision access denied.",
+        )
+    if isinstance(exc, LifecycleValidationError):
+        return HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        )
+    if isinstance(
+        exc,
+        (
+            LifecycleStateConflictError,
+            LifecycleOperationRequestConflictError,
+            RevisionLifecycleConflictError,
+        ),
+    ):
+        return HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        )
+    raise exc
 
 
 def _enqueue_ingestion(container: ApplicationContainer, job_id: str) -> None:

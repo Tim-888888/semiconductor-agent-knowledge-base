@@ -1,7 +1,10 @@
 """Task entry points with idempotent service-level behavior."""
 
 from semikb.bootstrap import get_container
-from semikb.contracts.models import IngestionStatus
+from semikb.contracts.models import (
+    DocumentLifecycleOperationStatus,
+    IngestionStatus,
+)
 from semikb.workers.celery_app import celery_app
 
 _TRANSIENT_INGESTION_ERRORS = {
@@ -51,6 +54,33 @@ def retry_ingestion_job(job_id: str) -> dict[str, object]:
     job = get_container().ingestion.prepare_retry(job_id)
     process_ingestion_job.delay(job.job_id)
     return job.model_dump(mode="json")
+
+
+@celery_app.task(
+    bind=True,
+    name="semikb.knowledge_document.lifecycle",
+    acks_late=True,
+    reject_on_worker_lost=True,
+    max_retries=3,
+    soft_time_limit=1200,
+    time_limit=1500,
+)
+def process_document_lifecycle_operation(
+    self,
+    operation_id: str,
+) -> dict[str, object]:
+    service = get_container().knowledge_documents
+    operation = service.process(operation_id, execution_id=self.request.id)
+    if (
+        operation.status is DocumentLifecycleOperationStatus.COMPENSATION_REQUIRED
+        and self.request.retries < self.max_retries
+    ):
+        service.prepare_retry(operation_id)
+        raise self.retry(
+            exc=ConnectionError("Lifecycle projection requires compensation."),
+            countdown=2 ** (self.request.retries + 1),
+        )
+    return operation.model_dump(mode="json")
 
 
 @celery_app.task(

@@ -1,0 +1,188 @@
+[
+  {
+    "component": "mongodb",
+    "check": "collections",
+    "passed": true,
+    "detail": "all expected collections exist"
+  },
+  {
+    "component": "mongodb",
+    "check": "indexes:document_catalog",
+    "passed": true,
+    "detail": "indexes match desired contract"
+  },
+  {
+    "component": "mongodb",
+    "check": "indexes:source_manifests",
+    "passed": true,
+    "detail": "indexes match desired contract"
+  },
+  {
+    "component": "mongodb",
+    "check": "indexes:document_lifecycle_operations",
+    "passed": true,
+    "detail": "indexes match desired contract"
+  },
+  {
+    "component": "mongodb",
+    "check": "indexes:chunk_catalog",
+    "passed": true,
+    "detail": "indexes match desired contract"
+  },
+  {
+    "component": "mongodb",
+    "check": "indexes:image_assets",
+    "passed": true,
+    "detail": "indexes match desired contract"
+  },
+  {
+    "component": "mongodb",
+    "check": "indexes:table_assets",
+    "passed": true,
+    "detail": "indexes match desired contract"
+  },
+  {
+    "component": "mongodb",
+    "check": "indexes:ingestion_jobs",
+    "passed": true,
+    "detail": "indexes match desired contract"
+  },
+  {
+    "component": "mongodb",
+    "check": "indexes:ingestion_job_events",
+    "passed": true,
+    "detail": "indexes match desired contract"
+  },
+  {
+    "component": "mongodb",
+    "check": "indexes:index_releases",
+    "passed": true,
+    "detail": "indexes match desired contract"
+  },
+  {
+    "component": "mongodb",
+    "check": "indexes:retrieval_traces",
+    "passed": true,
+    "detail": "indexes match desired contract"
+  },
+  {
+    "component": "mongodb",
+    "check": "indexes:evaluation_datasets",
+    "passed": true,
+    "detail": "indexes match desired contract"
+  },
+  {
+    "component": "mongodb",
+    "check": "indexes:evaluation_runs",
+    "passed": true,
+    "detail": "indexes match desired contract"
+  },
+  {
+    "component": "mongodb",
+    "check": "indexes:agent_threads",
+    "passed": true,
+    "detail": "indexes match desired contract"
+  },
+  {
+    "component": "mongodb",
+    "check": "indexes:agent_message_requests",
+    "passed": true,
+    "detail": "indexes match desired contract"
+  },
+  {
+    "component": "mongodb",
+    "check": "indexes:checkpoints",
+    "passed": true,
+    "detail": "indexes match desired contract"
+  },
+  {
+    "component": "mongodb",
+    "check": "indexes:checkpoint_writes",
+    "passed": true,
+    "detail": "indexes match desired contract"
+  },
+  {
+    "component": "mongodb",
+    "check": "indexes:long_term_memories",
+    "passed": true,
+    "detail": "indexes match desired contract"
+  },
+  {
+    "component": "mongodb",
+    "check": "indexes:audit_events",
+    "passed": true,
+    "detail": "indexes match desired contract"
+  },
+  {
+    "component": "minio",
+    "check": "bucket:semikb-raw",
+    "passed": true,
+    "detail": "bucket exists"
+  },
+  {
+    "component": "minio",
+    "check": "privacy:semikb-raw",
+    "passed": true,
+    "detail": "no public bucket policy"
+  },
+  {
+    "component": "minio",
+    "check": "bucket:semikb-derived",
+    "passed": true,
+    "detail": "bucket exists"
+  },
+  {
+    "component": "minio",
+    "check": "privacy:semikb-derived",
+    "passed": true,
+    "detail": "no public bucket policy"
+  },
+  {
+    "component": "milvus",
+    "check": "collection",
+    "passed": true,
+    "detail": "semikb_chunks_v4 exists"
+  },
+  {
+    "component": "milvus",
+    "check": "schema",
+    "passed": true,
+    "detail": "field set and dense dimension match"
+  },
+  {
+    "component": "milvus",
+    "check": "field_types",
+    "passed": true,
+    "detail": "field types match"
+  },
+  {
+    "component": "milvus",
+    "check": "indexes",
+    "passed": true,
+    "detail": "dense HNSW and sparse inverted indexes match"
+  },
+  {
+    "component": "milvus",
+    "check": "active_alias",
+    "passed": true,
+    "detail": "active alias points to collection"
+  },
+  {
+    "component": "redis",
+    "check": "ping",
+    "passed": true,
+    "detail": "authenticated ping succeeded"
+  },
+  {
+    "component": "redis",
+    "check": "persistence",
+    "passed": true,
+    "detail": "AOF with appendfsync everysec enabled"
+  },
+  {
+    "component": "redis",
+    "check": "security",
+    "passed": true,
+    "detail": "protected mode and password are enabled"
+  }
+]

@@ -49,6 +49,17 @@ MONGO_INDEX_SPECS: dict[str, tuple[MongoIndexSpec, ...]] = {
         _index("status_created_at", "status", "created_at"),
         _index("source_hash", "source_hash"),
     ),
+    "document_lifecycle_operations": (
+        _index("operation_id", "operation_id", unique=True),
+        _index("request_id", "request_id", unique=True),
+        _index(
+            "document_revision_created_at",
+            "selector.document_id",
+            "selector.revision",
+            "created_at",
+        ),
+        _index("status_updated_at", "status", "updated_at"),
+    ),
     "chunk_catalog": (
         _index("chunk_id", "chunk_id", unique=True),
         _index("document_id_revision", "document_id", "revision"),

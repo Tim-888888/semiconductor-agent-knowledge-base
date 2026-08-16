@@ -11,12 +11,21 @@ from langgraph.store.mongodb import MongoDBStore
 from semikb.agent_runtime.service import ConversationService
 from semikb.config import Settings, get_settings
 from semikb.evaluation.service import EvaluationService
+from semikb.rag_ingestion.document_lifecycle import (
+    KnowledgeDocumentLifecycleService,
+    NoopVectorProjectionRepository,
+)
 from semikb.rag_ingestion.service import IngestionService
 from semikb.rag_retrieval.encoders import create_hybrid_encoder
 from semikb.rag_retrieval.production_service import ProductionRetrievalService
 from semikb.rag_retrieval.service import RetrievalService
+from semikb.storage.clients import StorageClientFactory
 from semikb.storage.conversations import MongoConversationRepository
 from semikb.storage.evaluations import MongoEvaluationRepository
+from semikb.storage.knowledge_documents import (
+    DemoKnowledgeDocumentRepository,
+    MongoKnowledgeDocumentRepository,
+)
 from semikb.storage.memory import DemoStore
 from semikb.storage.production_ingestion import ProductionIngestionStore
 
@@ -32,6 +41,25 @@ class ApplicationContainer:
         )
         shared_encoder = None if settings.demo_mode else create_hybrid_encoder(settings)
         self.ingestion = IngestionService(self.ingestion_store, settings, encoder=shared_encoder)
+        if settings.demo_mode:
+            document_repository = DemoKnowledgeDocumentRepository(self.store)
+            lifecycle_vectors = NoopVectorProjectionRepository()
+            lifecycle_artifacts = self.store
+        else:
+            lifecycle_factory = StorageClientFactory(settings)
+            document_repository = MongoKnowledgeDocumentRepository(
+                lifecycle_factory,
+                settings.mongodb_database,
+            )
+            lifecycle_vectors = self.ingestion_store.vectors
+            lifecycle_artifacts = self.ingestion_store.artifacts
+        self.knowledge_documents = KnowledgeDocumentLifecycleService(
+            settings,
+            document_repository,
+            lifecycle_vectors,
+            lifecycle_artifacts,
+            self.ingestion.encoder,
+        )
         self.retrieval = (
             RetrievalService(self.store)
             if settings.demo_mode

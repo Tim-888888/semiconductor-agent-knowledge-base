@@ -9,6 +9,24 @@
 工程师/知识管理员令牌；生产环境应由 OIDC 适配器替换。评估数据集、运行列表、详情、启动和重试
 均要求 `knowledge_admin` 或 `admin` 角色。
 
+## 知识文档运营
+
+T9-4.4.6b 已开放以下版本化接口，均以 MongoDB 文档生命周期为权限和可用性真相：
+
+| 方法 | 路径 | 作用 |
+| --- | --- | --- |
+| `GET` | `/knowledge-documents` | 按查询和生命周期分页列出知识文档 |
+| `GET` | `/knowledge-documents/{document_id}/revisions` | 查看 revision 链和当前影响计数 |
+| `POST` | `/knowledge-documents/{document_id}/revisions/{revision}/withdraw` | 受控下架指定 revision |
+| `POST` | `/knowledge-documents/{document_id}/revisions/{revision}/restore` | 重校验并恢复指定 revision |
+| `GET` | `/knowledge-document-operations/{operation_id}` | 查询异步操作真实状态 |
+| `POST` | `/knowledge-document-operations/{operation_id}/retry` | 重试需要补偿的操作 |
+
+清单、下架和恢复只允许 `knowledge_admin/admin`。非 `admin` 只能读取和重试自己发起的操作。写操作
+返回 HTTP 202；相同 `request_id` 和相同内容幂等复用，改变 actor、action、revision 或 reason 返回 409。
+生产模式由 Celery 执行跨存储清理/恢复，MongoDB `document_lifecycle_operations` 是状态真相，Redis
+result 不是业务记录。
+
 ## 对话与连续会话
 
 | 方法 | 路径 | 作用 |
@@ -207,7 +225,7 @@ MinerU”的隐藏回退。此结论是本地代码与自动测试结果，不�
 - `WithdrawDocumentRevisionRequest` / `RestoreDocumentRevisionRequest`：管理员操作请求；原因必填，恢复可
   指定目标索引版本。
 - `DocumentLifecycleOperationRecord`：记录 actor、原因、前后状态、跨存储影响计数、补偿状态及 Job/Trace
-  关联。4.4.6a 尚未开放对应 REST 路由，运行时实现属于 4.4.6b。
+  关联。4.4.6b 已开放清单、下架、恢复、操作查询和补偿重试 REST 路由。
 - `Chunk`：正文/表格/图文检索单元，保留图片/表格稳定引用和解析来源；MongoDB 保存正文，Milvus 只
   保存向量及过滤字段。
 - `ImageAsset`：真实图片对象引用、图注、OCR、检测摘要、源位置、解析来源及 Case 关联。

@@ -1,0 +1,69 @@
+{
+  "database": "semikb",
+  "migration_version": "t9-4.4.6b-lifecycle-operations-v1",
+  "applied": false,
+  "status": "dry_run",
+  "snapshot_path": "/backups/t9446b-preflight.json",
+  "actions": [
+    {
+      "collection": "document_lifecycle_operations",
+      "operation": "create",
+      "index_name": "operation_id",
+      "keys": [
+        [
+          "operation_id",
+          1
+        ]
+      ],
+      "unique": true
+    },
+    {
+      "collection": "document_lifecycle_operations",
+      "operation": "create",
+      "index_name": "request_id",
+      "keys": [
+        [
+          "request_id",
+          1
+        ]
+      ],
+      "unique": true
+    },
+    {
+      "collection": "document_lifecycle_operations",
+      "operation": "create",
+      "index_name": "document_revision_created_at",
+      "keys": [
+        [
+          "selector.document_id",
+          1
+        ],
+        [
+          "selector.revision",
+          1
+        ],
+        [
+          "created_at",
+          1
+        ]
+      ],
+      "unique": false
+    },
+    {
+      "collection": "document_lifecycle_operations",
+      "operation": "create",
+      "index_name": "status_updated_at",
+      "keys": [
+        [
+          "status",
+          1
+        ],
+        [
+          "updated_at",
+          1
+        ]
+      ],
+      "unique": false
+    }
+  ]
+}

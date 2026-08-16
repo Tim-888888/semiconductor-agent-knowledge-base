@@ -1,0 +1,8 @@
+{
+  "database": "semikb",
+  "migration_version": "t9-4.4.6b-lifecycle-operations-v1",
+  "applied": false,
+  "status": "dry_run",
+  "snapshot_path": "/backups/t9446b-second-preflight.json",
+  "actions": []
+}

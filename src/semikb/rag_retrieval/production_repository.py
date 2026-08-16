@@ -181,13 +181,34 @@ class ProductionRetrievalRepository:
                             for document_id, revision in document_keys
                         ]
                     },
-                    {"_id": 0, "document_id": 1, "revision": 1, "source_uri": 1, "title": 1},
+                    {
+                        "_id": 0,
+                        "document_id": 1,
+                        "revision": 1,
+                        "source_uri": 1,
+                        "title": 1,
+                        "lifecycle": 1,
+                        "approval_status": 1,
+                    },
                 )
             ) if document_keys else []
         documents = {
             (str(item["document_id"]), str(item["revision"])): item
             for item in document_records
         }
+        records = [
+            record
+            for record in records
+            if (
+                document := documents.get(
+                    (str(record["document_id"]), str(record["revision"]))
+                )
+            )
+            and document.get("lifecycle", DocumentLifecycle.PUBLISHED.value)
+            == DocumentLifecycle.PUBLISHED.value
+            and document.get("approval_status", ApprovalStatus.APPROVED.value)
+            == ApprovalStatus.APPROVED.value
+        ]
         for record in records:
             document = documents.get((str(record["document_id"]), str(record["revision"])), {})
             record["metadata"] = {

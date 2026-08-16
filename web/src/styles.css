@@ -69,10 +69,12 @@ h4 { margin: 0; font-size: 13px; }
 
 .icon-button { width: 34px; height: 34px; flex: 0 0 34px; display: grid; place-items: center; padding: 0; border: 1px solid #cbd2cd; border-radius: 4px; background: #fff; color: #4b5f56; }
 .icon-button:hover { border-color: #8ba398; color: var(--green); background: #f4f8f5; }
-.command-button, .text-command { min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 4px; font-weight: 700; white-space: nowrap; }
+.command-button, .text-command, .danger-command { min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 4px; font-weight: 700; white-space: nowrap; }
 .command-button { padding: 8px 13px; border: 0; background: var(--green); color: #fff; }
 .command-button:hover { background: #195e4b; }
 .text-command { padding: 7px 10px; border: 1px solid #a8c3b8; background: #f4faf7; color: #205f4e; }
+.danger-command { padding: 8px 13px; border: 0; background: var(--red); color: #fff; }
+.danger-command:hover { background: #82342f; }
 .heading-actions { display: flex; align-items: center; gap: 8px; }
 .mono-id { margin: 5px 0 0; color: #7a8580; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
 
@@ -255,6 +257,22 @@ td small { margin-top: 4px; color: #87918c; font-size: 9px; overflow-wrap: anywh
 .event-item small { color: #7c8781; font-size: 9px; }
 .progress { width: 110px; height: 5px; margin-bottom: 4px; background: #dfe4e0; }
 .progress span { display: block; height: 100%; margin: 0; background: var(--green); }
+.knowledge-documents-view table { min-width: 820px; }
+.revision-select { display: grid; gap: 5px; margin: 14px 0 4px; color: var(--muted); font-size: 10px; font-weight: 700; }
+.revision-select select { width: 100%; }
+.document-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
+.lifecycle-action-form { margin-top: 14px; padding-top: 13px; border-top: 2px solid var(--amber); }
+.lifecycle-action-form > div:first-child strong, .lifecycle-action-form > div:first-child span { display: block; }
+.lifecycle-action-form > div:first-child strong { font-size: 12px; }
+.lifecycle-action-form > div:first-child span { margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.lifecycle-action-form label { display: grid; gap: 5px; margin-top: 11px; color: var(--muted); font-size: 10px; font-weight: 700; }
+.lifecycle-action-form textarea { width: 100%; min-height: 88px; resize: vertical; padding: 8px; border: 1px solid #c4ccc6; border-radius: 4px; color: var(--ink); background: #fff; line-height: 1.45; }
+.lifecycle-action-form .form-actions { gap: 7px; }
+.lifecycle-operation { display: grid; gap: 6px; margin-top: 15px; padding-top: 13px; border-top: 1px solid var(--line); }
+.lifecycle-operation > div { display: flex; align-items: center; gap: 6px; }
+.lifecycle-operation > span { color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
+.lifecycle-operation .operation-warning { color: var(--red); font-weight: 700; }
+.lifecycle-operation .command-button { margin-top: 4px; }
 
 /* Evaluation */
 .evaluation-launcher { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(170px, 0.8fr) minmax(210px, 1fr) auto; gap: 10px; align-items: end; margin-bottom: 16px; padding: 13px; border: 1px solid var(--line); background: #fff; }
