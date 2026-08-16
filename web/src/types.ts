@@ -279,16 +279,24 @@ export type UploadMetadata = {
   revision: string;
   title: string;
   document_type: string;
+  approval_status: "draft" | "approved" | "rejected";
+  lifecycle: "staged" | "published" | "quarantined";
   source_kind: string;
   source_license: string;
-  access_scope_key: string;
-  fab: string;
-  product: string;
+  source_id?: string;
+  source_manifest_version?: string;
+  dataset_version?: string;
+  source_license_status?: SourceLicenseStatus;
+  redistribution_policy?: RedistributionPolicy;
+  access_scope_key?: string;
+  fab?: string;
+  product?: string;
   process_layer?: string;
   tool_id?: string;
   chamber?: string;
   recipe_id?: string;
   recipe_version?: string;
+  retrieval_policy: "standard" | "protected";
 };
 
 export type TraceCandidate = {
@@ -368,6 +376,11 @@ export type EvaluationRun = {
   dataset_version: string;
   dataset_hash: string;
   case_count: number;
+  dataset_purpose: "development" | "calibration" | "regression" | "holdout";
+  dataset_sealed_at?: string | null;
+  dataset_opened_at?: string | null;
+  dataset_leakage_status: "unreviewed" | "cleared" | "contaminated";
+  source_snapshot_hash?: string | null;
   baseline_run_id?: string | null;
   requested_by: string;
   status: string;
@@ -390,6 +403,11 @@ export type EvaluationDataset = {
   dataset_hash: string;
   source_kind: string;
   description: string;
+  purpose: "development" | "calibration" | "regression" | "holdout";
+  sealed_at?: string | null;
+  opened_at?: string | null;
+  source_snapshot_hash?: string | null;
+  leakage_status: "unreviewed" | "cleared" | "contaminated";
   case_count: number;
   created_at: string;
 };

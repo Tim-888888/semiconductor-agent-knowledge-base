@@ -14,6 +14,7 @@ from semikb.contracts.models import (
     IngestionJob,
     IngestionStatus,
     ObjectRef,
+    SourceManifest,
     TableAsset,
 )
 from semikb.rag_retrieval.encoders import HybridEmbedding
@@ -21,6 +22,7 @@ from semikb.storage.clients import StorageClientFactory
 from semikb.storage.milvus_chunks import MilvusChunkRepository
 from semikb.storage.minio_artifacts import MinioArtifactRepository
 from semikb.storage.mongo_ingestion import MongoIngestionRepository
+from semikb.storage.source_manifests import MongoSourceManifestRepository
 
 
 class ProductionIngestionStore:
@@ -32,12 +34,26 @@ class ProductionIngestionStore:
         self.mongo = MongoIngestionRepository(client_factory, settings.mongodb_database)
         self.artifacts = MinioArtifactRepository(client_factory)
         self.vectors = MilvusChunkRepository(client_factory, settings)
+        self.manifests = MongoSourceManifestRepository(
+            client_factory,
+            settings.mongodb_database,
+        )
 
     def create_or_get_job(self, job: IngestionJob) -> IngestionJob:
         return self.mongo.create_or_get_job(job)
 
     def get_job(self, job_id: str) -> IngestionJob | None:
         return self.mongo.get_job(job_id)
+
+    def register_source_manifest(self, manifest: SourceManifest) -> SourceManifest:
+        return self.manifests.register(manifest)
+
+    def get_source_manifest(
+        self,
+        source_id: str,
+        manifest_version: str,
+    ) -> SourceManifest | None:
+        return self.manifests.get(source_id, manifest_version)
 
     def list_jobs(self) -> list[IngestionJob]:
         return self.mongo.list_jobs()

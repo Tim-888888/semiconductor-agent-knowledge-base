@@ -598,7 +598,7 @@ class DemoKnowledgeDocumentRepository:
         )
 
     def get_source_manifest(self, source_id: str, version: str) -> SourceManifest | None:
-        return None
+        return self._store.get_source_manifest(source_id, version)
 
     def create_operation(
         self,

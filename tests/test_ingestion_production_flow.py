@@ -16,6 +16,7 @@ from semikb.contracts.models import (
     ObjectRef,
     TableAsset,
 )
+from semikb.demo_factory import load_demo_source_manifest
 from semikb.rag_ingestion.mineru import MinerUPrecisionClient
 from semikb.rag_ingestion.service import IngestionService
 from semikb.rag_retrieval.encoders import (
@@ -35,11 +36,27 @@ def payload(document_id: str = "T4-TEST-SOP") -> dict[str, object]:
         "content": "# Alarm handling\n\nVerify chamber pressure before recipe recovery.",
         "approval_status": "approved",
         "lifecycle": "published",
+        "source_kind": "synthetic",
+        "source_license": "CC0-1.0",
+        "source_id": "semikb.demo.synthetic",
+        "source_manifest_version": "1.0.0",
+        "dataset_version": "demo-v2",
+        "source_license_status": "verified",
+        "redistribution_policy": "allowed",
         "access_scope_key": "demo_engineering",
         "fab": "FAB-01",
         "product": "P-ALPHA",
         "tool_id": "ETCH-03",
+        "retrieval_policy": "protected",
     }
+
+
+def register_demo_manifest(store: DemoStore) -> None:
+    store.register_source_manifest(
+        load_demo_source_manifest(
+            Path("data/source_manifests/semikb-demo-corpus-v1.json")
+        )
+    )
 
 
 class FailOnceEncoder:
@@ -69,6 +86,7 @@ class FailOnceAfterStageStore(DemoStore):
 def test_retry_replays_persisted_source_after_service_recreation() -> None:
     settings = Settings(_env_file=None, demo_mode=True, embedding_dim=8)
     store = DemoStore()
+    register_demo_manifest(store)
     first_service = IngestionService(store, settings, encoder=FailOnceEncoder(8))
 
     failed = first_service.ingest_payload(payload())
@@ -92,6 +110,7 @@ def test_retry_replays_persisted_source_after_service_recreation() -> None:
 def test_staging_failure_quarantines_records_and_retry_does_not_duplicate() -> None:
     settings = Settings(_env_file=None, demo_mode=True, embedding_dim=8)
     store = FailOnceAfterStageStore()
+    register_demo_manifest(store)
     service = IngestionService(store, settings, encoder=DeterministicHybridEncoder(8))
 
     failed = service.ingest_payload(payload("T4-STAGE-FAIL"))
@@ -117,6 +136,7 @@ def test_staging_failure_quarantines_records_and_retry_does_not_duplicate() -> N
 def test_low_confidence_image_caption_fails_quality_gate() -> None:
     settings = Settings(_env_file=None, demo_mode=True, embedding_dim=8)
     store = DemoStore()
+    register_demo_manifest(store)
     service = IngestionService(store, settings, encoder=DeterministicHybridEncoder(8))
     request = payload("T4-BAD-IMAGE")
     request["images"] = [
@@ -232,6 +252,7 @@ def test_mineru_signed_upload_does_not_override_content_type(monkeypatch) -> Non
 def test_source_and_parse_objects_are_replayable() -> None:
     settings = Settings(_env_file=None, demo_mode=True, embedding_dim=8)
     store = DemoStore()
+    register_demo_manifest(store)
     service = IngestionService(store, settings, encoder=DeterministicHybridEncoder(8))
 
     job = service.ingest_payload(payload("T4-OBJECT-REF"))
@@ -246,6 +267,7 @@ def test_source_and_parse_objects_are_replayable() -> None:
 def test_embedding_event_describes_the_active_encoder() -> None:
     settings = Settings(_env_file=None, demo_mode=True, embedding_dim=8)
     store = DemoStore()
+    register_demo_manifest(store)
     service = IngestionService(store, settings, encoder=DeterministicHybridEncoder(8))
 
     job = service.ingest_payload(payload("T4-EMBEDDING-EVENT"))

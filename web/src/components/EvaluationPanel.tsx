@@ -63,7 +63,7 @@ export function EvaluationPanel({ datasets, runs, selectedRun, loading, onSelect
     </header>
 
     <form className="evaluation-launcher" onSubmit={submit} data-testid="evaluation-form">
-      <label><span>数据集</span><select value={datasetVersion} onChange={(event) => { setDatasetVersion(event.target.value); setBaselineRunId(""); }}>{datasets.map((dataset) => <option key={dataset.dataset_version} value={dataset.dataset_version}>{dataset.dataset_version} · {dataset.case_count} Case</option>)}{!datasets.length && <option value="t5-live-v1">t5-live-v1</option>}</select></label>
+      <label><span>数据集</span><select value={datasetVersion} onChange={(event) => { setDatasetVersion(event.target.value); setBaselineRunId(""); }}>{datasets.map((dataset) => <option key={dataset.dataset_version} value={dataset.dataset_version}>{dataset.dataset_version} · {dataset.purpose} · {dataset.case_count} Case</option>)}{!datasets.length && <option value="t5-live-v1">t5-live-v1</option>}</select></label>
       <label><span>检索档位</span><select value={profile} onChange={(event) => setProfile(event.target.value as EvaluationRun["retrieval_profile"])}>{profiles.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}</select></label>
       <label><span>Baseline</span><select value={baselineRunId} onChange={(event) => setBaselineRunId(event.target.value)}><option value="">无</option>{baselineOptions.map((run) => <option value={run.evaluation_run_id} key={run.evaluation_run_id}>{run.retrieval_profile} · {run.evaluation_run_id.slice(-8)}</option>)}</select></label>
       <button className="command-button" type="submit" disabled={loading || !datasetVersion}><ClipboardCheck size={17} />创建运行</button>
@@ -85,6 +85,8 @@ export function EvaluationPanel({ datasets, runs, selectedRun, loading, onSelect
             <div><span className="section-label">RUN DETAIL</span><h3>{selectedRun.dataset_version} · {selectedRun.retrieval_profile}</h3><p className="mono-id">{selectedRun.evaluation_run_id}</p></div>
             <div className="heading-actions"><StatusPill value={selectedRun.status} />{selectedRun.status === "failed" && <button className="icon-button" type="button" title="重试评估" onClick={() => void onRetry(selectedRun.evaluation_run_id)} disabled={loading}><RotateCcw size={17} /></button>}</div>
           </div>
+
+          <section className="run-snapshot"><span>purpose={selectedRun.dataset_purpose}</span><span>leakage={selectedRun.dataset_leakage_status}</span><span>sealed={selectedRun.dataset_sealed_at ? formatDate(selectedRun.dataset_sealed_at) : "no"}</span><span>opened={selectedRun.dataset_opened_at ? formatDate(selectedRun.dataset_opened_at) : "no"}</span></section>
 
           <div className="metric-grid evaluation-metrics">
             <Metric label="Recall@5" value={formatMetric(selectedRun.aggregate_metrics.recall_at_5)} tone="good" />

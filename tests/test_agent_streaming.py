@@ -19,6 +19,7 @@ from semikb.contracts.streaming import (
     agent_stream_event_adapter,
     validate_stream_event_sequence,
 )
+from semikb.demo_factory import demo_actor_scope
 from semikb.storage.conversations import MessageRequestInProgressError
 
 
@@ -439,7 +440,7 @@ async def test_production_graph_streams_multiple_verified_answer_units(seeded_se
         settings,
         llm=FakeStreamingLLM(),
     )
-    scope = ActorScope(user_id="production_stream_test")
+    scope = demo_actor_scope(user_id="production_stream_test")
     thread = conversation.create_thread("production stream", scope)
     prepared = await conversation.prepare_stream_message(
         thread.thread_id,

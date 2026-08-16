@@ -250,6 +250,16 @@ class ConversationGraph:
             **understanding.inherited_slots,
             **understanding.explicit_slots,
         }
+        if any(
+            item.target_type.value == "wafer_map" for item in understanding.task_items
+        ):
+            constraints["retrieval_mode"] = "image"
+        elif understanding.primary_intent.value == "investigation" or any(
+            item.action.value == "diagnose" for item in understanding.task_items
+        ):
+            constraints["retrieval_mode"] = "diagnostic"
+        else:
+            constraints["retrieval_mode"] = "standard"
         if understanding.primary_intent.value == "investigation":
             intent = "anomaly_investigation"
         elif any(

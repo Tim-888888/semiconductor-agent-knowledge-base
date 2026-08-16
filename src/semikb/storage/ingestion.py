@@ -13,6 +13,7 @@ from semikb.contracts.models import (
     IngestionJob,
     IngestionStatus,
     ObjectRef,
+    SourceManifest,
     TableAsset,
 )
 from semikb.rag_retrieval.encoders import HybridEmbedding
@@ -24,6 +25,14 @@ class IngestionStore(Protocol):
     def create_or_get_job(self, job: IngestionJob) -> IngestionJob: ...
 
     def get_job(self, job_id: str) -> IngestionJob | None: ...
+
+    def register_source_manifest(self, manifest: SourceManifest) -> SourceManifest: ...
+
+    def get_source_manifest(
+        self,
+        source_id: str,
+        manifest_version: str,
+    ) -> SourceManifest | None: ...
 
     def list_jobs(self) -> list[IngestionJob]: ...
 

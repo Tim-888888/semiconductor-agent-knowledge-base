@@ -4,13 +4,13 @@ import pytest
 
 from semikb.agent_runtime.presentation import build_message_presentation
 from semikb.contracts.models import (
-    ActorScope,
     AgentAnswer,
     AgentRoute,
     AnswerClaim,
     EvidenceLedgerEntry,
     MessageRenderMode,
 )
+from semikb.demo_factory import demo_actor_scope
 
 
 def _answer() -> AgentAnswer:
@@ -103,7 +103,7 @@ async def test_structured_message_survives_later_direct_reply_and_thread_reload(
     seeded_services,
 ) -> None:
     store, _, _, service, _ = seeded_services
-    scope = ActorScope()
+    scope = demo_actor_scope()
     thread = service.create_thread("presentation history", scope)
 
     investigation = await service.send_message(
@@ -146,7 +146,7 @@ async def test_structured_message_survives_later_direct_reply_and_thread_reload(
 @pytest.mark.asyncio
 async def test_final_image_order_survives_thread_reload(seeded_services) -> None:
     store, _, _, service, _ = seeded_services
-    scope = ActorScope()
+    scope = demo_actor_scope()
     thread = service.create_thread("image presentation", scope)
 
     response = await service.send_message(

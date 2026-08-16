@@ -9,6 +9,7 @@ import pytest
 from semikb.config import Settings
 from semikb.contracts.models import (
     ActorScope,
+    ApprovalStatus,
     Chunk,
     ChunkType,
     DocumentLifecycle,
@@ -16,6 +17,7 @@ from semikb.contracts.models import (
     RetrievalConstraints,
     RetrievalTrace,
 )
+from semikb.demo_factory import demo_actor_scope
 from semikb.rag_retrieval.encoders import HybridEmbedding
 from semikb.rag_retrieval.production_repository import (
     ProductionRetrievalRepository,
@@ -80,7 +82,9 @@ def chunk(
         chunk_text=text,
         title_path=["ETCH-03", "排查"],
         page_or_section="排查",
+        approval_status=ApprovalStatus.APPROVED,
         lifecycle=DocumentLifecycle.PUBLISHED,
+        access_scope_key="demo_engineering",
         fab="FAB-01",
         product=product,
         tool_id="ETCH-03",
@@ -215,7 +219,7 @@ def test_defense_in_depth_accepts_pymongo_naive_utc_datetimes() -> None:
 
     assert ProductionRetrievalRepository.is_accessible(
         item,
-        ActorScope(),
+        demo_actor_scope(),
         datetime(2026, 8, 12, tzinfo=UTC),
         None,
     )
@@ -233,7 +237,7 @@ def test_production_pipeline_fuses_routes_reranks_cuts_off_and_returns_image() -
 
     evidence, trace = service.search(
         "ETCH-03 Chamber B 首片异常如何排查？",
-        ActorScope(),
+        demo_actor_scope(),
         constraints=RetrievalConstraints(chamber="B", use_hyde=True),
     )
 
@@ -257,7 +261,7 @@ def test_defense_in_depth_removes_scope_mismatch_even_if_milvus_returns_it() -> 
         hyde_generator=FakeHyde(),
     )
 
-    evidence, trace = service.search("ETCH-03 边缘环状缺陷", ActorScope())
+    evidence, trace = service.search("ETCH-03 边缘环状缺陷", demo_actor_scope())
 
     assert "C3" not in [item.chunk_id for item in evidence]
     assert "C3" not in [item.chunk_id for item in trace.candidates]
@@ -272,7 +276,7 @@ def test_reranker_failure_degrades_to_rrf_with_trace_warning() -> None:
         hyde_generator=FakeHyde(),
     )
 
-    evidence, trace = service.search("ETCH-03 edge-ring", ActorScope())
+    evidence, trace = service.search("ETCH-03 edge-ring", demo_actor_scope())
 
     assert evidence
     assert trace.routes[-1] == "rrf_fallback"
@@ -288,7 +292,7 @@ def test_dynamic_cutoff_stops_at_a_rerank_score_cliff() -> None:
         hyde_generator=FakeHyde(),
     )
 
-    evidence, trace = service.search("ETCH-03 edge-ring", ActorScope())
+    evidence, trace = service.search("ETCH-03 edge-ring", demo_actor_scope())
 
     assert [item.chunk_id for item in evidence] == ["C1"]
     assert trace.cutoff_reason == "rerank_score_cliff"
@@ -343,7 +347,7 @@ def test_dense_only_baseline_does_not_call_hyde_or_reranker() -> None:
 
     _, trace = service.search(
         "异常原因",
-        ActorScope(),
+        demo_actor_scope(),
         options=RetrievalOptions(dense=True, sparse=False, rerank=False, hyde=False),
     )
 

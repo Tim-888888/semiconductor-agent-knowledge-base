@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -12,7 +13,6 @@ from pydantic import ValidationError
 
 from scripts.export_t9446a_contracts import (
     DEFAULT_OUTPUT,
-    export_contracts,
     validate_source_manifests,
 )
 from semikb.contracts.models import (
@@ -192,11 +192,12 @@ def test_source_manifest_versions_are_immutable_and_registration_is_idempotent()
         repository.register(changed)
 
 
-def test_frozen_contract_bundle_is_current_and_contains_governance_models() -> None:
-    result = export_contracts(DEFAULT_OUTPUT, check=True)
+def test_frozen_v1_contract_bundle_is_preserved_and_contains_governance_models() -> None:
     bundle = json.loads(DEFAULT_OUTPUT.read_text(encoding="utf-8"))
 
-    assert result["status"] == "current"
+    assert hashlib.sha256(DEFAULT_OUTPUT.read_bytes()).hexdigest() == (
+        "1223277eaab755f0d2c4bdaf17ad8c614955a2170ba4b15009662d36739a1496"
+    )
     assert bundle["contract_version"] == "semikb-source-governance-v1"
     assert set(bundle["schemas"]) == {
         "SourceManifest",

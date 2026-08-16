@@ -17,6 +17,7 @@ from semikb.contracts.models import (
     DocumentRevision,
     ImageAsset,
     RetrievalConstraints,
+    RetrievalPolicy,
     RetrievalTrace,
 )
 from semikb.rag_retrieval.milvus_schema import collection_name
@@ -189,6 +190,8 @@ class ProductionRetrievalRepository:
                         "title": 1,
                         "lifecycle": 1,
                         "approval_status": 1,
+                        "document_type": 1,
+                        "retrieval_policy": 1,
                     },
                 )
             ) if document_keys else []
@@ -211,10 +214,16 @@ class ProductionRetrievalRepository:
         ]
         for record in records:
             document = documents.get((str(record["document_id"]), str(record["revision"])), {})
+            retrieval_policy = document.get("retrieval_policy")
+            if retrieval_policy is None and str(document.get("document_type", "")).lower() == "sop":
+                retrieval_policy = RetrievalPolicy.PROTECTED.value
+            record["retrieval_policy"] = retrieval_policy or RetrievalPolicy.STANDARD.value
             record["metadata"] = {
                 **record.get("metadata", {}),
                 "source_uri": document.get("source_uri", ""),
                 "document_title": document.get("title", ""),
+                "document_type": document.get("document_type", "unknown"),
+                "retrieval_policy": record["retrieval_policy"],
             }
         return {
             chunk.chunk_id: chunk

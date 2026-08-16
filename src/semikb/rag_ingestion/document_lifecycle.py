@@ -24,8 +24,11 @@ from semikb.contracts.models import (
     KnowledgeDocumentRevisionSummary,
     ObjectRef,
     RestoreDocumentRevisionRequest,
-    SourceManifestStatus,
     WithdrawDocumentRevisionRequest,
+)
+from semikb.rag_ingestion.publication_governance import (
+    PublicationGovernanceError,
+    validate_publication_governance,
 )
 from semikb.rag_retrieval.encoders import HybridEmbedding, HybridEncoder
 from semikb.storage.knowledge_documents import (
@@ -427,17 +430,24 @@ class KnowledgeDocumentLifecycleService:
             raise LifecycleValidationError("revision_has_no_chunks")
         if operation.target_index_version != self.settings.milvus_index_version:
             raise LifecycleValidationError("target_index_version_inactive")
-        if document.source_id and document.source_manifest_version:
-            manifest = self.repository.get_source_manifest(
+        manifest = (
+            self.repository.get_source_manifest(
                 document.source_id,
                 document.source_manifest_version,
             )
-            if manifest is None:
-                raise LifecycleValidationError("source_manifest_missing")
-            if manifest.status is not SourceManifestStatus.APPROVED:
-                raise LifecycleValidationError("source_manifest_not_approved")
-            if manifest.access_scope_key != document.access_scope_key:
-                raise LifecycleValidationError("source_manifest_scope_mismatch")
+            if document.source_id and document.source_manifest_version
+            else None
+        )
+        try:
+            validate_publication_governance(
+                document,
+                bundle.chunks,
+                bundle.images,
+                bundle.tables,
+                manifest,
+            )
+        except PublicationGovernanceError as exc:
+            raise LifecycleValidationError(exc.code) from exc
 
         references = [document.source_ref]
         if document.parsed_ref is not None:

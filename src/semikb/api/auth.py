@@ -10,6 +10,7 @@ from fastapi import Depends, Header, HTTPException, status
 
 from semikb.config import Settings, get_settings
 from semikb.contracts.models import ActorScope
+from semikb.demo_factory import demo_actor_scope
 
 
 def create_demo_token(scope: ActorScope, settings: Settings) -> str:
@@ -26,7 +27,7 @@ def get_actor_scope(
 
     if not authorization:
         if settings.demo_mode:
-            return ActorScope()
+            return demo_actor_scope()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Bearer token required.")
     prefix, _, token = authorization.partition(" ")
     if prefix.lower() != "bearer" or not token:

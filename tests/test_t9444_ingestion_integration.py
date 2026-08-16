@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import json
 from dataclasses import dataclass
+from pathlib import Path
 
 import pytest
 from docx import Document as WordDocument
@@ -13,6 +14,10 @@ from pptx.util import Inches
 
 from semikb.config import Settings
 from semikb.contracts.models import DocumentLifecycle, IngestionStatus
+from semikb.demo_factory import (
+    apply_demo_ingestion_governance,
+    load_demo_source_manifest,
+)
 from semikb.rag_ingestion.semikb_adapter import SemikbIngestAdapter
 from semikb.rag_ingestion.service import IngestionService
 from semikb.rag_retrieval.encoders import DeterministicHybridEncoder
@@ -161,6 +166,11 @@ def _service(
     registry: ProviderRegistry | None = None,
 ) -> IngestionService:
     settings = Settings(_env_file=None, demo_mode=True, embedding_dim=8)
+    store.register_source_manifest(
+        load_demo_source_manifest(
+            Path("data/source_manifests/semikb-demo-corpus-v1.json")
+        )
+    )
     return IngestionService(
         store,
         settings,
@@ -170,7 +180,10 @@ def _service(
 
 
 def _metadata(document_id: str) -> dict[str, str]:
-    return {
+    manifest = load_demo_source_manifest(
+        Path("data/source_manifests/semikb-demo-corpus-v1.json")
+    )
+    return apply_demo_ingestion_governance({
         "document_id": document_id,
         "revision": "R1",
         "title": "T9-4.4.4 integration fixture",
@@ -181,7 +194,8 @@ def _metadata(document_id: str) -> dict[str, str]:
         "fab": "FAB-01",
         "product": "P-ALPHA",
         "tool_id": "ETCH-03",
-    }
+        "source_license": manifest.license_name,
+    }, manifest)
 
 
 @pytest.mark.parametrize(

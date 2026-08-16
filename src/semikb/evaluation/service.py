@@ -17,10 +17,12 @@ from semikb.contracts.models import (
     Chunk,
     EvaluationCase,
     EvaluationDataset,
+    EvaluationDatasetPurpose,
     EvaluationRun,
     EvaluationStatus,
     RetrievalTrace,
 )
+from semikb.demo_factory import demo_actor_scope
 from semikb.rag_retrieval.production_service import RetrievalOptions
 from semikb.storage.evaluations import EvaluationRepository
 
@@ -66,10 +68,15 @@ class EvaluationService:
         retrieval_profile: str = "full",
         requested_by: str = "system",
     ) -> EvaluationRun:
-        dataset = self._load_dataset(dataset_version)
-        dataset = self.repository.save_evaluation_dataset(dataset)
         if retrieval_profile not in _PROFILE_OPTIONS:
             raise ValueError(f"Unsupported retrieval profile: {retrieval_profile}")
+        dataset = self._load_dataset(dataset_version)
+        dataset = self.repository.save_evaluation_dataset(dataset)
+        if dataset.purpose is EvaluationDatasetPurpose.HOLDOUT:
+            dataset = self.repository.mark_evaluation_dataset_opened(
+                dataset.dataset_version,
+                datetime.now(UTC),
+            )
         if baseline_run_id:
             baseline = self.repository.get_evaluation_run(baseline_run_id)
             if baseline is None or baseline.status is not EvaluationStatus.COMPLETED:
@@ -80,6 +87,11 @@ class EvaluationService:
             dataset_version=dataset.dataset_version,
             dataset_hash=dataset.dataset_hash,
             case_count=dataset.case_count,
+            dataset_purpose=dataset.purpose,
+            dataset_sealed_at=dataset.sealed_at,
+            dataset_opened_at=dataset.opened_at,
+            dataset_leakage_status=dataset.leakage_status,
+            source_snapshot_hash=dataset.source_snapshot_hash,
             baseline_run_id=baseline_run_id,
             requested_by=requested_by,
             retrieval_profile=retrieval_profile,
@@ -350,16 +362,39 @@ class EvaluationService:
         declared_version = str(payload.get("dataset_version", dataset_version))
         if declared_version != dataset_version:
             raise ValueError("Evaluation dataset filename and declared version do not match.")
-        cases = [EvaluationCase.model_validate(item) for item in payload.get("cases", [])]
+        source_kind = str(payload.get("source_kind", "synthetic"))
+        case_payloads = []
+        for raw in payload.get("cases", []):
+            item = dict(raw)
+            if "actor_scope" not in item and source_kind == "synthetic":
+                item["actor_scope"] = demo_actor_scope().model_dump(mode="json")
+            case_payloads.append(item)
+        cases = [EvaluationCase.model_validate(item) for item in case_payloads]
         if not cases:
             raise ValueError("Evaluation dataset must contain at least one case.")
+        canonical_payload: dict[str, Any] = {
+            "dataset_version": declared_version,
+            "source_kind": source_kind,
+            "description": payload.get("description", ""),
+            "cases": [case.model_dump(mode="json") for case in cases],
+        }
+        governance_keys = {
+            "purpose",
+            "sealed_at",
+            "source_snapshot_hash",
+            "leakage_status",
+        }
+        if governance_keys.intersection(payload):
+            canonical_payload.update(
+                {
+                    "purpose": payload.get("purpose", "regression"),
+                    "sealed_at": payload.get("sealed_at"),
+                    "source_snapshot_hash": payload.get("source_snapshot_hash"),
+                    "leakage_status": payload.get("leakage_status", "unreviewed"),
+                }
+            )
         canonical = json.dumps(
-            {
-                "dataset_version": declared_version,
-                "source_kind": payload.get("source_kind", "synthetic"),
-                "description": payload.get("description", ""),
-                "cases": [case.model_dump(mode="json") for case in cases],
-            },
+            canonical_payload,
             ensure_ascii=False,
             sort_keys=True,
             separators=(",", ":"),
@@ -367,8 +402,13 @@ class EvaluationService:
         return EvaluationDataset(
             dataset_version=declared_version,
             dataset_hash=hashlib.sha256(canonical).hexdigest(),
-            source_kind=str(payload.get("source_kind", "synthetic")),
+            source_kind=source_kind,
             description=str(payload.get("description", "")),
+            purpose=payload.get("purpose", "regression"),
+            sealed_at=payload.get("sealed_at"),
+            opened_at=payload.get("opened_at"),
+            source_snapshot_hash=payload.get("source_snapshot_hash"),
+            leakage_status=payload.get("leakage_status", "unreviewed"),
             case_count=len(cases),
             cases=cases,
         )

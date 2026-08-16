@@ -3,11 +3,15 @@ from __future__ import annotations
 import pytest
 
 from semikb.contracts.models import ActorScope
+from semikb.demo_factory import demo_actor_scope
 
 
 def test_hybrid_retrieval_keeps_only_current_authorized_evidence(seeded_services) -> None:
     _, _, retrieval, _, _ = seeded_services
-    evidence, trace = retrieval.search("ETCH-03 Chamber B 清腔后首片异常，当前 SOP 怎么要求？", ActorScope())
+    evidence, trace = retrieval.search(
+        "ETCH-03 Chamber B 清腔后首片异常，当前 SOP 怎么要求？",
+        demo_actor_scope(),
+    )
 
     assert "SOP-ETCH-03-R2-001" in trace.final_evidence_ids
     assert "SOP-ETCH-03-R1-001" not in trace.final_evidence_ids
@@ -17,10 +21,13 @@ def test_hybrid_retrieval_keeps_only_current_authorized_evidence(seeded_services
 
 def test_text_can_recall_authorized_synthetic_wafer_image_asset(seeded_services) -> None:
     _, _, retrieval, _, _ = seeded_services
-    _, trace = retrieval.search("有没有 ETCH-03 Chamber B 的边缘环状缺陷晶圆图？", ActorScope())
+    _, trace = retrieval.search(
+        "有没有 ETCH-03 Chamber B 的边缘环状缺陷晶圆图？",
+        demo_actor_scope(),
+    )
 
     assert "IMG-FA-ETCH-03-2026-004" in trace.image_asset_ids
-    access = retrieval.asset_access("IMG-FA-ETCH-03-2026-004", ActorScope())
+    access = retrieval.asset_access("IMG-FA-ETCH-03-2026-004", demo_actor_scope())
     assert access["url"].endswith("/preview")
 
 

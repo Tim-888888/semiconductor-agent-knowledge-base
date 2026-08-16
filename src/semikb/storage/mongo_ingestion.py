@@ -147,7 +147,7 @@ class MongoIngestionRepository:
             job.safe_error_summary = message
             job.failed_stage = previous_stage
             job.finished_at = datetime.now(UTC)
-        elif stage is IngestionStatus.PUBLISHED:
+        elif stage in {IngestionStatus.STAGED, IngestionStatus.PUBLISHED} and progress == 100:
             job.finished_at = datetime.now(UTC)
         event = IngestionEvent(
             job_id=job.job_id,

@@ -29,6 +29,7 @@ from semikb.contracts.models import (
     SlotOperationKind,
     TaskExecutionDecision,
 )
+from semikb.demo_factory import demo_actor_scope
 
 
 class ExpectedIntentTask(BaseModel):
@@ -163,7 +164,14 @@ class IntentEvaluationDataset(BaseModel):
 
     @classmethod
     def load(cls, path: Path) -> IntentEvaluationDataset:
-        return cls.model_validate_json(path.read_text(encoding="utf-8"))
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        # Frozen v1-v3 datasets predate neutral ActorScope defaults. Preserve
+        # their original identity and hash without restoring demo defaults to
+        # the public contract.
+        for case in payload.get("cases", []):
+            if "actor_scope" not in case:
+                case["actor_scope"] = demo_actor_scope().model_dump(mode="json")
+        return cls.model_validate(payload)
 
 
 class IntentEvaluationResult(BaseModel):

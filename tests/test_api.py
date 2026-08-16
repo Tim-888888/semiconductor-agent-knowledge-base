@@ -153,7 +153,7 @@ def test_api_accepts_markdown_upload_as_an_ingestion_job() -> None:
         headers=headers,
     )
     assert response.status_code == 201
-    assert response.json()["status"] == "published"
+    assert response.json()["status"] == "staged"
 
 
 def test_upload_api_returns_stable_conflict_for_changed_idempotent_metadata() -> None:

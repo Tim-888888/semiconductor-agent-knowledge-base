@@ -5,6 +5,7 @@ import {
   BookOpenCheck,
   FileText,
   FileUp,
+  FlaskConical,
   History,
   RefreshCw,
   RotateCcw,
@@ -45,18 +46,38 @@ type Props = {
 };
 
 const initialMetadata = (): UploadMetadata => ({
+  document_id: `DOC-${Date.now().toString().slice(-8)}`,
+  revision: "R1",
+  title: "",
+  document_type: "unknown",
+  approval_status: "draft",
+  lifecycle: "staged",
+  source_kind: "user_upload",
+  source_license: "unknown",
+  retrieval_policy: "standard"
+});
+
+const demoMetadata = (): UploadMetadata => ({
   document_id: `UI-DEMO-${Date.now().toString().slice(-8)}`,
   revision: "R1",
   title: "UI 入库验收资料",
   document_type: "training_note",
-  source_kind: "user_upload",
-  source_license: "internal",
+  approval_status: "approved",
+  lifecycle: "published",
+  source_kind: "synthetic",
+  source_license: "CC0-1.0",
+  source_id: "semikb.demo.synthetic",
+  source_manifest_version: "1.0.0",
+  dataset_version: "demo-v2",
+  source_license_status: "verified",
+  redistribution_policy: "allowed",
   access_scope_key: "demo_engineering",
   fab: "FAB-01",
   product: "P-ALPHA",
   process_layer: "ETCH",
   tool_id: "ETCH-03",
-  chamber: "B"
+  chamber: "B",
+  retrieval_policy: "standard"
 });
 
 export function IngestionPanel(props: Props) {
@@ -109,6 +130,19 @@ export function IngestionPanel(props: Props) {
     setReason("");
   }
 
+  function selectFile(nextFile: File | null) {
+    setFile(nextFile);
+    if (!nextFile) return;
+    const basename = nextFile.name.replace(/\.[^.]+$/, "");
+    setMetadata((current) => ({
+      ...current,
+      title: current.title || basename,
+      document_id: current.document_id.startsWith("DOC-")
+        ? `DOC-${basename.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").toUpperCase().slice(0, 72) || Date.now().toString().slice(-8)}`
+        : current.document_id
+    }));
+  }
+
   return <section className="operations-layout">
     <header className="operations-heading">
       <div><span className="section-label">KNOWLEDGE OPERATIONS</span><h2>入库与知识文档</h2></div>
@@ -124,15 +158,27 @@ export function IngestionPanel(props: Props) {
 
     {mode === "jobs" && <>
       {showUpload && <form className="upload-band" onSubmit={submit} data-testid="upload-form">
-        <div className="band-heading"><div><span className="section-label">NEW INGESTION JOB</span><h3>文档与治理元数据</h3></div><button className="icon-button" type="button" title="关闭上传" onClick={() => setShowUpload(false)}><X size={17} /></button></div>
-        <label className="file-drop"><FileUp size={24} /><span>{file?.name ?? "选择 PDF、Office、表格、图片或结构化文本"}</span><input data-testid="ingestion-file" type="file" accept=".pdf,.docx,.xlsx,.csv,.pptx,.png,.jpg,.jpeg,.md,.txt,.html,.htm" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label>
+        <div className="band-heading"><div><span className="section-label">NEW INGESTION JOB</span><h3>文档与治理元数据</h3></div><div className="heading-actions"><button className="text-command" type="button" onClick={() => setMetadata(demoMetadata())}><FlaskConical size={16} />加载演示配置</button><button className="icon-button" type="button" title="关闭上传" onClick={() => setShowUpload(false)}><X size={17} /></button></div></div>
+        <div className="warning-band"><ShieldCheck size={16} /><div><strong>待复核</strong><span>新文件默认以 draft / staged 保存，不会进入活动检索索引。</span></div></div>
+        <label className="file-drop"><FileUp size={24} /><span>{file?.name ?? "选择 PDF、Office、表格、图片或结构化文本"}</span><input data-testid="ingestion-file" type="file" accept=".pdf,.docx,.xlsx,.csv,.pptx,.png,.jpg,.jpeg,.md,.txt,.html,.htm" onChange={(event) => selectFile(event.target.files?.[0] ?? null)} /></label>
         <div className="form-grid">
-          <Field label="Document ID" value={metadata.document_id} onChange={(value) => setMetadata({ ...metadata, document_id: value })} />
-          <Field label="Revision" value={metadata.revision} onChange={(value) => setMetadata({ ...metadata, revision: value })} />
-          <Field label="标题" value={metadata.title} onChange={(value) => setMetadata({ ...metadata, title: value })} wide />
-          <Field label="文档类型" value={metadata.document_type} onChange={(value) => setMetadata({ ...metadata, document_type: value })} />
-          <Field label="Fab" value={metadata.fab} onChange={(value) => setMetadata({ ...metadata, fab: value })} />
-          <Field label="Product" value={metadata.product} onChange={(value) => setMetadata({ ...metadata, product: value })} />
+          <Field label="Document ID" value={metadata.document_id} onChange={(value) => setMetadata({ ...metadata, document_id: value })} required />
+          <Field label="Revision" value={metadata.revision} onChange={(value) => setMetadata({ ...metadata, revision: value })} required />
+          <Field label="标题" value={metadata.title} onChange={(value) => setMetadata({ ...metadata, title: value })} wide required />
+          <Field label="文档类型" value={metadata.document_type} onChange={(value) => setMetadata({ ...metadata, document_type: value })} required />
+          <SelectField label="审批状态" value={metadata.approval_status} options={["draft", "approved", "rejected"]} onChange={(value) => setMetadata({ ...metadata, approval_status: value as UploadMetadata["approval_status"] })} />
+          <SelectField label="目标生命周期" value={metadata.lifecycle} options={["staged", "published", "quarantined"]} onChange={(value) => setMetadata({ ...metadata, lifecycle: value as UploadMetadata["lifecycle"] })} />
+          <SelectField label="检索保护策略" value={metadata.retrieval_policy} options={["standard", "protected"]} onChange={(value) => setMetadata({ ...metadata, retrieval_policy: value as UploadMetadata["retrieval_policy"] })} />
+          <Field label="权限 Scope" value={metadata.access_scope_key ?? ""} onChange={(value) => setMetadata({ ...metadata, access_scope_key: value })} />
+          <Field label="来源类型" value={metadata.source_kind} onChange={(value) => setMetadata({ ...metadata, source_kind: value })} />
+          <Field label="来源许可" value={metadata.source_license} onChange={(value) => setMetadata({ ...metadata, source_license: value })} />
+          <Field label="Source ID" value={metadata.source_id ?? ""} onChange={(value) => setMetadata({ ...metadata, source_id: value || undefined })} />
+          <Field label="Manifest Version" value={metadata.source_manifest_version ?? ""} onChange={(value) => setMetadata({ ...metadata, source_manifest_version: value || undefined })} />
+          <Field label="Dataset Version" value={metadata.dataset_version ?? ""} onChange={(value) => setMetadata({ ...metadata, dataset_version: value || undefined })} />
+          <SelectField label="许可审计" value={metadata.source_license_status ?? ""} options={["", "verified", "declared", "unclear", "restricted"]} onChange={(value) => setMetadata({ ...metadata, source_license_status: value ? value as UploadMetadata["source_license_status"] : undefined })} />
+          <SelectField label="再分发策略" value={metadata.redistribution_policy ?? ""} options={["", "allowed", "restricted", "prohibited", "unknown"]} onChange={(value) => setMetadata({ ...metadata, redistribution_policy: value ? value as UploadMetadata["redistribution_policy"] : undefined })} />
+          <Field label="Fab" value={metadata.fab ?? ""} onChange={(value) => setMetadata({ ...metadata, fab: value })} />
+          <Field label="Product" value={metadata.product ?? ""} onChange={(value) => setMetadata({ ...metadata, product: value })} />
           <Field label="工艺层" value={metadata.process_layer ?? ""} onChange={(value) => setMetadata({ ...metadata, process_layer: value })} />
           <Field label="Tool" value={metadata.tool_id ?? ""} onChange={(value) => setMetadata({ ...metadata, tool_id: value })} />
           <Field label="Chamber" value={metadata.chamber ?? ""} onChange={(value) => setMetadata({ ...metadata, chamber: value })} />
@@ -233,6 +279,10 @@ export function IngestionPanel(props: Props) {
   </section>;
 }
 
-function Field({ label, value, onChange, wide = false }: { label: string; value: string; onChange: (value: string) => void; wide?: boolean }) {
-  return <label className={wide ? "field-wide" : ""}><span>{label}</span><input required value={value} onChange={(event) => onChange(event.target.value)} /></label>;
+function Field({ label, value, onChange, wide = false, required = false }: { label: string; value: string; onChange: (value: string) => void; wide?: boolean; required?: boolean }) {
+  return <label className={wide ? "field-wide" : ""}><span>{label}</span><input required={required} value={value} onChange={(event) => onChange(event.target.value)} /></label>;
+}
+
+function SelectField({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) {
+  return <label><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value)}>{options.map((option) => <option key={option || "unset"} value={option}>{option || "未设置"}</option>)}</select></label>;
 }

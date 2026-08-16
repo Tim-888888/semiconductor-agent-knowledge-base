@@ -29,6 +29,7 @@ from semikb.contracts.models import (
     TaskExecutionDecision,
     TaskExecutionStatus,
 )
+from semikb.demo_factory import demo_actor_scope
 
 
 class CountingRetrieval:
@@ -260,7 +261,7 @@ def _service(seeded_services):
 @pytest.mark.asyncio
 async def test_history_recall_uses_exact_message_and_skips_all_downstream(seeded_services) -> None:
     _, service, retrieval, toolbox, web = _service(seeded_services)
-    scope = ActorScope()
+    scope = demo_actor_scope()
     thread = service.create_thread("history", scope)
     first_question = "ETCH-03 Chamber B 清腔后首片异常，当前 SOP 怎么要求？"
 
@@ -423,7 +424,7 @@ async def test_history_plus_new_rag_task_executes_both_without_silent_omission(
     seeded_services,
 ) -> None:
     _, service, retrieval, toolbox, web = _service(seeded_services)
-    scope = ActorScope()
+    scope = demo_actor_scope()
     thread = service.create_thread("history-plus-rag", scope)
     previous = "ETCH-03 Chamber B 清腔后首片异常，当前 SOP 怎么要求？"
 
@@ -456,7 +457,7 @@ async def test_history_plus_new_rag_task_executes_both_without_silent_omission(
 @pytest.mark.asyncio
 async def test_rag_and_tool_tasks_each_finish_with_matching_evidence(seeded_services) -> None:
     _, service, retrieval, toolbox, web = _service(seeded_services)
-    thread = service.create_thread("rag-tool", ActorScope())
+    thread = service.create_thread("rag-tool", demo_actor_scope())
 
     result = await service.send_message(
         thread.thread_id,

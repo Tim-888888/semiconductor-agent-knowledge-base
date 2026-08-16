@@ -15,6 +15,7 @@ from semikb.contracts.models import (
     ImageAsset,
     IngestionJob,
     ObjectRef,
+    RetrievalPolicy,
     TableAsset,
 )
 from semikb_ingest.models import ParsedDocument, SourceLocation
@@ -48,7 +49,7 @@ def build_governed_records(
         revision=metadata["revision"],
         title=metadata["title"],
         document_type=metadata["document_type"],
-        approval_status=ApprovalStatus(metadata.get("approval_status", "approved")),
+        approval_status=ApprovalStatus(metadata.get("approval_status", "draft")),
         lifecycle=DocumentLifecycle.STAGED,
         effective_at=effective_at,
         expires_at=expires_at,
@@ -58,13 +59,13 @@ def build_governed_records(
         parsed_ref=parsed_ref,
         source_kind=metadata.get("source_kind", "user_upload"),
         source_uri=metadata.get("source_uri", f"upload://{job.filename}"),
-        source_license=metadata.get("source_license", "internal"),
+        source_license=metadata.get("source_license", "unknown"),
         source_id=metadata.get("source_id"),
         source_manifest_version=metadata.get("source_manifest_version"),
         dataset_version=metadata.get("dataset_version"),
         source_license_status=metadata.get("source_license_status"),
         redistribution_policy=metadata.get("redistribution_policy"),
-        access_scope_key=metadata.get("access_scope_key", "demo_engineering"),
+        access_scope_key=metadata.get("access_scope_key"),
         parse_contract_version=parsed.contract_version,
         parser_name=provenance.parser_name,
         parser_version=provenance.parser_version,
@@ -79,6 +80,9 @@ def build_governed_records(
         chunker_version=chunker_version,
         embedding_version=job.embedding_version,
         index_version=job.index_version,
+        retrieval_policy=RetrievalPolicy(
+            metadata.get("retrieval_policy", RetrievalPolicy.STANDARD.value)
+        ),
         **shared,
     )
     chunk_id_by_draft = {
@@ -157,6 +161,8 @@ def _build_chunks(
                     **draft.metadata,
                     "source_uri": document.source_uri,
                     "document_title": document.title,
+                    "document_type": document.document_type,
+                    "retrieval_policy": document.retrieval_policy.value,
                     "source_location": draft.location.model_dump(mode="json"),
                     "parse_contract_version": parsed.contract_version,
                     "provider_name": parsed.provenance.provider_name,
@@ -168,6 +174,7 @@ def _build_chunks(
                 chunker_version=document.chunker_version,
                 embedding_version=document.embedding_version,
                 index_version=document.index_version,
+                retrieval_policy=document.retrieval_policy,
                 **shared,
             )
         )
@@ -261,6 +268,8 @@ def _append_unreferenced_image_chunks(
                     "related_case_id": image.related_case_id,
                     "source_uri": document.source_uri,
                     "document_title": document.title,
+                    "document_type": document.document_type,
+                    "retrieval_policy": document.retrieval_policy.value,
                 },
                 parser_name=document.parser_name,
                 parser_version=document.parser_version,
@@ -268,6 +277,7 @@ def _append_unreferenced_image_chunks(
                 chunker_version=document.chunker_version,
                 embedding_version=document.embedding_version,
                 index_version=document.index_version,
+                retrieval_policy=document.retrieval_policy,
                 **shared,
             )
         )

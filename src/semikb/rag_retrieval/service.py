@@ -11,6 +11,8 @@ from semikb.contracts.models import (
     Chunk,
     RetrievalCandidate,
     RetrievalConstraints,
+    RetrievalMode,
+    RetrievalPolicy,
     RetrievalTrace,
 )
 from semikb.storage.memory import DemoStore
@@ -70,7 +72,8 @@ class RetrievalService:
                     )
                 )
             ]
-        scored = [self._score(chunk, query_tokens) for chunk in accessible]
+        retrieval_mode = constraints.retrieval_mode if constraints else None
+        scored = [self._score(chunk, query_tokens, retrieval_mode) for chunk in accessible]
         dense_ranked = sorted(scored, key=lambda item: item[1], reverse=True)
         sparse_ranked = sorted(scored, key=lambda item: item[2], reverse=True)
         dense_positions = {chunk.chunk_id: index + 1 for index, (chunk, _, _) in enumerate(dense_ranked)}
@@ -135,6 +138,10 @@ class RetrievalService:
             final_evidence_ids=[candidate.chunk_id for candidate in selected],
             image_asset_ids=image_asset_ids,
             timings_ms={"retrieval": round((perf_counter() - started) * 1000, 2)},
+            component_versions={
+                "query_routing_policy": "structured-task-v1",
+                "evidence_protection_policy": "governed-metadata-v1",
+            },
         )
         self.store.save_trace(trace)
         return [self.store.get_chunk(candidate.chunk_id) for candidate in selected if self.store.get_chunk(candidate.chunk_id)], trace
@@ -187,13 +194,20 @@ class RetrievalService:
         return self.store.save_trace(trace)
 
     @staticmethod
-    def _score(chunk: Chunk, query_tokens: set[str]) -> tuple[Chunk, float, float]:
+    def _score(
+        chunk: Chunk,
+        query_tokens: set[str],
+        retrieval_mode: RetrievalMode | None,
+    ) -> tuple[Chunk, float, float]:
         chunk_tokens = tokenize(f"{' '.join(chunk.title_path)} {chunk.chunk_text}")
         overlap = query_tokens.intersection(chunk_tokens)
         dense_score = len(overlap) / max(len(query_tokens.union(chunk_tokens)), 1)
         sparse_score = sum(1.0 for token in overlap if IDENTIFIER_PATTERN.fullmatch(token))
         sparse_score += len(overlap) / max(len(query_tokens), 1)
-        if chunk.chunk_type.value == "image_text" and {"晶圆", "缺陷", "图"}.intersection(query_tokens):
+        if (
+            chunk.chunk_type.value == "image_text"
+            and retrieval_mode is RetrievalMode.IMAGE
+        ):
             dense_score += 0.08
         return chunk, dense_score, sparse_score
 
@@ -213,7 +227,7 @@ class RetrievalService:
     def _is_protected_evidence(chunk: Chunk, query: str) -> bool:
         normal = query.lower()
         return bool(
-            chunk.document_id.startswith("SOP-")
+            chunk.retrieval_policy is RetrievalPolicy.PROTECTED
             and chunk.tool_id
             and chunk.tool_id.lower() in normal
             and chunk.chamber

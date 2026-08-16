@@ -116,6 +116,17 @@ class ChunkType(StrEnum):
     IMAGE_TEXT = "image_text"
 
 
+class RetrievalPolicy(StrEnum):
+    STANDARD = "standard"
+    PROTECTED = "protected"
+
+
+class RetrievalMode(StrEnum):
+    STANDARD = "standard"
+    DIAGNOSTIC = "diagnostic"
+    IMAGE = "image"
+
+
 class IngestionStatus(StrEnum):
     QUEUED = "queued"
     VALIDATING = "validating"
@@ -134,13 +145,26 @@ class EvaluationStatus(StrEnum):
     FAILED = "failed"
 
 
+class EvaluationDatasetPurpose(StrEnum):
+    DEVELOPMENT = "development"
+    CALIBRATION = "calibration"
+    REGRESSION = "regression"
+    HOLDOUT = "holdout"
+
+
+class EvaluationLeakageStatus(StrEnum):
+    UNREVIEWED = "unreviewed"
+    CLEARED = "cleared"
+    CONTAMINATED = "contaminated"
+
+
 class ActorScope(BaseModel):
-    user_id: str = "demo_engineer"
-    roles: list[str] = Field(default_factory=lambda: ["engineer"])
-    access_scope_keys: list[str] = Field(default_factory=lambda: ["demo_engineering"])
-    fabs: list[str] = Field(default_factory=lambda: ["FAB-01"])
-    products: list[str] = Field(default_factory=lambda: ["P-ALPHA"])
-    tool_ids: list[str] = Field(default_factory=lambda: ["ETCH-03"])
+    user_id: str = "anonymous"
+    roles: list[str] = Field(default_factory=list)
+    access_scope_keys: list[str] = Field(default_factory=list)
+    fabs: list[str] = Field(default_factory=list)
+    products: list[str] = Field(default_factory=list)
+    tool_ids: list[str] = Field(default_factory=list)
 
 
 class ObjectRef(BaseModel):
@@ -231,7 +255,7 @@ class SourceManifest(BaseModel):
     parser_hint: str | None = Field(default=None, max_length=200)
     expected_assets: SourceExpectedAssets = Field(default_factory=SourceExpectedAssets)
     dataset_version: str = Field(min_length=1, max_length=160)
-    access_scope_key: str = Field(default="demo_engineering", min_length=1, max_length=160)
+    access_scope_key: str = Field(min_length=1, max_length=160)
     source_snapshot_ref: ObjectRef | None = None
     supersedes_manifest_version: str | None = Field(default=None, max_length=64)
     created_by: str = Field(min_length=1, max_length=160)
@@ -253,12 +277,32 @@ def _validate_source_manifest_link(
         raise ValueError("source_id and source_manifest_version must be provided together.")
 
 
+def _validate_publication_request(request: Any) -> None:
+    if request.lifecycle is not DocumentLifecycle.PUBLISHED:
+        return
+    if request.approval_status is not ApprovalStatus.APPROVED:
+        raise ValueError("A published upload must be explicitly approved.")
+    required = {
+        "access_scope_key": request.access_scope_key,
+        "source_id": request.source_id,
+        "source_manifest_version": request.source_manifest_version,
+        "dataset_version": request.dataset_version,
+        "source_license_status": request.source_license_status,
+        "redistribution_policy": request.redistribution_policy,
+    }
+    missing = sorted(name for name, value in required.items() if value is None or value == "")
+    if missing:
+        raise ValueError(
+            "Published uploads require reviewed governance fields: " + ", ".join(missing)
+        )
+
+
 class DocumentRevision(BaseModel):
     document_id: str
     revision: str
     title: str
     document_type: str
-    approval_status: ApprovalStatus = ApprovalStatus.APPROVED
+    approval_status: ApprovalStatus = ApprovalStatus.DRAFT
     lifecycle: DocumentLifecycle = DocumentLifecycle.STAGED
     effective_at: datetime = Field(default_factory=utc_now)
     expires_at: datetime | None = None
@@ -266,17 +310,17 @@ class DocumentRevision(BaseModel):
     source_hash: str
     source_ref: ObjectRef
     parsed_ref: ObjectRef | None = None
-    source_kind: str = "synthetic"
+    source_kind: str = "unknown"
     source_uri: str = ""
-    source_license: str = "internal"
+    source_license: str = "unknown"
     source_id: str | None = None
     source_manifest_version: str | None = None
     dataset_version: str | None = None
     source_license_status: SourceLicenseStatus | None = None
     redistribution_policy: RedistributionPolicy | None = None
-    access_scope_key: str = "demo_engineering"
-    fab: str = "FAB-01"
-    product: str = "P-ALPHA"
+    access_scope_key: str | None = None
+    fab: str | None = None
+    product: str | None = None
     process_layer: str | None = None
     tool_id: str | None = None
     chamber: str | None = None
@@ -284,7 +328,7 @@ class DocumentRevision(BaseModel):
     recipe_version: str | None = None
     parse_contract_version: str = "legacy-ingestion-v1"
     parser_name: str = "legacy"
-    parser_version: str = "demo-parser-v1"
+    parser_version: str = "unknown"
     provider_name: str | None = None
     provider_version: str | None = None
     upstream_project: str | None = None
@@ -294,8 +338,9 @@ class DocumentRevision(BaseModel):
     parse_warning_codes: list[str] = Field(default_factory=list)
     parse_metrics: dict[str, Any] = Field(default_factory=dict)
     chunker_version: str = "semantic-v1"
-    embedding_version: str = "deterministic-demo-v1"
+    embedding_version: str = "unknown"
     index_version: str = "v1"
+    retrieval_policy: RetrievalPolicy = RetrievalPolicy.STANDARD
     created_at: datetime = Field(default_factory=utc_now)
 
     @model_validator(mode="after")
@@ -412,13 +457,13 @@ class Chunk(BaseModel):
     chunk_text: str
     title_path: list[str] = Field(default_factory=list)
     page_or_section: str
-    approval_status: ApprovalStatus = ApprovalStatus.APPROVED
+    approval_status: ApprovalStatus = ApprovalStatus.DRAFT
     lifecycle: DocumentLifecycle = DocumentLifecycle.STAGED
     effective_at: datetime = Field(default_factory=utc_now)
     expires_at: datetime | None = None
-    access_scope_key: str = "demo_engineering"
-    fab: str = "FAB-01"
-    product: str = "P-ALPHA"
+    access_scope_key: str | None = None
+    fab: str | None = None
+    product: str | None = None
     process_layer: str | None = None
     tool_id: str | None = None
     chamber: str | None = None
@@ -428,11 +473,12 @@ class Chunk(BaseModel):
     table_ids: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
     parser_name: str = "legacy"
-    parser_version: str = "demo-parser-v1"
+    parser_version: str = "unknown"
     upstream_commit: str | None = None
     chunker_version: str = "semantic-v1"
-    embedding_version: str = "deterministic-demo-v1"
+    embedding_version: str = "unknown"
     index_version: str = "v1"
+    retrieval_policy: RetrievalPolicy = RetrievalPolicy.STANDARD
     created_at: datetime = Field(default_factory=utc_now)
 
 
@@ -452,13 +498,13 @@ class ImageAsset(BaseModel):
     source_asset_id: str | None = None
     source_location: dict[str, Any] = Field(default_factory=dict)
     parser_name: str = "legacy"
-    parser_version: str = "demo-parser-v1"
+    parser_version: str = "unknown"
     provider_name: str | None = None
     provider_version: str | None = None
     related_case_id: str | None = None
     demo_source_path: str | None = None
-    access_scope_key: str = "demo_engineering"
-    approval_status: ApprovalStatus = ApprovalStatus.APPROVED
+    access_scope_key: str | None = None
+    approval_status: ApprovalStatus = ApprovalStatus.DRAFT
     lifecycle: DocumentLifecycle = DocumentLifecycle.STAGED
     effective_at: datetime = Field(default_factory=utc_now)
     expires_at: datetime | None = None
@@ -482,9 +528,9 @@ class TableAsset(BaseModel):
     source_page: str = ""
     source_location: dict[str, Any] = Field(default_factory=dict)
     parser_name: str = "legacy"
-    parser_version: str = "demo-parser-v1"
-    access_scope_key: str = "demo_engineering"
-    approval_status: ApprovalStatus = ApprovalStatus.APPROVED
+    parser_version: str = "unknown"
+    access_scope_key: str | None = None
+    approval_status: ApprovalStatus = ApprovalStatus.DRAFT
     lifecycle: DocumentLifecycle = DocumentLifecycle.STAGED
     effective_at: datetime = Field(default_factory=utc_now)
     expires_at: datetime | None = None
@@ -955,9 +1001,27 @@ class EvaluationDataset(BaseModel):
     dataset_hash: str
     source_kind: str = "synthetic"
     description: str = ""
+    purpose: EvaluationDatasetPurpose = EvaluationDatasetPurpose.REGRESSION
+    sealed_at: datetime | None = None
+    opened_at: datetime | None = None
+    source_snapshot_hash: str | None = Field(default=None, pattern=r"^[0-9a-fA-F]{64}$")
+    leakage_status: EvaluationLeakageStatus = EvaluationLeakageStatus.UNREVIEWED
     case_count: int = Field(ge=1)
     cases: list[EvaluationCase]
     created_at: datetime = Field(default_factory=utc_now)
+
+    @model_validator(mode="after")
+    def validate_holdout_governance(self) -> EvaluationDataset:
+        if self.opened_at and not self.sealed_at:
+            raise ValueError("opened_at requires sealed_at.")
+        if self.opened_at and self.sealed_at and self.opened_at < self.sealed_at:
+            raise ValueError("opened_at cannot be earlier than sealed_at.")
+        if self.purpose is EvaluationDatasetPurpose.HOLDOUT:
+            if self.sealed_at is None:
+                raise ValueError("A holdout dataset must be sealed before use.")
+            if self.leakage_status is not EvaluationLeakageStatus.CLEARED:
+                raise ValueError("A holdout dataset must pass leakage review before use.")
+        return self
 
 
 class EvaluationRun(BaseModel):
@@ -965,6 +1029,11 @@ class EvaluationRun(BaseModel):
     dataset_version: str
     dataset_hash: str = ""
     case_count: int = 0
+    dataset_purpose: EvaluationDatasetPurpose = EvaluationDatasetPurpose.REGRESSION
+    dataset_sealed_at: datetime | None = None
+    dataset_opened_at: datetime | None = None
+    dataset_leakage_status: EvaluationLeakageStatus = EvaluationLeakageStatus.UNREVIEWED
+    source_snapshot_hash: str | None = Field(default=None, pattern=r"^[0-9a-fA-F]{64}$")
     baseline_run_id: str | None = None
     requested_by: str = "system"
     status: EvaluationStatus = EvaluationStatus.QUEUED
@@ -1014,6 +1083,7 @@ class RetrievalConstraints(BaseModel):
     recipe_version: str | None = None
     as_of: datetime | None = None
     use_hyde: bool | None = None
+    retrieval_mode: RetrievalMode | None = None
 
 
 class SearchRequest(BaseModel):
@@ -1030,30 +1100,32 @@ class IngestDocumentRequest(BaseModel):
     title: str = Field(min_length=1, max_length=500)
     document_type: str = Field(min_length=1, max_length=64)
     content: str = Field(min_length=1)
-    approval_status: ApprovalStatus = ApprovalStatus.APPROVED
-    lifecycle: DocumentLifecycle = DocumentLifecycle.PUBLISHED
+    approval_status: ApprovalStatus = ApprovalStatus.DRAFT
+    lifecycle: DocumentLifecycle = DocumentLifecycle.STAGED
     supersedes_revision: str | None = None
     source_kind: str = "user_upload"
     source_uri: str = ""
-    source_license: str = "internal"
+    source_license: str = "unknown"
     source_id: str | None = None
     source_manifest_version: str | None = None
     dataset_version: str | None = None
     source_license_status: SourceLicenseStatus | None = None
     redistribution_policy: RedistributionPolicy | None = None
-    access_scope_key: str = "demo_engineering"
-    fab: str = "FAB-01"
-    product: str = "P-ALPHA"
+    access_scope_key: str | None = None
+    fab: str | None = None
+    product: str | None = None
     process_layer: str | None = None
     tool_id: str | None = None
     chamber: str | None = None
     recipe_id: str | None = None
     recipe_version: str | None = None
+    retrieval_policy: RetrievalPolicy = RetrievalPolicy.STANDARD
     images: list[dict[str, Any]] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_source_manifest_link(self) -> IngestDocumentRequest:
         _validate_source_manifest_link(self.source_id, self.source_manifest_version)
+        _validate_publication_request(self)
         return self
 
 
@@ -1062,30 +1134,32 @@ class IngestUploadMetadata(BaseModel):
     revision: str = Field(min_length=1, max_length=64)
     title: str = Field(min_length=1, max_length=500)
     document_type: str = Field(min_length=1, max_length=64)
-    approval_status: ApprovalStatus = ApprovalStatus.APPROVED
-    lifecycle: DocumentLifecycle = DocumentLifecycle.PUBLISHED
+    approval_status: ApprovalStatus = ApprovalStatus.DRAFT
+    lifecycle: DocumentLifecycle = DocumentLifecycle.STAGED
     supersedes_revision: str | None = None
     source_kind: str = "user_upload"
     source_uri: str = ""
-    source_license: str = "internal"
+    source_license: str = "unknown"
     source_id: str | None = None
     source_manifest_version: str | None = None
     dataset_version: str | None = None
     source_license_status: SourceLicenseStatus | None = None
     redistribution_policy: RedistributionPolicy | None = None
-    access_scope_key: str = "demo_engineering"
-    fab: str = "FAB-01"
-    product: str = "P-ALPHA"
+    access_scope_key: str | None = None
+    fab: str | None = None
+    product: str | None = None
     process_layer: str | None = None
     tool_id: str | None = None
     chamber: str | None = None
     recipe_id: str | None = None
     recipe_version: str | None = None
+    retrieval_policy: RetrievalPolicy = RetrievalPolicy.STANDARD
     images: list[dict[str, Any]] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_source_manifest_link(self) -> IngestUploadMetadata:
         _validate_source_manifest_link(self.source_id, self.source_manifest_version)
+        _validate_publication_request(self)
         return self
 
 

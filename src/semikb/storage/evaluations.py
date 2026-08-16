@@ -22,6 +22,12 @@ class EvaluationRepository(Protocol):
 
     def list_evaluation_datasets(self) -> list[EvaluationDataset]: ...
 
+    def mark_evaluation_dataset_opened(
+        self,
+        dataset_version: str,
+        opened_at: datetime,
+    ) -> EvaluationDataset: ...
+
     def save_evaluation_run(self, run: EvaluationRun) -> EvaluationRun: ...
 
     def get_evaluation_run(self, evaluation_run_id: str) -> EvaluationRun | None: ...
@@ -78,6 +84,30 @@ class MongoEvaluationRepository:
     def list_evaluation_datasets(self) -> list[EvaluationDataset]:
         cursor = self.datasets.find({}, {"_id": 0}).sort("created_at", -1)
         return [EvaluationDataset.model_validate(document) for document in cursor]
+
+    def mark_evaluation_dataset_opened(
+        self,
+        dataset_version: str,
+        opened_at: datetime,
+    ) -> EvaluationDataset:
+        document = self.datasets.find_one_and_update(
+            {
+                "dataset_version": dataset_version,
+                "$or": [
+                    {"opened_at": None},
+                    {"opened_at": {"$exists": False}},
+                ],
+            },
+            {"$set": {"opened_at": opened_at}},
+            projection={"_id": 0},
+            return_document=ReturnDocument.AFTER,
+        )
+        if document:
+            return EvaluationDataset.model_validate(_without_mongo_id(document))
+        existing = self.get_evaluation_dataset(dataset_version)
+        if existing is None:
+            raise KeyError(dataset_version)
+        return existing
 
     def save_evaluation_run(self, run: EvaluationRun) -> EvaluationRun:
         self.runs.replace_one(

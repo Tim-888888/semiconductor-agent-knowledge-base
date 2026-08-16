@@ -216,7 +216,8 @@ MinerU”的隐藏回退。此结论是本地代码与自动测试结果，不�
 ## 关键模型
 
 - `DocumentRevision`：版本、审批状态、有效期、权限范围、MinIO 原件/解析件引用，以及 Parser、Provider、
-  上游 Commit、警告和解析指标；可选关联不可变 Source Manifest，生命周期兼容新增 `withdrawn`。
+  上游 Commit、警告和解析指标；可选关联不可变 Source Manifest，生命周期兼容新增 `withdrawn`；
+  `retrieval_policy` 显式声明普通或受保护检索，不再从 Document ID 前缀推断。
 - `SourceManifest`：版本化来源登记，保存来源身份、Hash、真实/合成/派生属性、许可与再分发策略、
   数据集版本、Parser 提示、预期资产和结构化入库策略；同一 `(source_id, manifest_version)` 不可覆盖。
 - `SourceIngestionPolicy`：明确 `document_rag/tabular_profile_and_tool/image_corpus/reference_only` 模式及
@@ -226,8 +227,8 @@ MinerU”的隐藏回退。此结论是本地代码与自动测试结果，不�
   指定目标索引版本。
 - `DocumentLifecycleOperationRecord`：记录 actor、原因、前后状态、跨存储影响计数、补偿状态及 Job/Trace
   关联。4.4.6b 已开放清单、下架、恢复、操作查询和补偿重试 REST 路由。
-- `Chunk`：正文/表格/图文检索单元，保留图片/表格稳定引用和解析来源；MongoDB 保存正文，Milvus 只
-  保存向量及过滤字段。
+- `Chunk`：正文/表格/图文检索单元，保留图片/表格稳定引用、解析来源和 `retrieval_policy`；MongoDB
+  保存正文，Milvus 只保存向量及过滤字段。
 - `ImageAsset`：真实图片对象引用、图注、OCR、检测摘要、源位置、解析来源及 Case 关联。
 - `TableAsset`：表格 Markdown/HTML、表头、行列数、源位置和 MinIO `table.json` 引用。
 - `IngestionJob` + `IngestionEvent`：任务状态及不可抵赖阶段时间线。
@@ -236,9 +237,28 @@ MinerU”的隐藏回退。此结论是本地代码与自动测试结果，不�
 - `EvidenceLedgerEntry`：统一记录内部 Chunk、模拟工具和外部资料的来源等级、版本、分数与引用 ID。
 - `AgentAnswer`：分离已知事实、待验证假设、不确定项、下一步和置信度；事实必须引用账本 ID。
 - `MemoryRecord`：显式批准的用户偏好、Case 摘要或稳定规则，带来源、Scope、置信度与有效期。
-- `EvaluationDataset`：不可变黄金集快照；同一 `dataset_version` 不允许出现不同 Hash。
+- `EvaluationDataset`：不可变评测快照；同一 `dataset_version` 不允许出现不同 Hash，并记录
+  `development/calibration/regression/holdout` 用途、密封时间、首次打开时间、来源快照 Hash 和泄漏状态。
 - `EvaluationRun`：冻结数据集 Hash、`dense/hybrid/reranked/full` 配置、组件版本、任务所有权、
-  Recall@5/MRR/nDCG@5/负例准确率/图片召回/延迟、Case 结果和 baseline 差异。
+  数据用途/密封/首次打开/泄漏状态快照、Recall@5/MRR/nDCG@5/负例准确率/图片召回/延迟、Case 结果和
+  baseline 差异。
+
+### T9-4.4.6c-1 通用契约边界
+
+- 公共 `ActorScope` 默认匿名且不授予角色、Scope、Fab、Product、Tool 或 Chamber；公共上传、Document、
+  Chunk、Image/Table 不再静默继承 Demo 权限和制造上下文。
+- 新上传默认 `approval_status=draft`、`lifecycle=staged`、`source_license=unknown`，缺少来源 Manifest、
+  权限 Scope、许可复核或再分发结论时只能暂存，不得进入活动检索索引。
+- 请求直接声明 `approved + published` 时，必须同时提供已复核治理字段。首次发布和恢复都调用同一个
+  Source Manifest 门禁；模型不得补猜缺失的 Fab、Product、Scope、许可或来源身份。
+- 合成演示资料通过 `DemoFactory` 显式加载已批准 Source Manifest 和 Demo Actor/Scope。该工厂只用于
+  演示初始化，不参与普通上传、来源识别、解析、分块、检索或评测路由。
+- `RetrievalConstraints.retrieval_mode` 由上游结构化任务理解设置为 `standard/diagnostic/image`，分别控制
+  普通召回、条件 HyDE 和图片证据加权；来源名、文件名、Document ID 和演示问题关键词不得改变模式。
+
+兼容策略为只增字段、不破坏读取：旧 MongoDB 文档和 Trace 缺少新增字段时按普通检索或回归用途读取，
+现有冻结 Demo/意图评测 Hash 不变。已经发布的旧内容不会被自动改写；旧 revision 若缺少合格 Manifest，
+仍可按原状态读取，但不能重新发布或恢复，需先由管理员补齐并复核治理元数据。
 
 上传接口暂支持最大 200 MiB。上传格式由 `semikb_ingest` 的扩展名、MIME、Magic Bytes 和 OOXML
 成员联合识别，并交给对应专用适配器；只有 PDF 使用 MinerU Precision API，图片使用 Qwen VLM。

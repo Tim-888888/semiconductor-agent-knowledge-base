@@ -27,6 +27,7 @@ from semikb.contracts.models import (
     IngestionStatus,
     ObjectRef,
     RetrievalTrace,
+    SourceManifest,
     TableAsset,
     ThreadRecord,
 )
@@ -64,6 +65,22 @@ class DemoStore:
         self.objects: dict[tuple[str, str], bytes] = {}
         self.replay_payloads: dict[str, dict[str, object]] = {}
         self.audit_events: dict[str, AuditEvent] = {}
+        self.source_manifests: dict[tuple[str, str], SourceManifest] = {}
+
+    def register_source_manifest(self, manifest: SourceManifest) -> SourceManifest:
+        key = (manifest.source_id, manifest.manifest_version)
+        existing = self.source_manifests.get(key)
+        if existing is not None and existing != manifest:
+            raise ValueError("The source manifest version already has different content.")
+        self.source_manifests.setdefault(key, manifest)
+        return self.source_manifests[key]
+
+    def get_source_manifest(
+        self,
+        source_id: str,
+        manifest_version: str,
+    ) -> SourceManifest | None:
+        return self.source_manifests.get((source_id, manifest_version))
 
     def add_document(
         self,
@@ -212,7 +229,7 @@ class DemoStore:
                 job.safe_error_summary = message
                 job.failed_stage = previous_stage
                 job.finished_at = datetime.now(UTC)
-            elif stage is IngestionStatus.PUBLISHED:
+            elif stage in {IngestionStatus.STAGED, IngestionStatus.PUBLISHED} and progress == 100:
                 job.finished_at = datetime.now(UTC)
             return job
 
@@ -685,6 +702,19 @@ class DemoStore:
             key=lambda dataset: dataset.created_at,
             reverse=True,
         )
+
+    def mark_evaluation_dataset_opened(
+        self,
+        dataset_version: str,
+        opened_at: datetime,
+    ) -> EvaluationDataset:
+        dataset = self.evaluation_datasets.get(dataset_version)
+        if dataset is None:
+            raise KeyError(dataset_version)
+        if dataset.opened_at is None:
+            dataset = dataset.model_copy(update={"opened_at": opened_at})
+            self.evaluation_datasets[dataset_version] = dataset
+        return dataset
 
     def claim_evaluation_run(
         self,

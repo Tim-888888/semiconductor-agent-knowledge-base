@@ -11,7 +11,6 @@ from typing import Any
 
 from semikb.config import Settings
 from semikb.contracts.models import (
-    ApprovalStatus,
     Chunk,
     DocumentLifecycle,
     DocumentRevision,
@@ -21,10 +20,15 @@ from semikb.contracts.models import (
     ObjectRef,
     TableAsset,
 )
+from semikb.demo_factory import apply_demo_ingestion_governance, load_demo_source_manifest
 from semikb.rag_ingestion.governed_records import (
     build_governed_records,
     location_label,
     scoped_id,
+)
+from semikb.rag_ingestion.publication_governance import (
+    PublicationGovernanceError,
+    validate_publication_governance,
 )
 from semikb.rag_ingestion.semikb_adapter import ParsedIngestSession, SemikbIngestAdapter
 from semikb.rag_retrieval.encoders import (
@@ -75,7 +79,7 @@ class IngestionService:
     def submit_payload(
         self,
         payload: dict[str, Any],
-        created_by: str = "demo_admin",
+        created_by: str = "system",
     ) -> IngestionJob:
         content = payload.get("content")
         if not isinstance(content, str):
@@ -96,7 +100,7 @@ class IngestionService:
     def ingest_payload(
         self,
         payload: dict[str, Any],
-        created_by: str = "demo_admin",
+        created_by: str = "system",
         *,
         source_hash: str | None = None,
         filename: str | None = None,
@@ -115,7 +119,7 @@ class IngestionService:
         filename: str,
         content: bytes,
         metadata: dict[str, Any],
-        created_by: str = "demo_admin",
+        created_by: str = "system",
         *,
         content_type: str | None = None,
     ) -> IngestionJob:
@@ -178,7 +182,7 @@ class IngestionService:
         filename: str,
         content: bytes,
         metadata: dict[str, Any],
-        created_by: str = "demo_admin",
+        created_by: str = "system",
         *,
         content_type: str | None = None,
     ) -> IngestionJob:
@@ -244,7 +248,16 @@ class IngestionService:
 
     def seed_demo_corpus(self, fixture_path: Path) -> list[IngestionJob]:
         corpus = json.loads(fixture_path.read_text(encoding="utf-8"))
-        return [self.ingest_payload(payload) for payload in corpus["documents"]]
+        manifest_path = fixture_path.parents[1] / "source_manifests" / "semikb-demo-corpus-v1.json"
+        manifest = load_demo_source_manifest(manifest_path)
+        self.store.register_source_manifest(manifest)
+        return [
+            self.ingest_payload(
+                apply_demo_ingestion_governance(payload, manifest),
+                created_by="demo_admin",
+            )
+            for payload in corpus["documents"]
+        ]
 
     def _run(self, job: IngestionJob, replay_payload: dict[str, Any]) -> IngestionJob:
         metadata = replay_payload["metadata"]
@@ -383,9 +396,14 @@ class IngestionService:
                 message = (
                     f"Processed revision as {target_lifecycle.value}; it remains outside active retrieval."
                 )
+            final_status = (
+                IngestionStatus.PUBLISHED
+                if target_lifecycle is DocumentLifecycle.PUBLISHED
+                else IngestionStatus.STAGED
+            )
             return self.store.update_job(
                 job.job_id,
-                IngestionStatus.PUBLISHED,
+                final_status,
                 message,
                 100,
             )
@@ -596,22 +614,24 @@ class IngestionService:
         if not content:
             raise ValueError("Source content is empty.")
 
-    @staticmethod
     def _quality_check(
+        self,
         document: DocumentRevision,
         chunks: list[Chunk],
         images: list[ImageAsset],
         tables: list[TableAsset],
         target_lifecycle: DocumentLifecycle,
     ) -> None:
-        if (
-            target_lifecycle is DocumentLifecycle.PUBLISHED
-            and document.approval_status is not ApprovalStatus.APPROVED
-        ):
-            raise IngestError(
-                IngestErrorCode.QUALITY_GATE_FAILED,
-                "Only an approved revision can be published.",
+        if target_lifecycle is DocumentLifecycle.PUBLISHED:
+            manifest = (
+                self.store.get_source_manifest(
+                    document.source_id,
+                    document.source_manifest_version,
+                )
+                if document.source_id and document.source_manifest_version
+                else None
             )
+            validate_publication_governance(document, chunks, images, tables, manifest)
         if not chunks:
             raise IngestError(
                 IngestErrorCode.EMPTY_PARSE_RESULT,
@@ -667,6 +687,11 @@ class IngestionService:
     def _failure_details(exc: Exception) -> tuple[str, str]:
         if isinstance(exc, IngestError):
             return exc.code.value, exc.safe_message
+        if isinstance(exc, PublicationGovernanceError):
+            return (
+                f"PUBLICATION_GATE_{exc.code.upper()}",
+                "Publication governance is incomplete or inconsistent; keep the revision staged for review.",
+            )
         return (
             type(exc).__name__.upper(),
             "Review the failed stage, source file, and governed metadata before retrying.",

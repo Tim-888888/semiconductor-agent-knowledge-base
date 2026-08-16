@@ -1,0 +1,2812 @@
+{
+  "contract_version": "semikb-generalization-baseline-v1",
+  "schemas": {
+    "ActorScope": {
+      "properties": {
+        "access_scope_keys": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Access Scope Keys",
+          "type": "array"
+        },
+        "fabs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Fabs",
+          "type": "array"
+        },
+        "products": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Products",
+          "type": "array"
+        },
+        "roles": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Roles",
+          "type": "array"
+        },
+        "tool_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tool Ids",
+          "type": "array"
+        },
+        "user_id": {
+          "default": "anonymous",
+          "title": "User Id",
+          "type": "string"
+        }
+      },
+      "title": "ActorScope",
+      "type": "object"
+    },
+    "Chunk": {
+      "$defs": {
+        "ApprovalStatus": {
+          "enum": [
+            "draft",
+            "approved",
+            "rejected"
+          ],
+          "title": "ApprovalStatus",
+          "type": "string"
+        },
+        "ChunkType": {
+          "enum": [
+            "text",
+            "table",
+            "image_text"
+          ],
+          "title": "ChunkType",
+          "type": "string"
+        },
+        "DocumentLifecycle": {
+          "enum": [
+            "staged",
+            "published",
+            "superseded",
+            "expired",
+            "quarantined",
+            "withdrawn"
+          ],
+          "title": "DocumentLifecycle",
+          "type": "string"
+        },
+        "RetrievalPolicy": {
+          "enum": [
+            "standard",
+            "protected"
+          ],
+          "title": "RetrievalPolicy",
+          "type": "string"
+        }
+      },
+      "properties": {
+        "access_scope_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Access Scope Key"
+        },
+        "approval_status": {
+          "$ref": "#/$defs/ApprovalStatus",
+          "default": "draft"
+        },
+        "chamber": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chamber"
+        },
+        "chunk_id": {
+          "title": "Chunk Id",
+          "type": "string"
+        },
+        "chunk_text": {
+          "title": "Chunk Text",
+          "type": "string"
+        },
+        "chunk_type": {
+          "$ref": "#/$defs/ChunkType",
+          "default": "text"
+        },
+        "chunker_version": {
+          "default": "semantic-v1",
+          "title": "Chunker Version",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "document_id": {
+          "title": "Document Id",
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "title": "Effective At",
+          "type": "string"
+        },
+        "embedding_version": {
+          "default": "unknown",
+          "title": "Embedding Version",
+          "type": "string"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expires At"
+        },
+        "fab": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fab"
+        },
+        "image_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Image Ids",
+          "type": "array"
+        },
+        "index_version": {
+          "default": "v1",
+          "title": "Index Version",
+          "type": "string"
+        },
+        "lifecycle": {
+          "$ref": "#/$defs/DocumentLifecycle",
+          "default": "staged"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        },
+        "page_or_section": {
+          "title": "Page Or Section",
+          "type": "string"
+        },
+        "parent_chunk_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Chunk Id"
+        },
+        "parser_name": {
+          "default": "legacy",
+          "title": "Parser Name",
+          "type": "string"
+        },
+        "parser_version": {
+          "default": "unknown",
+          "title": "Parser Version",
+          "type": "string"
+        },
+        "process_layer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Process Layer"
+        },
+        "product": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Product"
+        },
+        "recipe_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recipe Id"
+        },
+        "recipe_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recipe Version"
+        },
+        "retrieval_policy": {
+          "$ref": "#/$defs/RetrievalPolicy",
+          "default": "standard"
+        },
+        "revision": {
+          "title": "Revision",
+          "type": "string"
+        },
+        "table_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Table Ids",
+          "type": "array"
+        },
+        "title_path": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Title Path",
+          "type": "array"
+        },
+        "tool_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tool Id"
+        },
+        "upstream_commit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Upstream Commit"
+        }
+      },
+      "required": [
+        "chunk_id",
+        "document_id",
+        "revision",
+        "chunk_text",
+        "page_or_section"
+      ],
+      "title": "Chunk",
+      "type": "object"
+    },
+    "DocumentRevision": {
+      "$defs": {
+        "ApprovalStatus": {
+          "enum": [
+            "draft",
+            "approved",
+            "rejected"
+          ],
+          "title": "ApprovalStatus",
+          "type": "string"
+        },
+        "DocumentLifecycle": {
+          "enum": [
+            "staged",
+            "published",
+            "superseded",
+            "expired",
+            "quarantined",
+            "withdrawn"
+          ],
+          "title": "DocumentLifecycle",
+          "type": "string"
+        },
+        "ObjectRef": {
+          "properties": {
+            "bucket": {
+              "title": "Bucket",
+              "type": "string"
+            },
+            "content_type": {
+              "title": "Content Type",
+              "type": "string"
+            },
+            "object_key": {
+              "title": "Object Key",
+              "type": "string"
+            },
+            "sha256": {
+              "title": "Sha256",
+              "type": "string"
+            },
+            "version_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Version Id"
+            }
+          },
+          "required": [
+            "bucket",
+            "object_key",
+            "content_type",
+            "sha256"
+          ],
+          "title": "ObjectRef",
+          "type": "object"
+        },
+        "RedistributionPolicy": {
+          "enum": [
+            "allowed",
+            "restricted",
+            "prohibited",
+            "unknown"
+          ],
+          "title": "RedistributionPolicy",
+          "type": "string"
+        },
+        "RetrievalPolicy": {
+          "enum": [
+            "standard",
+            "protected"
+          ],
+          "title": "RetrievalPolicy",
+          "type": "string"
+        },
+        "SourceLicenseStatus": {
+          "enum": [
+            "verified",
+            "declared",
+            "unclear",
+            "restricted"
+          ],
+          "title": "SourceLicenseStatus",
+          "type": "string"
+        }
+      },
+      "properties": {
+        "access_scope_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Access Scope Key"
+        },
+        "approval_status": {
+          "$ref": "#/$defs/ApprovalStatus",
+          "default": "draft"
+        },
+        "chamber": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chamber"
+        },
+        "chunker_version": {
+          "default": "semantic-v1",
+          "title": "Chunker Version",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "dataset_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dataset Version"
+        },
+        "detected_language": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detected Language"
+        },
+        "detected_title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detected Title"
+        },
+        "document_id": {
+          "title": "Document Id",
+          "type": "string"
+        },
+        "document_type": {
+          "title": "Document Type",
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "title": "Effective At",
+          "type": "string"
+        },
+        "embedding_version": {
+          "default": "unknown",
+          "title": "Embedding Version",
+          "type": "string"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expires At"
+        },
+        "fab": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fab"
+        },
+        "index_version": {
+          "default": "v1",
+          "title": "Index Version",
+          "type": "string"
+        },
+        "lifecycle": {
+          "$ref": "#/$defs/DocumentLifecycle",
+          "default": "staged"
+        },
+        "parse_contract_version": {
+          "default": "legacy-ingestion-v1",
+          "title": "Parse Contract Version",
+          "type": "string"
+        },
+        "parse_metrics": {
+          "additionalProperties": true,
+          "title": "Parse Metrics",
+          "type": "object"
+        },
+        "parse_warning_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Parse Warning Codes",
+          "type": "array"
+        },
+        "parsed_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "parser_name": {
+          "default": "legacy",
+          "title": "Parser Name",
+          "type": "string"
+        },
+        "parser_version": {
+          "default": "unknown",
+          "title": "Parser Version",
+          "type": "string"
+        },
+        "process_layer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Process Layer"
+        },
+        "product": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Product"
+        },
+        "provider_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider Name"
+        },
+        "provider_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider Version"
+        },
+        "recipe_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recipe Id"
+        },
+        "recipe_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recipe Version"
+        },
+        "redistribution_policy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RedistributionPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retrieval_policy": {
+          "$ref": "#/$defs/RetrievalPolicy",
+          "default": "standard"
+        },
+        "revision": {
+          "title": "Revision",
+          "type": "string"
+        },
+        "source_hash": {
+          "title": "Source Hash",
+          "type": "string"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
+        "source_kind": {
+          "default": "unknown",
+          "title": "Source Kind",
+          "type": "string"
+        },
+        "source_license": {
+          "default": "unknown",
+          "title": "Source License",
+          "type": "string"
+        },
+        "source_license_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceLicenseStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source_manifest_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Manifest Version"
+        },
+        "source_ref": {
+          "$ref": "#/$defs/ObjectRef"
+        },
+        "source_uri": {
+          "default": "",
+          "title": "Source Uri",
+          "type": "string"
+        },
+        "supersedes_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Revision"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "tool_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tool Id"
+        },
+        "upstream_commit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Upstream Commit"
+        },
+        "upstream_project": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Upstream Project"
+        }
+      },
+      "required": [
+        "document_id",
+        "revision",
+        "title",
+        "document_type",
+        "source_hash",
+        "source_ref"
+      ],
+      "title": "DocumentRevision",
+      "type": "object"
+    },
+    "EvaluationDataset": {
+      "$defs": {
+        "ActorScope": {
+          "properties": {
+            "access_scope_keys": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Access Scope Keys",
+              "type": "array"
+            },
+            "fabs": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Fabs",
+              "type": "array"
+            },
+            "products": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Products",
+              "type": "array"
+            },
+            "roles": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Roles",
+              "type": "array"
+            },
+            "tool_ids": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Tool Ids",
+              "type": "array"
+            },
+            "user_id": {
+              "default": "anonymous",
+              "title": "User Id",
+              "type": "string"
+            }
+          },
+          "title": "ActorScope",
+          "type": "object"
+        },
+        "EvaluationCase": {
+          "properties": {
+            "actor_scope": {
+              "$ref": "#/$defs/ActorScope"
+            },
+            "case_id": {
+              "title": "Case Id",
+              "type": "string"
+            },
+            "expected_chunk_ids": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Expected Chunk Ids",
+              "type": "array"
+            },
+            "expected_outcome": {
+              "default": "evidence",
+              "pattern": "^(evidence|no_evidence)$",
+              "title": "Expected Outcome",
+              "type": "string"
+            },
+            "failure_labels": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Failure Labels",
+              "type": "array"
+            },
+            "question": {
+              "title": "Question",
+              "type": "string"
+            },
+            "tags": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Tags",
+              "type": "array"
+            }
+          },
+          "required": [
+            "case_id",
+            "question",
+            "expected_chunk_ids"
+          ],
+          "title": "EvaluationCase",
+          "type": "object"
+        },
+        "EvaluationDatasetPurpose": {
+          "enum": [
+            "development",
+            "calibration",
+            "regression",
+            "holdout"
+          ],
+          "title": "EvaluationDatasetPurpose",
+          "type": "string"
+        },
+        "EvaluationLeakageStatus": {
+          "enum": [
+            "unreviewed",
+            "cleared",
+            "contaminated"
+          ],
+          "title": "EvaluationLeakageStatus",
+          "type": "string"
+        }
+      },
+      "properties": {
+        "case_count": {
+          "minimum": 1,
+          "title": "Case Count",
+          "type": "integer"
+        },
+        "cases": {
+          "items": {
+            "$ref": "#/$defs/EvaluationCase"
+          },
+          "title": "Cases",
+          "type": "array"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "dataset_hash": {
+          "title": "Dataset Hash",
+          "type": "string"
+        },
+        "dataset_version": {
+          "title": "Dataset Version",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        },
+        "leakage_status": {
+          "$ref": "#/$defs/EvaluationLeakageStatus",
+          "default": "unreviewed"
+        },
+        "opened_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Opened At"
+        },
+        "purpose": {
+          "$ref": "#/$defs/EvaluationDatasetPurpose",
+          "default": "regression"
+        },
+        "sealed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sealed At"
+        },
+        "source_kind": {
+          "default": "synthetic",
+          "title": "Source Kind",
+          "type": "string"
+        },
+        "source_snapshot_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-fA-F]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Snapshot Hash"
+        }
+      },
+      "required": [
+        "dataset_version",
+        "dataset_hash",
+        "case_count",
+        "cases"
+      ],
+      "title": "EvaluationDataset",
+      "type": "object"
+    },
+    "EvaluationRun": {
+      "$defs": {
+        "EvaluationDatasetPurpose": {
+          "enum": [
+            "development",
+            "calibration",
+            "regression",
+            "holdout"
+          ],
+          "title": "EvaluationDatasetPurpose",
+          "type": "string"
+        },
+        "EvaluationLeakageStatus": {
+          "enum": [
+            "unreviewed",
+            "cleared",
+            "contaminated"
+          ],
+          "title": "EvaluationLeakageStatus",
+          "type": "string"
+        },
+        "EvaluationStatus": {
+          "enum": [
+            "queued",
+            "running",
+            "completed",
+            "failed"
+          ],
+          "title": "EvaluationStatus",
+          "type": "string"
+        }
+      },
+      "properties": {
+        "aggregate_metrics": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Aggregate Metrics",
+          "type": "object"
+        },
+        "attempt": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Attempt",
+          "type": "integer"
+        },
+        "baseline_comparison": {
+          "additionalProperties": true,
+          "title": "Baseline Comparison",
+          "type": "object"
+        },
+        "baseline_run_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Baseline Run Id"
+        },
+        "case_count": {
+          "default": 0,
+          "title": "Case Count",
+          "type": "integer"
+        },
+        "case_results": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Case Results",
+          "type": "array"
+        },
+        "component_versions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Component Versions",
+          "type": "object"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "dataset_hash": {
+          "default": "",
+          "title": "Dataset Hash",
+          "type": "string"
+        },
+        "dataset_leakage_status": {
+          "$ref": "#/$defs/EvaluationLeakageStatus",
+          "default": "unreviewed"
+        },
+        "dataset_opened_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dataset Opened At"
+        },
+        "dataset_purpose": {
+          "$ref": "#/$defs/EvaluationDatasetPurpose",
+          "default": "regression"
+        },
+        "dataset_sealed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dataset Sealed At"
+        },
+        "dataset_version": {
+          "title": "Dataset Version",
+          "type": "string"
+        },
+        "evaluation_run_id": {
+          "title": "Evaluation Run Id",
+          "type": "string"
+        },
+        "failure_tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Failure Tags",
+          "type": "array"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finished At"
+        },
+        "requested_by": {
+          "default": "system",
+          "title": "Requested By",
+          "type": "string"
+        },
+        "retrieval_config": {
+          "additionalProperties": true,
+          "title": "Retrieval Config",
+          "type": "object"
+        },
+        "retrieval_profile": {
+          "default": "full",
+          "pattern": "^(dense|hybrid|reranked|full)$",
+          "title": "Retrieval Profile",
+          "type": "string"
+        },
+        "safe_error_summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Safe Error Summary"
+        },
+        "source_snapshot_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-fA-F]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Snapshot Hash"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Started At"
+        },
+        "status": {
+          "$ref": "#/$defs/EvaluationStatus",
+          "default": "queued"
+        },
+        "worker_task_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Worker Task Id"
+        }
+      },
+      "required": [
+        "dataset_version"
+      ],
+      "title": "EvaluationRun",
+      "type": "object"
+    },
+    "ImageAsset": {
+      "$defs": {
+        "ApprovalStatus": {
+          "enum": [
+            "draft",
+            "approved",
+            "rejected"
+          ],
+          "title": "ApprovalStatus",
+          "type": "string"
+        },
+        "DocumentLifecycle": {
+          "enum": [
+            "staged",
+            "published",
+            "superseded",
+            "expired",
+            "quarantined",
+            "withdrawn"
+          ],
+          "title": "DocumentLifecycle",
+          "type": "string"
+        },
+        "ObjectRef": {
+          "properties": {
+            "bucket": {
+              "title": "Bucket",
+              "type": "string"
+            },
+            "content_type": {
+              "title": "Content Type",
+              "type": "string"
+            },
+            "object_key": {
+              "title": "Object Key",
+              "type": "string"
+            },
+            "sha256": {
+              "title": "Sha256",
+              "type": "string"
+            },
+            "version_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Version Id"
+            }
+          },
+          "required": [
+            "bucket",
+            "object_key",
+            "content_type",
+            "sha256"
+          ],
+          "title": "ObjectRef",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "access_scope_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Access Scope Key"
+        },
+        "approval_status": {
+          "$ref": "#/$defs/ApprovalStatus",
+          "default": "draft"
+        },
+        "caption": {
+          "title": "Caption",
+          "type": "string"
+        },
+        "caption_confidence": {
+          "default": 1.0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Caption Confidence",
+          "type": "number"
+        },
+        "caption_source": {
+          "default": "human",
+          "title": "Caption Source",
+          "type": "string"
+        },
+        "demo_source_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Demo Source Path"
+        },
+        "detection_summary": {
+          "default": "",
+          "title": "Detection Summary",
+          "type": "string"
+        },
+        "document_id": {
+          "title": "Document Id",
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "title": "Effective At",
+          "type": "string"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expires At"
+        },
+        "image_id": {
+          "title": "Image Id",
+          "type": "string"
+        },
+        "image_type": {
+          "title": "Image Type",
+          "type": "string"
+        },
+        "lifecycle": {
+          "$ref": "#/$defs/DocumentLifecycle",
+          "default": "staged"
+        },
+        "object_ref": {
+          "$ref": "#/$defs/ObjectRef"
+        },
+        "ocr_text": {
+          "default": "",
+          "title": "Ocr Text",
+          "type": "string"
+        },
+        "parent_chunk_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Chunk Id"
+        },
+        "parser_name": {
+          "default": "legacy",
+          "title": "Parser Name",
+          "type": "string"
+        },
+        "parser_version": {
+          "default": "unknown",
+          "title": "Parser Version",
+          "type": "string"
+        },
+        "provider_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider Name"
+        },
+        "provider_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider Version"
+        },
+        "related_case_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Related Case Id"
+        },
+        "revision": {
+          "title": "Revision",
+          "type": "string"
+        },
+        "source_asset_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Asset Id"
+        },
+        "source_location": {
+          "additionalProperties": true,
+          "title": "Source Location",
+          "type": "object"
+        },
+        "source_page": {
+          "default": "",
+          "title": "Source Page",
+          "type": "string"
+        }
+      },
+      "required": [
+        "image_id",
+        "document_id",
+        "revision",
+        "object_ref",
+        "image_type",
+        "caption"
+      ],
+      "title": "ImageAsset",
+      "type": "object"
+    },
+    "IngestDocumentRequest": {
+      "$defs": {
+        "ApprovalStatus": {
+          "enum": [
+            "draft",
+            "approved",
+            "rejected"
+          ],
+          "title": "ApprovalStatus",
+          "type": "string"
+        },
+        "DocumentLifecycle": {
+          "enum": [
+            "staged",
+            "published",
+            "superseded",
+            "expired",
+            "quarantined",
+            "withdrawn"
+          ],
+          "title": "DocumentLifecycle",
+          "type": "string"
+        },
+        "RedistributionPolicy": {
+          "enum": [
+            "allowed",
+            "restricted",
+            "prohibited",
+            "unknown"
+          ],
+          "title": "RedistributionPolicy",
+          "type": "string"
+        },
+        "RetrievalPolicy": {
+          "enum": [
+            "standard",
+            "protected"
+          ],
+          "title": "RetrievalPolicy",
+          "type": "string"
+        },
+        "SourceLicenseStatus": {
+          "enum": [
+            "verified",
+            "declared",
+            "unclear",
+            "restricted"
+          ],
+          "title": "SourceLicenseStatus",
+          "type": "string"
+        }
+      },
+      "properties": {
+        "access_scope_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Access Scope Key"
+        },
+        "approval_status": {
+          "$ref": "#/$defs/ApprovalStatus",
+          "default": "draft"
+        },
+        "chamber": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chamber"
+        },
+        "content": {
+          "minLength": 1,
+          "title": "Content",
+          "type": "string"
+        },
+        "dataset_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dataset Version"
+        },
+        "document_id": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Document Id",
+          "type": "string"
+        },
+        "document_type": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Document Type",
+          "type": "string"
+        },
+        "fab": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fab"
+        },
+        "images": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Images",
+          "type": "array"
+        },
+        "lifecycle": {
+          "$ref": "#/$defs/DocumentLifecycle",
+          "default": "staged"
+        },
+        "process_layer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Process Layer"
+        },
+        "product": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Product"
+        },
+        "recipe_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recipe Id"
+        },
+        "recipe_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recipe Version"
+        },
+        "redistribution_policy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RedistributionPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retrieval_policy": {
+          "$ref": "#/$defs/RetrievalPolicy",
+          "default": "standard"
+        },
+        "revision": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Revision",
+          "type": "string"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
+        "source_kind": {
+          "default": "user_upload",
+          "title": "Source Kind",
+          "type": "string"
+        },
+        "source_license": {
+          "default": "unknown",
+          "title": "Source License",
+          "type": "string"
+        },
+        "source_license_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceLicenseStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source_manifest_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Manifest Version"
+        },
+        "source_uri": {
+          "default": "",
+          "title": "Source Uri",
+          "type": "string"
+        },
+        "supersedes_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Revision"
+        },
+        "title": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "tool_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tool Id"
+        }
+      },
+      "required": [
+        "document_id",
+        "revision",
+        "title",
+        "document_type",
+        "content"
+      ],
+      "title": "IngestDocumentRequest",
+      "type": "object"
+    },
+    "IngestUploadMetadata": {
+      "$defs": {
+        "ApprovalStatus": {
+          "enum": [
+            "draft",
+            "approved",
+            "rejected"
+          ],
+          "title": "ApprovalStatus",
+          "type": "string"
+        },
+        "DocumentLifecycle": {
+          "enum": [
+            "staged",
+            "published",
+            "superseded",
+            "expired",
+            "quarantined",
+            "withdrawn"
+          ],
+          "title": "DocumentLifecycle",
+          "type": "string"
+        },
+        "RedistributionPolicy": {
+          "enum": [
+            "allowed",
+            "restricted",
+            "prohibited",
+            "unknown"
+          ],
+          "title": "RedistributionPolicy",
+          "type": "string"
+        },
+        "RetrievalPolicy": {
+          "enum": [
+            "standard",
+            "protected"
+          ],
+          "title": "RetrievalPolicy",
+          "type": "string"
+        },
+        "SourceLicenseStatus": {
+          "enum": [
+            "verified",
+            "declared",
+            "unclear",
+            "restricted"
+          ],
+          "title": "SourceLicenseStatus",
+          "type": "string"
+        }
+      },
+      "properties": {
+        "access_scope_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Access Scope Key"
+        },
+        "approval_status": {
+          "$ref": "#/$defs/ApprovalStatus",
+          "default": "draft"
+        },
+        "chamber": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chamber"
+        },
+        "dataset_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dataset Version"
+        },
+        "document_id": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Document Id",
+          "type": "string"
+        },
+        "document_type": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Document Type",
+          "type": "string"
+        },
+        "fab": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fab"
+        },
+        "images": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Images",
+          "type": "array"
+        },
+        "lifecycle": {
+          "$ref": "#/$defs/DocumentLifecycle",
+          "default": "staged"
+        },
+        "process_layer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Process Layer"
+        },
+        "product": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Product"
+        },
+        "recipe_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recipe Id"
+        },
+        "recipe_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recipe Version"
+        },
+        "redistribution_policy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RedistributionPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retrieval_policy": {
+          "$ref": "#/$defs/RetrievalPolicy",
+          "default": "standard"
+        },
+        "revision": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Revision",
+          "type": "string"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
+        "source_kind": {
+          "default": "user_upload",
+          "title": "Source Kind",
+          "type": "string"
+        },
+        "source_license": {
+          "default": "unknown",
+          "title": "Source License",
+          "type": "string"
+        },
+        "source_license_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceLicenseStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source_manifest_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Manifest Version"
+        },
+        "source_uri": {
+          "default": "",
+          "title": "Source Uri",
+          "type": "string"
+        },
+        "supersedes_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Revision"
+        },
+        "title": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "tool_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tool Id"
+        }
+      },
+      "required": [
+        "document_id",
+        "revision",
+        "title",
+        "document_type"
+      ],
+      "title": "IngestUploadMetadata",
+      "type": "object"
+    },
+    "RetrievalConstraints": {
+      "$defs": {
+        "RetrievalMode": {
+          "enum": [
+            "standard",
+            "diagnostic",
+            "image"
+          ],
+          "title": "RetrievalMode",
+          "type": "string"
+        }
+      },
+      "properties": {
+        "as_of": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "As Of"
+        },
+        "chamber": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chamber"
+        },
+        "fab": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fab"
+        },
+        "process_layer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Process Layer"
+        },
+        "product": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Product"
+        },
+        "recipe_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recipe Id"
+        },
+        "recipe_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recipe Version"
+        },
+        "retrieval_mode": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetrievalMode"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tool_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tool Id"
+        },
+        "use_hyde": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Use Hyde"
+        }
+      },
+      "title": "RetrievalConstraints",
+      "type": "object"
+    },
+    "SourceManifest": {
+      "$defs": {
+        "ObjectRef": {
+          "properties": {
+            "bucket": {
+              "title": "Bucket",
+              "type": "string"
+            },
+            "content_type": {
+              "title": "Content Type",
+              "type": "string"
+            },
+            "object_key": {
+              "title": "Object Key",
+              "type": "string"
+            },
+            "sha256": {
+              "title": "Sha256",
+              "type": "string"
+            },
+            "version_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Version Id"
+            }
+          },
+          "required": [
+            "bucket",
+            "object_key",
+            "content_type",
+            "sha256"
+          ],
+          "title": "ObjectRef",
+          "type": "object"
+        },
+        "RedistributionPolicy": {
+          "enum": [
+            "allowed",
+            "restricted",
+            "prohibited",
+            "unknown"
+          ],
+          "title": "RedistributionPolicy",
+          "type": "string"
+        },
+        "SourceContentOrigin": {
+          "enum": [
+            "real",
+            "synthetic",
+            "derived"
+          ],
+          "title": "SourceContentOrigin",
+          "type": "string"
+        },
+        "SourceExpectedAssets": {
+          "additionalProperties": false,
+          "properties": {
+            "documents_min": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Documents Min",
+              "type": "integer"
+            },
+            "expected_formats": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Expected Formats",
+              "type": "array"
+            },
+            "images_min": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Images Min",
+              "type": "integer"
+            },
+            "raw_files_min": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Raw Files Min",
+              "type": "integer"
+            },
+            "records_estimate": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Records Estimate"
+            },
+            "tables_min": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Tables Min",
+              "type": "integer"
+            }
+          },
+          "title": "SourceExpectedAssets",
+          "type": "object"
+        },
+        "SourceIndexArtifact": {
+          "enum": [
+            "document_chunks",
+            "data_dictionary",
+            "dataset_profile",
+            "analysis_report",
+            "image_text"
+          ],
+          "title": "SourceIndexArtifact",
+          "type": "string"
+        },
+        "SourceIngestionMode": {
+          "enum": [
+            "document_rag",
+            "tabular_profile_and_tool",
+            "image_corpus",
+            "mixed_curated_corpus",
+            "reference_only"
+          ],
+          "title": "SourceIngestionMode",
+          "type": "string"
+        },
+        "SourceIngestionPolicy": {
+          "additionalProperties": false,
+          "description": "Controls which derived representations may enter RAG for one source.",
+          "properties": {
+            "analysis_tool_required": {
+              "default": false,
+              "title": "Analysis Tool Required",
+              "type": "boolean"
+            },
+            "index_artifacts": {
+              "items": {
+                "$ref": "#/$defs/SourceIndexArtifact"
+              },
+              "title": "Index Artifacts",
+              "type": "array"
+            },
+            "mode": {
+              "$ref": "#/$defs/SourceIngestionMode"
+            },
+            "raw_row_vectorization": {
+              "default": false,
+              "title": "Raw Row Vectorization",
+              "type": "boolean"
+            },
+            "raw_storage": {
+              "const": "minio_private",
+              "default": "minio_private",
+              "title": "Raw Storage",
+              "type": "string"
+            }
+          },
+          "required": [
+            "mode"
+          ],
+          "title": "SourceIngestionPolicy",
+          "type": "object"
+        },
+        "SourceLicenseStatus": {
+          "enum": [
+            "verified",
+            "declared",
+            "unclear",
+            "restricted"
+          ],
+          "title": "SourceLicenseStatus",
+          "type": "string"
+        },
+        "SourceManifestStatus": {
+          "enum": [
+            "draft",
+            "approved",
+            "retired"
+          ],
+          "title": "SourceManifestStatus",
+          "type": "string"
+        },
+        "SourceManifestType": {
+          "enum": [
+            "dataset",
+            "paper",
+            "repository",
+            "ontology",
+            "documentation",
+            "curated_corpus",
+            "other"
+          ],
+          "title": "SourceManifestType",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Immutable, versioned provenance card for one acquired source snapshot.",
+      "properties": {
+        "access_scope_key": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Access Scope Key",
+          "type": "string"
+        },
+        "content_origin": {
+          "$ref": "#/$defs/SourceContentOrigin"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Created By",
+          "type": "string"
+        },
+        "dataset_version": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Dataset Version",
+          "type": "string"
+        },
+        "doi_or_repo": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Doi Or Repo"
+        },
+        "expected_assets": {
+          "$ref": "#/$defs/SourceExpectedAssets"
+        },
+        "hash_scope": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Hash Scope",
+          "type": "string"
+        },
+        "ingestion_policy": {
+          "$ref": "#/$defs/SourceIngestionPolicy"
+        },
+        "license_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "License Name",
+          "type": "string"
+        },
+        "license_notes": {
+          "default": "",
+          "maxLength": 4000,
+          "title": "License Notes",
+          "type": "string"
+        },
+        "license_status": {
+          "$ref": "#/$defs/SourceLicenseStatus"
+        },
+        "manifest_schema_version": {
+          "const": "semikb-source-manifest-v1",
+          "default": "semikb-source-manifest-v1",
+          "title": "Manifest Schema Version",
+          "type": "string"
+        },
+        "manifest_version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Manifest Version",
+          "type": "string"
+        },
+        "notes": {
+          "default": "",
+          "maxLength": 4000,
+          "title": "Notes",
+          "type": "string"
+        },
+        "parser_hint": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parser Hint"
+        },
+        "redistribution_policy": {
+          "$ref": "#/$defs/RedistributionPolicy"
+        },
+        "retrieved_at": {
+          "format": "date-time",
+          "title": "Retrieved At",
+          "type": "string"
+        },
+        "source_hash": {
+          "pattern": "^[0-9a-fA-F]{64}$",
+          "title": "Source Hash",
+          "type": "string"
+        },
+        "source_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "title": "Source Id",
+          "type": "string"
+        },
+        "source_snapshot_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source_type": {
+          "$ref": "#/$defs/SourceManifestType"
+        },
+        "source_url": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Source Url",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/SourceManifestStatus",
+          "default": "draft"
+        },
+        "supersedes_manifest_version": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Manifest Version"
+        },
+        "title": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "manifest_version",
+        "title",
+        "source_type",
+        "source_url",
+        "retrieved_at",
+        "source_hash",
+        "hash_scope",
+        "content_origin",
+        "license_name",
+        "license_status",
+        "redistribution_policy",
+        "ingestion_policy",
+        "dataset_version",
+        "access_scope_key",
+        "created_by"
+      ],
+      "title": "SourceManifest",
+      "type": "object"
+    },
+    "TableAsset": {
+      "$defs": {
+        "ApprovalStatus": {
+          "enum": [
+            "draft",
+            "approved",
+            "rejected"
+          ],
+          "title": "ApprovalStatus",
+          "type": "string"
+        },
+        "DocumentLifecycle": {
+          "enum": [
+            "staged",
+            "published",
+            "superseded",
+            "expired",
+            "quarantined",
+            "withdrawn"
+          ],
+          "title": "DocumentLifecycle",
+          "type": "string"
+        },
+        "ObjectRef": {
+          "properties": {
+            "bucket": {
+              "title": "Bucket",
+              "type": "string"
+            },
+            "content_type": {
+              "title": "Content Type",
+              "type": "string"
+            },
+            "object_key": {
+              "title": "Object Key",
+              "type": "string"
+            },
+            "sha256": {
+              "title": "Sha256",
+              "type": "string"
+            },
+            "version_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Version Id"
+            }
+          },
+          "required": [
+            "bucket",
+            "object_key",
+            "content_type",
+            "sha256"
+          ],
+          "title": "ObjectRef",
+          "type": "object"
+        }
+      },
+      "description": "Governed table representation with one durable derived-object reference.",
+      "properties": {
+        "access_scope_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Access Scope Key"
+        },
+        "approval_status": {
+          "$ref": "#/$defs/ApprovalStatus",
+          "default": "draft"
+        },
+        "column_count": {
+          "minimum": 0,
+          "title": "Column Count",
+          "type": "integer"
+        },
+        "document_id": {
+          "title": "Document Id",
+          "type": "string"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "title": "Effective At",
+          "type": "string"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expires At"
+        },
+        "headers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Headers",
+          "type": "array"
+        },
+        "html": {
+          "title": "Html",
+          "type": "string"
+        },
+        "lifecycle": {
+          "$ref": "#/$defs/DocumentLifecycle",
+          "default": "staged"
+        },
+        "markdown": {
+          "title": "Markdown",
+          "type": "string"
+        },
+        "object_ref": {
+          "$ref": "#/$defs/ObjectRef"
+        },
+        "parent_chunk_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Chunk Id"
+        },
+        "parser_name": {
+          "default": "legacy",
+          "title": "Parser Name",
+          "type": "string"
+        },
+        "parser_version": {
+          "default": "unknown",
+          "title": "Parser Version",
+          "type": "string"
+        },
+        "revision": {
+          "title": "Revision",
+          "type": "string"
+        },
+        "row_count": {
+          "minimum": 0,
+          "title": "Row Count",
+          "type": "integer"
+        },
+        "source_asset_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Asset Id"
+        },
+        "source_location": {
+          "additionalProperties": true,
+          "title": "Source Location",
+          "type": "object"
+        },
+        "source_page": {
+          "default": "",
+          "title": "Source Page",
+          "type": "string"
+        },
+        "table_id": {
+          "title": "Table Id",
+          "type": "string"
+        },
+        "title": {
+          "default": "",
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "table_id",
+        "document_id",
+        "revision",
+        "object_ref",
+        "markdown",
+        "html",
+        "row_count",
+        "column_count"
+      ],
+      "title": "TableAsset",
+      "type": "object"
+    }
+  }
+}

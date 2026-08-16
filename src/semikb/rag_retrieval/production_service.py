@@ -13,6 +13,8 @@ from semikb.contracts.models import (
     Chunk,
     RetrievalCandidate,
     RetrievalConstraints,
+    RetrievalMode,
+    RetrievalPolicy,
     RetrievalTrace,
 )
 from semikb.rag_retrieval.encoders import HybridEncoder, create_hybrid_encoder
@@ -117,6 +119,8 @@ class ProductionRetrievalService:
             ),
             "reranker": self.reranker.model_name,
             "index_version": self.settings.milvus_index_version,
+            "query_routing_policy": "structured-task-v1",
+            "evidence_protection_policy": "governed-metadata-v1",
         }
         filter_expression, metadata_filters = build_access_filter(
             actor_scope,
@@ -415,26 +419,16 @@ class ProductionRetrievalService:
             return constraints.use_hyde
         if not self.settings.hyde_enabled:
             return False
-        normalized = query.lower()
-        diagnostic_terms = (
-            "为什么",
-            "原因",
-            "根因",
-            "异常",
-            "怎么",
-            "如何",
-            "排查",
-            "why",
-            "cause",
-            "troubleshoot",
+        return bool(
+            constraints
+            and constraints.retrieval_mode is RetrievalMode.DIAGNOSTIC
         )
-        return any(term in normalized for term in diagnostic_terms)
 
     @staticmethod
     def _is_protected_evidence(chunk: Chunk, query: str) -> bool:
         normalized = query.lower()
         return bool(
-            chunk.document_id.upper().startswith("SOP-")
+            chunk.retrieval_policy is RetrievalPolicy.PROTECTED
             and chunk.tool_id
             and chunk.tool_id.lower() in normalized
             and (not chunk.chamber or f"chamber {chunk.chamber.lower()}" in normalized)
