@@ -16,6 +16,7 @@ from semikb_ingest.providers import (
     QwenVisionConfig,
 )
 from semikb_ingest.routing import ResolvedRoute
+from semikb_provider_resilience import ProviderAttemptAudit
 
 
 @dataclass(slots=True)
@@ -24,6 +25,7 @@ class ParsedIngestSession:
 
     document: ParsedDocument
     payload_store: ProcessPayloadStore
+    provider_attempts: tuple[ProviderAttemptAudit, ...] = ()
 
     def pop_image_bytes(self, asset_id: str) -> bytes:
         image = next(item for item in self.document.images if item.asset_id == asset_id)
@@ -68,6 +70,7 @@ class SemikbIngestAdapter:
         declared_media_type: str | None,
     ) -> ParsedIngestSession:
         payload_store = ProcessPayloadStore()
+        self._providers.reset_attempts()
         dispatcher = self._dispatcher(payload_store)
         document = dispatcher.parse(
             filename,
@@ -75,7 +78,11 @@ class SemikbIngestAdapter:
             correlation_id=correlation_id,
             declared_media_type=declared_media_type,
         )
-        return ParsedIngestSession(document=document, payload_store=payload_store)
+        return ParsedIngestSession(
+            document=document,
+            payload_store=payload_store,
+            provider_attempts=self._providers.collect_attempts(),
+        )
 
     def _dispatcher(self, payload_store: ProcessPayloadStore) -> IngestDispatcher:
         return build_dispatcher(payload_store, self._providers)
@@ -92,6 +99,9 @@ class SemikbIngestAdapter:
                         model_version=settings.mineru_model_version,
                         timeout_seconds=settings.mineru_timeout_seconds,
                         poll_seconds=settings.mineru_poll_seconds,
+                        max_attempts=settings.provider_max_attempts,
+                        backoff_base_seconds=settings.provider_backoff_base_seconds,
+                        backoff_max_seconds=settings.provider_backoff_max_seconds,
                     )
                 )
             )
@@ -103,6 +113,9 @@ class SemikbIngestAdapter:
                         api_key=settings.qwen_api_key,
                         model=settings.qwen_vision_model,
                         timeout_seconds=settings.qwen_vision_timeout_seconds,
+                        max_attempts=settings.provider_max_attempts,
+                        backoff_base_seconds=settings.provider_backoff_base_seconds,
+                        backoff_max_seconds=settings.provider_backoff_max_seconds,
                     )
                 )
             )

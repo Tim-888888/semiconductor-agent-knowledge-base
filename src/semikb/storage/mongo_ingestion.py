@@ -20,6 +20,7 @@ from semikb.contracts.models import (
     TableAsset,
 )
 from semikb.storage.clients import StorageClientFactory
+from semikb_provider_resilience import ProviderAttemptAudit
 
 _REVISION_COLLECTIONS = (
     "document_catalog",
@@ -221,6 +222,30 @@ class MongoIngestionRepository:
                 "parse_metrics": dict(metrics),
             },
         )
+
+    def record_provider_attempts(
+        self,
+        job_id: str,
+        attempts: Sequence[ProviderAttemptAudit],
+        *,
+        message: str,
+    ) -> IngestionJob:
+        job = self.get_job(job_id)
+        if job is None:
+            raise KeyError(job_id)
+        safe_attempts = [attempt.model_copy(deep=True) for attempt in attempts]
+        job.provider_attempts.extend(safe_attempts)
+        event = IngestionEvent(
+            job_id=job.job_id,
+            stage=job.current_stage,
+            message=message,
+            attempt=job.attempt,
+            progress=job.progress,
+            provider_attempts=safe_attempts,
+        )
+        job.events.append(event)
+        self._save_job(job, event)
+        return job
 
     def stage_document(
         self,

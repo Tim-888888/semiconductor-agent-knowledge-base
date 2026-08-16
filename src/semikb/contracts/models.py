@@ -9,6 +9,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from semikb_provider_resilience import ProviderAttemptAudit
+
 
 def utc_now() -> datetime:
     return datetime.now(UTC)
@@ -544,6 +546,7 @@ class IngestionEvent(BaseModel):
     message: str
     attempt: int = Field(default=1, ge=1)
     progress: int = Field(default=0, ge=0, le=100)
+    provider_attempts: list[ProviderAttemptAudit] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=utc_now)
 
 
@@ -570,6 +573,7 @@ class IngestionJob(BaseModel):
     upstream_commit: str | None = None
     parse_warning_codes: list[str] = Field(default_factory=list)
     parse_metrics: dict[str, Any] = Field(default_factory=dict)
+    provider_attempts: list[ProviderAttemptAudit] = Field(default_factory=list)
     chunker_version: str = "semantic-v1"
     embedding_version: str = "deterministic-demo-v1"
     index_version: str = "v1"
@@ -622,6 +626,7 @@ class RetrievalTrace(BaseModel):
     external_evidence: list[dict[str, Any]] = Field(default_factory=list)
     component_versions: dict[str, str] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
+    provider_attempts: list[ProviderAttemptAudit] = Field(default_factory=list)
     timings_ms: dict[str, float] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=utc_now)
 

@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     qwen_model: str = ""
     qwen_vision_model: str = "qwen3.7-plus"
     qwen_vision_timeout_seconds: int = Field(default=60, ge=5, le=600)
+    provider_max_attempts: int = Field(default=2, ge=1, le=4)
+    provider_backoff_base_seconds: float = Field(default=0.5, ge=0, le=10)
+    provider_backoff_max_seconds: float = Field(default=2.0, ge=0, le=60)
     hyde_enabled: bool = True
     hyde_max_output_tokens: int = Field(default=256, ge=32, le=2048)
     retrieval_recall_k: int = Field(default=20, ge=2, le=100)
@@ -80,6 +83,7 @@ class Settings(BaseSettings):
     aliyun_web_mcp_url: str = "https://dashscope.aliyuncs.com/api/v1/mcps/WebSearch/mcp"
     aliyun_web_mcp_api_key: str = ""
     aliyun_web_mcp_tool_name: str = "web_search"
+    web_search_timeout_seconds: int = Field(default=20, ge=3, le=120)
     web_allowed_domains: str = ""
     agent_max_clarification_rounds: int = Field(default=2, ge=1, le=3)
     agent_answer_max_output_tokens: int = Field(default=1400, ge=256, le=4096)

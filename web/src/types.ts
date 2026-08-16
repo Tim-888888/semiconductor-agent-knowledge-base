@@ -449,6 +449,20 @@ export type TraceCandidate = {
   protected_evidence: boolean;
 };
 
+export type ProviderAttemptAudit = {
+  schema_version: "semikb-provider-attempt-v1";
+  provider: string;
+  operation: string;
+  attempt: number;
+  max_attempts: number;
+  outcome: "succeeded" | "retrying" | "failed";
+  failure_kind?: string | null;
+  status_code?: number | null;
+  retryable: boolean;
+  retry_after_seconds?: number | null;
+  latency_ms: number;
+};
+
 export type RetrievalTrace = {
   trace_id: string;
   thread_id?: string | null;
@@ -466,6 +480,7 @@ export type RetrievalTrace = {
   candidates: TraceCandidate[];
   component_versions: Record<string, string>;
   warnings: string[];
+  provider_attempts: ProviderAttemptAudit[];
   timings_ms: Record<string, number>;
   created_at: string;
 };

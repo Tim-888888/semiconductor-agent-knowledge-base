@@ -97,6 +97,15 @@ export function TracePanel({ traces, trace, onSelect, onOpenImage }: Props) {
           <h3><ShieldCheck size={17} />组件版本</h3>
           <dl>{Object.entries(trace.component_versions).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl>
         </section>
+        {(trace.provider_attempts ?? []).length > 0 && <section className="detail-band provider-attempt-band">
+          <h3><ShieldCheck size={17} />Provider 尝试</h3>
+          <div className="provider-attempt-list">{trace.provider_attempts.map((attempt, index) => <div key={`${attempt.provider}-${attempt.operation}-${attempt.attempt}-${index}`}>
+            <strong>{attempt.provider} · {attempt.operation}</strong>
+            <span>{attempt.attempt}/{attempt.max_attempts} · {attempt.outcome}</span>
+            <span>{attempt.failure_kind ?? "ok"}{attempt.status_code ? ` · HTTP ${attempt.status_code}` : ""}</span>
+            <span>{formatMetric(attempt.latency_ms, 2)} ms</span>
+          </div>)}</div>
+        </section>}
       </div>
 
       {trace.warnings.length > 0 && <div className="warning-band"><TriangleAlert size={17} /><div>{trace.warnings.map((warning) => <span key={warning}>{warning}</span>)}</div></div>}

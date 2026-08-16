@@ -21,6 +21,7 @@ from semikb.contracts.models import (
     new_id,
     utc_now,
 )
+from semikb_provider_resilience import ProviderAttemptAudit
 
 REQUEST_ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$"
 
@@ -127,6 +128,7 @@ class DirectReplyAudit(BaseModel):
     context_message_count: int = Field(default=0, ge=0, le=24)
     warning_codes: list[str] = Field(default_factory=list, max_length=16)
     usage: dict[str, int] = Field(default_factory=dict)
+    provider_attempts: list[ProviderAttemptAudit] = Field(default_factory=list, max_length=12)
 
 
 class AgentMessageRequestRecord(BaseModel):

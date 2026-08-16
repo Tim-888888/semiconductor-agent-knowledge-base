@@ -303,6 +303,12 @@ class IngestionService:
                 warning_codes=[warning.code for warning in parsed.warnings],
                 metrics=parsed.metrics.model_dump(mode="json"),
             )
+            if parse_session.provider_attempts:
+                self.store.record_provider_attempts(
+                    job.job_id,
+                    parse_session.provider_attempts,
+                    message="Recorded credential-safe document Provider attempt evidence.",
+                )
             markdown_bytes = parsed.normalized_markdown.encode("utf-8")
             parsed_ref = self.store.store_parsed_markdown(
                 document_id=document_id,
@@ -353,6 +359,13 @@ class IngestionService:
                 75,
             )
             embeddings = self._encode_chunks(chunks)
+            embedding_attempts = tuple(getattr(self.encoder, "last_attempts", ()))
+            if embedding_attempts:
+                self.store.record_provider_attempts(
+                    job.job_id,
+                    embedding_attempts,
+                    message="Recorded credential-safe embedding Provider attempt evidence.",
+                )
             if tables:
                 self.store.stage_document(
                     document,
@@ -408,6 +421,16 @@ class IngestionService:
                 100,
             )
         except Exception as exc:
+            provider_attempts = tuple(getattr(exc, "provider_attempts", ()))
+            if provider_attempts:
+                try:
+                    self.store.record_provider_attempts(
+                        job.job_id,
+                        provider_attempts,
+                        message="Recorded failed Provider attempts; the document remains unpublished.",
+                    )
+                except Exception:
+                    pass
             try:
                 self.store.compensate_document(document_id, revision)
             except Exception:

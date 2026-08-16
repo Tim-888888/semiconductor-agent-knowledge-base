@@ -221,6 +221,10 @@ td small { margin-top: 4px; color: #87918c; font-size: 9px; overflow-wrap: anywh
 .table-link span { margin-top: 4px; color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
 .protected { display: inline-flex; align-items: center; gap: 3px; color: var(--amber); }
 .trace-bottom-grid { margin-top: 14px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.provider-attempt-band { grid-column: 1 / -1; }
+.provider-attempt-list { display: grid; gap: 0; }
+.provider-attempt-list > div { display: grid; grid-template-columns: minmax(180px, 1.5fr) 90px minmax(120px, 1fr) 72px; gap: 8px; padding: 7px 0; border-top: 1px solid #e4e7e3; font-size: 11px; }
+.provider-attempt-list span { color: var(--muted); overflow-wrap: anywhere; }
 .detail-band { padding: 13px; border: 1px solid var(--line); background: #fff; }
 .detail-band dl > div { grid-template-columns: minmax(115px, 0.55fr) minmax(0, 1fr); }
 .detail-band dt { min-width: 0; overflow-wrap: anywhere; }
@@ -389,6 +393,7 @@ td small { margin-top: 4px; color: #87918c; font-size: 9px; overflow-wrap: anywh
   .trace-context-band > div:last-child { border-bottom: 0; }
   .trace-toolbar { align-items: flex-end; }
   .trace-bottom-grid { grid-template-columns: 1fr; }
+  .provider-attempt-list > div { grid-template-columns: 1fr 1fr; }
   .operations-heading { align-items: center; }
   .form-grid { grid-template-columns: 1fr; }
   .form-grid .field-wide { grid-column: auto; }

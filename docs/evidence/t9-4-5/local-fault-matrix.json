@@ -1,0 +1,75 @@
+{
+  "schema_version": "semikb-t945-provider-resilience-v1",
+  "generated_at": "2026-08-16T11:51:52.794149+00:00",
+  "result": "passed",
+  "return_code": 0,
+  "provider_matrix": {
+    "embedding": {
+      "faults": [
+        "429",
+        "invalid_vector"
+      ],
+      "policy": "bounded_retry_then_fail_closed_with_trace"
+    },
+    "reranker": {
+      "faults": [
+        "5xx"
+      ],
+      "policy": "bounded_retry_then_rrf_fallback_with_trace"
+    },
+    "llm": {
+      "faults": [
+        "5xx",
+        "stream_interrupted"
+      ],
+      "policy": "retry_or_fallback_only_before_visible_content"
+    },
+    "mineru": {
+      "faults": [
+        "5xx",
+        "ambiguous_create_batch"
+      ],
+      "policy": "retry_idempotent_transfer_only_and_keep_unpublished"
+    },
+    "ocr_vlm": {
+      "faults": [
+        "5xx",
+        "invalid_structured_response"
+      ],
+      "policy": "bounded_retry_transient_only_and_keep_unpublished"
+    },
+    "web_mcp": {
+      "faults": [
+        "timeout",
+        "invalid_response"
+      ],
+      "policy": "bounded_retry_then_internal_evidence_only"
+    }
+  },
+  "tests": {
+    "embedding": [
+      "tests/test_embedding_provider.py::test_qianwen_encoder_rejects_wrong_dimension_and_safe_http_errors"
+    ],
+    "reranker": [
+      "tests/test_production_retrieval.py::test_qianwen_reranker_exhaustion_degrades_with_attempt_audit"
+    ],
+    "llm": [
+      "tests/test_llm_gateway.py::test_primary_failure_falls_back_with_qwen_parameter_shape",
+      "tests/test_llm_gateway.py::test_stream_failure_after_visible_content_never_retries_or_falls_back"
+    ],
+    "mineru": [
+      "tests/test_semikb_ingest_provider_adapters.py::test_mineru_retries_idempotent_transfer_but_not_batch_creation",
+      "tests/test_semikb_ingest_provider_adapters.py::test_mineru_does_not_replay_ambiguous_batch_creation_failure"
+    ],
+    "ocr_vlm": [
+      "tests/test_semikb_ingest_provider_adapters.py::test_qwen_vision_retries_transient_failure_then_records_success",
+      "tests/test_semikb_ingest_provider_adapters.py::test_qwen_vision_client_rejects_unstructured_provider_output"
+    ],
+    "web_mcp": [
+      "tests/test_web_search_resilience.py::test_web_search_retries_timeout_and_keeps_only_allowed_urls",
+      "tests/test_web_search_resilience.py::test_web_search_invalid_response_fails_without_retry"
+    ]
+  },
+  "pytest_summary": "10 passed in 1.14s",
+  "credential_safe": true
+}

@@ -11,6 +11,14 @@ import httpx
 
 from semikb_ingest.errors import IngestError, IngestErrorCode
 from semikb_ingest.providers.types import VisionAnalysis
+from semikb_provider_resilience import (
+    ProviderAttemptAudit,
+    ProviderRetriesExhausted,
+    ProviderRetryPolicy,
+    failure_from_response,
+    invalid_response,
+    run_with_retry,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,6 +27,9 @@ class QwenVisionConfig:
     api_key: str
     model: str = "qwen3.7-plus"
     timeout_seconds: float = 60
+    max_attempts: int = 2
+    backoff_base_seconds: float = 0.5
+    backoff_max_seconds: float = 2.0
 
 
 class QwenVisionClient:
@@ -42,12 +53,63 @@ class QwenVisionClient:
             )
         self.config = config
         self._transport = transport
+        self.last_attempts: tuple[ProviderAttemptAudit, ...] = ()
+        self._retry_policy = ProviderRetryPolicy(
+            max_attempts=config.max_attempts,
+            backoff_base_seconds=config.backoff_base_seconds,
+            backoff_max_seconds=config.backoff_max_seconds,
+        )
 
     @property
     def provider_version(self) -> str:
         return self.config.model
 
     def analyze_image(
+        self,
+        *,
+        filename: str,
+        content_type: str,
+        content: bytes,
+        correlation_id: str,
+    ) -> VisionAnalysis:
+        self.last_attempts = ()
+        try:
+            result = run_with_retry(
+                self.provider_name,
+                "image_understanding",
+                self._retry_policy,
+                lambda: self._analyze_once(
+                    filename=filename,
+                    content_type=content_type,
+                    content=content,
+                    correlation_id=correlation_id,
+                ),
+            )
+        except ProviderRetriesExhausted as exc:
+            self.last_attempts = exc.attempts
+            code = (
+                IngestErrorCode.PARSER_TIMEOUT
+                if exc.failure.failure_kind.value == "timeout"
+                else IngestErrorCode.PARSE_FAILED
+                if exc.failure.failure_kind.value in {"invalid_response", "rejected"}
+                else IngestErrorCode.PARSER_UNAVAILABLE
+            )
+            message = (
+                "The image understanding provider returned an invalid structured result."
+                if code is IngestErrorCode.PARSE_FAILED
+                else "The image understanding provider timed out after bounded retries."
+                if code is IngestErrorCode.PARSER_TIMEOUT
+                else "The image understanding provider is unavailable after bounded retries."
+            )
+            raise IngestError(
+                code,
+                message,
+                provider_attempts=exc.attempts,
+            ) from exc
+        self.last_attempts = result.attempts
+        return result.value
+
+    def _analyze_once(
         self,
         *,
         filename: str,
@@ -95,33 +157,14 @@ class QwenVisionClient:
             "Authorization": f"Bearer {self.config.api_key}",
             "X-SemiKB-Correlation-ID": correlation_id,
         }
-        try:
-            with httpx.Client(
-                timeout=self.config.timeout_seconds,
-                transport=self._transport,
-            ) as client:
-                response = client.post(self._endpoint(), headers=headers, json=payload)
-        except httpx.TimeoutException as exc:
-            raise IngestError(
-                IngestErrorCode.PARSER_TIMEOUT,
-                "The image understanding provider timed out.",
-            ) from exc
-        except httpx.HTTPError as exc:
-            raise IngestError(
-                IngestErrorCode.PARSER_UNAVAILABLE,
-                "The image understanding provider is unavailable.",
-            ) from exc
+        with httpx.Client(
+            timeout=self.config.timeout_seconds,
+            transport=self._transport,
+        ) as client:
+            response = client.post(self._endpoint(), headers=headers, json=payload)
 
-        if response.status_code == 429 or response.status_code >= 500:
-            raise IngestError(
-                IngestErrorCode.PARSER_UNAVAILABLE,
-                "The image understanding provider is temporarily unavailable.",
-            )
         if response.status_code >= 400:
-            raise IngestError(
-                IngestErrorCode.PARSE_FAILED,
-                "The image understanding provider rejected this image.",
-            )
+            raise failure_from_response(response, "The image understanding request failed.")
 
         try:
             body: dict[str, Any] = response.json()
@@ -129,9 +172,8 @@ class QwenVisionClient:
             raw = self._parse_json_content(content_value)
             return VisionAnalysis.model_validate(raw)
         except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
-            raise IngestError(
-                IngestErrorCode.PARSE_FAILED,
-                "The image understanding provider returned an invalid structured result.",
+            raise invalid_response(
+                "The image understanding provider returned an invalid structured result."
             ) from exc
 
     def _endpoint(self) -> str:

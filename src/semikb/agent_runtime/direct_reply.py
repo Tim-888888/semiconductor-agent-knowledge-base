@@ -14,6 +14,7 @@ from typing import Any
 from semikb.agent_runtime.llm_gateway import OpenAICompatibleLLMGateway
 from semikb.config import Settings
 from semikb.contracts.streaming import DirectReplyAudit
+from semikb_provider_resilience import ProviderAttemptAudit
 
 
 class DirectReplyKind(StrEnum):
@@ -374,6 +375,7 @@ class DirectReplyGenerator:
                     verified_unit_count=assembler.verified_unit_count,
                     warning_codes=warnings,
                     usage=self._safe_usage(completion.usage),
+                    provider_attempts=completion.provider_attempts,
                 ),
             )
         except asyncio.CancelledError:
@@ -402,6 +404,9 @@ class DirectReplyGenerator:
                     fallback_used=True,
                     verified_unit_count=assembler.verified_unit_count,
                     warning_codes=[warning],
+                    provider_attempts=tuple(
+                        getattr(exc, "provider_attempts", getattr(self.llm, "last_attempts", ()))
+                    ),
                 ),
             )
 
@@ -629,6 +634,7 @@ class DirectReplyGenerator:
         verified_unit_count: int = 0,
         warning_codes: list[str] | None = None,
         usage: dict[str, int] | None = None,
+        provider_attempts: tuple[ProviderAttemptAudit, ...] = (),
     ) -> DirectReplyAudit:
         return DirectReplyAudit(
             reply_kind=request.kind.value,
@@ -641,4 +647,5 @@ class DirectReplyGenerator:
             context_message_count=context_count,
             warning_codes=list(warning_codes or []),
             usage=dict(usage or {}),
+            provider_attempts=list(provider_attempts),
         )

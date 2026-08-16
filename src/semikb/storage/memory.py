@@ -47,6 +47,7 @@ from semikb.storage.conversations import (
     MessageRequestInProgressError,
     ThreadBusyError,
 )
+from semikb_provider_resilience import ProviderAttemptAudit
 
 
 class DemoStore:
@@ -292,6 +293,28 @@ class DemoStore:
         job.chunker_version = chunker_version
         job.parse_warning_codes = list(warning_codes)
         job.parse_metrics = dict(metrics)
+        return job
+
+    def record_provider_attempts(
+        self,
+        job_id: str,
+        attempts: Sequence[ProviderAttemptAudit],
+        *,
+        message: str,
+    ) -> IngestionJob:
+        job = self.jobs[job_id]
+        safe_attempts = [attempt.model_copy(deep=True) for attempt in attempts]
+        job.provider_attempts.extend(safe_attempts)
+        job.events.append(
+            IngestionEvent(
+                job_id=job.job_id,
+                stage=job.current_stage,
+                message=message,
+                attempt=job.attempt,
+                progress=job.progress,
+                provider_attempts=safe_attempts,
+            )
+        )
         return job
 
     def _store_object(self, object_ref: ObjectRef, content: bytes) -> ObjectRef:

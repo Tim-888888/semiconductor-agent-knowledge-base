@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 from semikb_ingest.errors import IngestError, IngestErrorCode
+from semikb_provider_resilience import ProviderAttemptAudit
 
 
 @runtime_checkable
@@ -38,3 +39,15 @@ class ProviderRegistry:
 
     def get(self, provider_name: str) -> ProviderClient | None:
         return self._providers.get(provider_name)
+
+    def reset_attempts(self) -> None:
+        for provider in self._providers.values():
+            if hasattr(provider, "last_attempts"):
+                provider.last_attempts = ()
+
+    def collect_attempts(self) -> tuple[ProviderAttemptAudit, ...]:
+        return tuple(
+            attempt
+            for provider in self._providers.values()
+            for attempt in getattr(provider, "last_attempts", ())
+        )

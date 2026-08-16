@@ -17,6 +17,7 @@ from semikb.contracts.models import (
     TableAsset,
 )
 from semikb.rag_retrieval.encoders import HybridEmbedding
+from semikb_provider_resilience import ProviderAttemptAudit
 
 if TYPE_CHECKING:
     from semikb.contracts.corpus_publication import CorpusPublicationReconciliation
@@ -86,6 +87,14 @@ class IngestionStore(Protocol):
         chunker_version: str,
         warning_codes: Sequence[str],
         metrics: dict[str, object],
+    ) -> IngestionJob: ...
+
+    def record_provider_attempts(
+        self,
+        job_id: str,
+        attempts: Sequence[ProviderAttemptAudit],
+        *,
+        message: str,
     ) -> IngestionJob: ...
 
     def store_source(

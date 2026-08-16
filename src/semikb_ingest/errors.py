@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from semikb_provider_resilience import ProviderAttemptAudit
 
 
 class IngestErrorCode(StrEnum):
@@ -104,8 +108,15 @@ ERROR_CATALOG: dict[IngestErrorCode, ErrorDescriptor] = {
 class IngestError(RuntimeError):
     """Error with a stable code and a user-safe message."""
 
-    def __init__(self, code: IngestErrorCode, safe_message: str) -> None:
+    def __init__(
+        self,
+        code: IngestErrorCode,
+        safe_message: str,
+        *,
+        provider_attempts: tuple[ProviderAttemptAudit, ...] = (),
+    ) -> None:
         super().__init__(safe_message)
         self.code = code
         self.safe_message = safe_message
         self.descriptor = ERROR_CATALOG[code]
+        self.provider_attempts = provider_attempts

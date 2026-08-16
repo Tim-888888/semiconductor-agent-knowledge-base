@@ -13,6 +13,15 @@ from typing import Protocol
 import httpx
 
 from semikb.config import Settings
+from semikb_provider_resilience import (
+    ProviderAttemptAudit,
+    ProviderCallFailure,
+    ProviderRetriesExhausted,
+    ProviderRetryPolicy,
+    failure_from_response,
+    invalid_response,
+    run_with_retry,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,6 +39,15 @@ class HybridEncoder(Protocol):
 
 class EmbeddingProviderError(RuntimeError):
     """Safe provider error that excludes credentials and response bodies."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        provider_attempts: tuple[ProviderAttemptAudit, ...] = (),
+    ) -> None:
+        super().__init__(message)
+        self.provider_attempts = provider_attempts
 
 
 class LexicalHashSparseEncoder:
@@ -129,20 +147,46 @@ class QianwenHybridEncoder:
         )
         self.model_name = settings.embedding_model
         self.sparse_encoder_version = settings.sparse_encoder_version
+        self.last_attempts: tuple[ProviderAttemptAudit, ...] = ()
+        self._retry_policy = ProviderRetryPolicy(
+            max_attempts=settings.provider_max_attempts,
+            backoff_base_seconds=settings.provider_backoff_base_seconds,
+            backoff_max_seconds=settings.provider_backoff_max_seconds,
+        )
 
     def encode(self, texts: Sequence[str]) -> list[HybridEmbedding]:
         if not texts:
+            self.last_attempts = ()
             return []
-        items = self._request_embeddings(texts)
-        dense_vectors = [_provider_dense(item) for item in items]
-        if self._lexical_sparse is None:
-            sparse_vectors = [_provider_sparse(item) for item in items]
-        else:
-            sparse_vectors = self._lexical_sparse.encode(texts)
-        if any(len(vector) != self._settings.embedding_dim for vector in dense_vectors):
-            raise EmbeddingProviderError(
-                "Qianwen embedding returned an unexpected dimension."
+        self.last_attempts = ()
+        try:
+            result = run_with_retry(
+                "qianwen-embedding",
+                "dense_sparse_embedding",
+                self._retry_policy,
+                lambda: self._encode_once(texts),
             )
+        except ProviderRetriesExhausted as exc:
+            self.last_attempts = exc.attempts
+            raise EmbeddingProviderError(
+                _embedding_failure_message(exc.failure),
+                provider_attempts=exc.attempts,
+            ) from exc
+        self.last_attempts = result.attempts
+        return result.value
+
+    def _encode_once(self, texts: Sequence[str]) -> list[HybridEmbedding]:
+        items = self._request_embeddings(texts)
+        try:
+            dense_vectors = [_provider_dense(item) for item in items]
+            if self._lexical_sparse is None:
+                sparse_vectors = [_provider_sparse(item) for item in items]
+            else:
+                sparse_vectors = self._lexical_sparse.encode(texts)
+        except EmbeddingProviderError as exc:
+            raise invalid_response(str(exc)) from exc
+        if any(len(vector) != self._settings.embedding_dim for vector in dense_vectors):
+            raise invalid_response("Qianwen embedding returned an unexpected dimension.")
         return [
             HybridEmbedding(dense=dense, sparse=sparse)
             for dense, sparse in zip(dense_vectors, sparse_vectors, strict=True)
@@ -161,42 +205,43 @@ class QianwenHybridEncoder:
             "Authorization": f"Bearer {self._settings.resolved_embedding_api_key}",
             "Content-Type": "application/json",
         }
-        try:
-            with httpx.Client(
-                timeout=self._settings.embedding_timeout_seconds,
-                transport=self._transport,
-            ) as client:
-                response = client.post(
-                    _embedding_endpoint(self._settings.embedding_api_base_url),
-                    headers=headers,
-                    json=payload,
-                )
-        except httpx.HTTPError as exc:
-            raise EmbeddingProviderError("Qianwen embedding transport failure.") from exc
-        if response.is_error:
-            raise EmbeddingProviderError(
-                f"Qianwen embedding returned HTTP {response.status_code}."
+        with httpx.Client(
+            timeout=self._settings.embedding_timeout_seconds,
+            transport=self._transport,
+        ) as client:
+            response = client.post(
+                _embedding_endpoint(self._settings.embedding_api_base_url),
+                headers=headers,
+                json=payload,
             )
+        if response.is_error:
+            raise failure_from_response(response, "Qianwen embedding request failed.")
         try:
             items = response.json()["output"]["embeddings"]
             ordered = sorted(items, key=lambda item: int(item.get("text_index", 0)))
         except (AttributeError, KeyError, TypeError, ValueError) as exc:
-            raise EmbeddingProviderError(
-                "Qianwen embedding returned an invalid response."
-            ) from exc
+            raise invalid_response("Qianwen embedding returned an invalid response.") from exc
         if len(ordered) != len(texts):
-            raise EmbeddingProviderError("Qianwen embedding omitted one or more texts.")
+            raise invalid_response("Qianwen embedding omitted one or more texts.")
         try:
             text_indices = [int(item["text_index"]) for item in ordered]
         except (KeyError, TypeError, ValueError) as exc:
-            raise EmbeddingProviderError(
-                "Qianwen embedding returned invalid text indices."
-            ) from exc
+            raise invalid_response("Qianwen embedding returned invalid text indices.") from exc
         if text_indices != list(range(len(texts))):
-            raise EmbeddingProviderError(
+            raise invalid_response(
                 "Qianwen embedding returned duplicate or incomplete text indices."
             )
         return ordered
+
+
+def _embedding_failure_message(failure: ProviderCallFailure) -> str:
+    if failure.status_code is not None:
+        return f"Qianwen embedding returned HTTP {failure.status_code} after bounded retries."
+    if failure.failure_kind.value == "timeout":
+        return "Qianwen embedding timed out after bounded retries."
+    if failure.failure_kind.value == "invalid_response":
+        return failure.safe_message
+    return "Qianwen embedding is temporarily unavailable after bounded retries."
 
 
 def create_hybrid_encoder(settings: Settings) -> HybridEncoder:

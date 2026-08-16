@@ -17,6 +17,7 @@ from semikb_ingest.providers import (
     MinerUContentItem,
     MinerUImage,
     MinerUPdfClient,
+    MinerUPdfConfig,
     MinerUPdfResult,
     ProviderRegistry,
     QwenVisionClient,
@@ -265,6 +266,56 @@ def test_qwen_vision_client_maps_timeout_without_leaking_request() -> None:
     assert "secret" not in captured.value.safe_message
 
 
+def test_qwen_vision_retries_transient_failure_then_records_success() -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return httpx.Response(503, json={"error": "busy"})
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                {
+                                    "caption": "Wafer map",
+                                    "ocr_text": "",
+                                    "detection_summary": "Edge ring",
+                                    "confidence": 0.8,
+                                }
+                            )
+                        }
+                    }
+                ]
+            },
+        )
+
+    client = QwenVisionClient(
+        QwenVisionConfig(
+            "https://example.test/v1",
+            "secret",
+            backoff_base_seconds=0,
+            backoff_max_seconds=0,
+        ),
+        transport=httpx.MockTransport(handler),
+    )
+
+    result = client.analyze_image(
+        filename="wafer.png",
+        content_type="image/png",
+        content=_png_bytes(),
+        correlation_id="qwen-retry",
+    )
+
+    assert result.caption == "Wafer map"
+    assert calls == 2
+    assert [attempt.outcome for attempt in client.last_attempts] == ["retrying", "succeeded"]
+
+
 def test_mineru_archive_reader_retains_content_list_pages_and_assets() -> None:
     archive_bytes = io.BytesIO()
     with zipfile.ZipFile(archive_bytes, "w") as archive:
@@ -302,3 +353,96 @@ def test_mineru_archive_reader_rejects_path_traversal() -> None:
     with pytest.raises(IngestError) as captured:
         MinerUPdfClient.read_archive(archive_bytes.getvalue())
     assert captured.value.code is IngestErrorCode.ASSET_EXTRACTION_FAILED
+
+
+def test_mineru_retries_idempotent_transfer_but_not_batch_creation() -> None:
+    archive_bytes = io.BytesIO()
+    with zipfile.ZipFile(archive_bytes, "w") as archive:
+        archive.writestr("result/full.md", "# SOP\n\nPressure alarm.")
+
+    calls: list[tuple[str, str]] = []
+    upload_calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal upload_calls
+        calls.append((request.method, request.url.path))
+        if request.method == "POST":
+            return httpx.Response(
+                200,
+                json={
+                    "code": 0,
+                    "data": {
+                        "file_urls": ["https://upload.test/source"],
+                        "batch_id": "batch-1",
+                    },
+                },
+            )
+        if request.url.host == "upload.test":
+            upload_calls += 1
+            return httpx.Response(503 if upload_calls == 1 else 200)
+        if "extract-results" in request.url.path:
+            return httpx.Response(
+                200,
+                json={
+                    "code": 0,
+                    "data": {
+                        "extract_result": [
+                            {"state": "done", "full_zip_url": "https://archive.test/result.zip"}
+                        ]
+                    },
+                },
+            )
+        if request.url.host == "archive.test":
+            return httpx.Response(200, content=archive_bytes.getvalue())
+        raise AssertionError(request.url)
+
+    client = MinerUPdfClient(
+        MinerUPdfConfig(
+            "https://mineru.test",
+            "secret",
+            poll_seconds=0,
+            backoff_base_seconds=0,
+            backoff_max_seconds=0,
+        ),
+        transport=httpx.MockTransport(handler),
+    )
+
+    result = client.parse_pdf(filename="sop.pdf", content=b"%PDF-1.7", correlation_id="pdf-1")
+
+    assert "Pressure alarm" in result.markdown
+    assert len([item for item in calls if item[0] == "POST"]) == 1
+    assert upload_calls == 2
+    assert [attempt.operation for attempt in client.last_attempts] == [
+        "create_batch",
+        "upload_source",
+        "upload_source",
+        "poll_batch",
+        "download_archive",
+    ]
+
+
+def test_mineru_does_not_replay_ambiguous_batch_creation_failure() -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(503, json={"error": "busy"})
+
+    client = MinerUPdfClient(
+        MinerUPdfConfig(
+            "https://mineru.test",
+            "secret",
+            max_attempts=3,
+            backoff_base_seconds=0,
+            backoff_max_seconds=0,
+        ),
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(IngestError) as captured:
+        client.parse_pdf(filename="sop.pdf", content=b"%PDF-1.7", correlation_id="pdf-2")
+
+    assert calls == 1
+    assert captured.value.code is IngestErrorCode.PARSER_UNAVAILABLE
+    assert len(captured.value.provider_attempts) == 1

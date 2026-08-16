@@ -18,7 +18,7 @@ from semikb.contracts.models import (
     RetrievalTrace,
 )
 from semikb.demo_factory import demo_actor_scope
-from semikb.rag_retrieval.encoders import HybridEmbedding
+from semikb.rag_retrieval.encoders import EmbeddingProviderError, HybridEmbedding
 from semikb.rag_retrieval.production_repository import (
     ProductionRetrievalRepository,
     VectorHit,
@@ -30,6 +30,7 @@ from semikb.rag_retrieval.production_service import (
     RetrievalOptions,
 )
 from semikb.rag_retrieval.rerankers import QianwenReranker, RerankerError
+from semikb_provider_resilience import ProviderAttemptAudit
 
 
 def production_settings(**overrides: object) -> Settings:
@@ -128,6 +129,25 @@ class FailingReranker:
 
     def score(self, query: str, passages: list[str]) -> list[float]:
         raise RerankerError("injected failure")
+
+
+class FailingEncoder:
+    model_name = "embedding-test"
+    sparse_encoder_version = "sparse-test"
+
+    def encode(self, texts: list[str]) -> list[HybridEmbedding]:
+        attempt = ProviderAttemptAudit(
+            provider="embedding-test",
+            operation="embedding",
+            attempt=1,
+            max_attempts=1,
+            outcome="failed",
+            failure_kind="timeout",
+            retryable=True,
+            latency_ms=1,
+        )
+        self.last_attempts = (attempt,)
+        raise EmbeddingProviderError("injected timeout", provider_attempts=(attempt,))
 
 
 class CliffReranker:
@@ -281,6 +301,52 @@ def test_reranker_failure_degrades_to_rrf_with_trace_warning() -> None:
     assert evidence
     assert trace.routes[-1] == "rrf_fallback"
     assert trace.warnings == ["reranker_unavailable:RerankerError"]
+
+
+def test_embedding_failure_is_fail_closed_and_still_saves_a_trace() -> None:
+    repository = FakeRepository()
+    service = ProductionRetrievalService(
+        production_settings(hyde_enabled=False),
+        repository=repository,
+        encoder=FailingEncoder(),
+        reranker=FakeReranker(),
+        hyde_generator=FakeHyde(),
+    )
+
+    with pytest.raises(EmbeddingProviderError):
+        service.search("ETCH-03 edge-ring", demo_actor_scope())
+
+    trace = repository.traces[-1]
+    assert trace.routes == ["embedding_failed", "fail_closed"]
+    assert trace.cutoff_reason == "embedding_provider_failed"
+    assert trace.provider_attempts[0].failure_kind == "timeout"
+
+
+def test_qianwen_reranker_exhaustion_degrades_with_attempt_audit() -> None:
+    repository = FakeRepository()
+    reranker = QianwenReranker(
+        production_settings(
+            hyde_enabled=False,
+            provider_backoff_base_seconds=0,
+            provider_backoff_max_seconds=0,
+        ),
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(503, json={"error": "busy"})
+        ),
+    )
+    service = ProductionRetrievalService(
+        production_settings(hyde_enabled=False),
+        repository=repository,
+        encoder=FakeEncoder(),
+        reranker=reranker,
+        hyde_generator=FakeHyde(),
+    )
+
+    evidence, trace = service.search("ETCH-03 edge-ring", demo_actor_scope())
+
+    assert evidence
+    assert trace.routes[-1] == "rrf_fallback"
+    assert [attempt.outcome for attempt in trace.provider_attempts] == ["retrying", "failed"]
 
 
 def test_dynamic_cutoff_stops_at_a_rerank_score_cliff() -> None:

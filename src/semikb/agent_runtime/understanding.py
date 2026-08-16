@@ -401,6 +401,10 @@ class ConversationUnderstandingService:
                     "understanding_model": completion.reported_model,
                     "understanding_fallback_used": completion.fallback_used,
                     "understanding_repaired": False,
+                    "understanding_provider_attempts": [
+                        attempt.model_dump(mode="json")
+                        for attempt in completion.provider_attempts
+                    ],
                 }
             )
         except (ValidationError, json.JSONDecodeError, ValueError):
@@ -463,6 +467,10 @@ class ConversationUnderstandingService:
                         "understanding_model": repair.reported_model,
                         "understanding_fallback_used": repair.fallback_used,
                         "understanding_repaired": True,
+                        "understanding_provider_attempts": [
+                            attempt.model_dump(mode="json")
+                            for attempt in repair.provider_attempts
+                        ],
                     }
                 )
             except (ValidationError, json.JSONDecodeError, ValueError, LLMProviderError):
@@ -471,6 +479,10 @@ class ConversationUnderstandingService:
             raw = None
 
         if raw is None:
+            metadata["understanding_provider_attempts"] = [
+                attempt.model_dump(mode="json")
+                for attempt in getattr(self.llm, "last_attempts", ())
+            ]
             fallback = self._heuristic(request, context, clarification_pending=clarification_pending)
             metadata.update(
                 {

@@ -6,12 +6,22 @@ import hashlib
 import json
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 import httpx
 
 from semikb.config import Settings
+from semikb_provider_resilience import (
+    ProviderAttemptAudit,
+    ProviderCallFailure,
+    ProviderFailureKind,
+    ProviderRetriesExhausted,
+    ProviderRetryPolicy,
+    failure_from_exception,
+    run_with_retry,
+    run_with_retry_async,
+)
 
 
 class LLMConfigurationError(ValueError):
@@ -21,11 +31,20 @@ class LLMConfigurationError(ValueError):
 class LLMProviderError(RuntimeError):
     """Provider failure without credentials or endpoint details in the message."""
 
-    def __init__(self, provider: str, message: str, *, status_code: int | None = None) -> None:
+    def __init__(
+        self,
+        provider: str,
+        message: str,
+        *,
+        status_code: int | None = None,
+        provider_attempts: tuple[ProviderAttemptAudit, ...] = (),
+    ) -> None:
         super().__init__(f"LLM provider '{provider}' failed: {message}")
         self.provider = provider
+        self.safe_message = message
         self.status_code = status_code
         self.content_started = False
+        self.provider_attempts = provider_attempts
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +67,7 @@ class LLMCompletion:
     fallback_used: bool
     attempted_providers: tuple[str, ...]
     usage: dict[str, Any]
+    provider_attempts: tuple[ProviderAttemptAudit, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,6 +143,12 @@ class OpenAICompatibleLLMGateway:
     ) -> None:
         self.settings = settings
         self.transport = transport
+        self.last_attempts: tuple[ProviderAttemptAudit, ...] = ()
+        self._retry_policy = ProviderRetryPolicy(
+            max_attempts=settings.provider_max_attempts,
+            backoff_base_seconds=settings.provider_backoff_base_seconds,
+            backoff_max_seconds=settings.provider_backoff_max_seconds,
+        )
 
     async def complete(
         self,
@@ -143,26 +169,44 @@ class OpenAICompatibleLLMGateway:
         provider_names = self._provider_names(allow_fallback)
         attempted: list[str] = []
         last_error: Exception | None = None
+        provider_attempts: list[ProviderAttemptAudit] = []
+        self.last_attempts = ()
         for index, provider_name in enumerate(provider_names):
             attempted.append(provider_name.strip().lower())
             try:
                 config = resolve_provider_config(self.settings, provider_name)
-                return await self._complete_with_provider(
-                    config,
-                    messages,
-                    response_json=response_json,
-                    response_schema=response_schema,
-                    schema_name=schema_name,
-                    temperature=temperature,
-                    max_output_tokens=max_output_tokens,
-                    fallback_used=index > 0,
-                    attempted_providers=tuple(attempted),
+                result = await run_with_retry_async(
+                    config.provider,
+                    "chat_completion",
+                    self._retry_policy,
+                    lambda: self._resilient_async_completion(
+                        config,
+                        messages,
+                        response_json=response_json,
+                        response_schema=response_schema,
+                        schema_name=schema_name,
+                        temperature=temperature,
+                        max_output_tokens=max_output_tokens,
+                        fallback_used=index > 0,
+                        attempted_providers=tuple(attempted),
+                    ),
                 )
-            except (LLMConfigurationError, LLMProviderError, httpx.HTTPError) as exc:
+                provider_attempts.extend(result.attempts)
+                self.last_attempts = tuple(provider_attempts)
+                return replace(result.value, provider_attempts=self.last_attempts)
+            except ProviderRetriesExhausted as exc:
+                provider_attempts.extend(exc.attempts)
+                last_error = exc
+            except LLMConfigurationError as exc:
                 last_error = exc
 
         attempted_text = ", ".join(attempted)
-        raise LLMProviderError(attempted_text, "all configured providers were unavailable") from last_error
+        self.last_attempts = tuple(provider_attempts)
+        raise LLMProviderError(
+            attempted_text,
+            "all configured providers were unavailable",
+            provider_attempts=self.last_attempts,
+        ) from last_error
 
     async def probe_stream(
         self,
@@ -178,18 +222,28 @@ class OpenAICompatibleLLMGateway:
         if max_output_tokens < 1:
             raise ValueError("max_output_tokens must be positive")
         config = resolve_provider_config(self.settings, provider)
+        self.last_attempts = ()
         try:
-            return await self._probe_stream_with_provider(
-                config,
-                messages,
-                max_output_tokens=max_output_tokens,
+            result = await run_with_retry_async(
+                config.provider,
+                "stream_probe",
+                self._retry_policy,
+                lambda: self._resilient_stream_probe(
+                    config,
+                    messages,
+                    max_output_tokens=max_output_tokens,
+                ),
             )
-        except LLMProviderError:
-            raise
-        except httpx.TimeoutException as exc:
-            raise LLMProviderError(config.provider, "stream request timed out") from exc
-        except httpx.HTTPError as exc:
-            raise LLMProviderError(config.provider, "stream network error") from exc
+        except ProviderRetriesExhausted as exc:
+            self.last_attempts = exc.attempts
+            raise LLMProviderError(
+                config.provider,
+                exc.failure.safe_message,
+                status_code=exc.failure.status_code,
+                provider_attempts=exc.attempts,
+            ) from exc
+        self.last_attempts = result.attempts
+        return result.value
 
     async def stream_complete(
         self,
@@ -208,25 +262,51 @@ class OpenAICompatibleLLMGateway:
 
         attempted: list[str] = []
         last_error: Exception | None = None
+        provider_attempts: list[ProviderAttemptAudit] = []
+        self.last_attempts = ()
         for index, provider_name in enumerate(self._provider_names(allow_fallback)):
             attempted.append(provider_name.strip().lower())
             try:
                 config = resolve_provider_config(self.settings, provider_name)
-                return await self._stream_complete_with_provider(
-                    config,
-                    messages,
-                    on_content_delta=on_content_delta,
-                    max_output_tokens=max_output_tokens,
-                    fallback_used=index > 0,
-                    attempted_providers=tuple(attempted),
+                result = await run_with_retry_async(
+                    config.provider,
+                    "stream_completion",
+                    self._retry_policy,
+                    lambda: self._resilient_stream_completion(
+                        config,
+                        messages,
+                        on_content_delta=on_content_delta,
+                        max_output_tokens=max_output_tokens,
+                        fallback_used=index > 0,
+                        attempted_providers=tuple(attempted),
+                    ),
                 )
-            except (LLMConfigurationError, LLMProviderError, httpx.HTTPError) as exc:
+                provider_attempts.extend(result.attempts)
+                self.last_attempts = tuple(provider_attempts)
+                return replace(result.value, provider_attempts=self.last_attempts)
+            except ProviderRetriesExhausted as exc:
+                provider_attempts.extend(exc.attempts)
                 last_error = exc
-                if isinstance(exc, LLMProviderError) and getattr(exc, "content_started", False):
-                    raise
+                if exc.failure.failure_kind is ProviderFailureKind.STREAM_INTERRUPTED:
+                    self.last_attempts = tuple(provider_attempts)
+                    error = LLMProviderError(
+                        config.provider,
+                        exc.failure.safe_message,
+                        status_code=exc.failure.status_code,
+                        provider_attempts=self.last_attempts,
+                    )
+                    error.content_started = True
+                    raise error from exc
+            except LLMConfigurationError as exc:
+                last_error = exc
 
         attempted_text = ", ".join(attempted)
-        raise LLMProviderError(attempted_text, "all configured providers were unavailable") from last_error
+        self.last_attempts = tuple(provider_attempts)
+        raise LLMProviderError(
+            attempted_text,
+            "all configured providers were unavailable",
+            provider_attempts=self.last_attempts,
+        ) from last_error
 
     def complete_sync(
         self,
@@ -248,26 +328,44 @@ class OpenAICompatibleLLMGateway:
 
         attempted: list[str] = []
         last_error: Exception | None = None
+        provider_attempts: list[ProviderAttemptAudit] = []
+        self.last_attempts = ()
         for index, provider_name in enumerate(self._provider_names(allow_fallback)):
             attempted.append(provider_name.strip().lower())
             try:
                 config = resolve_provider_config(self.settings, provider_name)
-                return self._complete_sync_with_provider(
-                    config,
-                    messages,
-                    response_json=response_json,
-                    response_schema=response_schema,
-                    schema_name=schema_name,
-                    temperature=temperature,
-                    max_output_tokens=max_output_tokens,
-                    fallback_used=index > 0,
-                    attempted_providers=tuple(attempted),
+                result = run_with_retry(
+                    config.provider,
+                    "chat_completion_sync",
+                    self._retry_policy,
+                    lambda: self._resilient_sync_completion(
+                        config,
+                        messages,
+                        response_json=response_json,
+                        response_schema=response_schema,
+                        schema_name=schema_name,
+                        temperature=temperature,
+                        max_output_tokens=max_output_tokens,
+                        fallback_used=index > 0,
+                        attempted_providers=tuple(attempted),
+                    ),
                 )
-            except (LLMConfigurationError, LLMProviderError, httpx.HTTPError) as exc:
+                provider_attempts.extend(result.attempts)
+                self.last_attempts = tuple(provider_attempts)
+                return replace(result.value, provider_attempts=self.last_attempts)
+            except ProviderRetriesExhausted as exc:
+                provider_attempts.extend(exc.attempts)
+                last_error = exc
+            except LLMConfigurationError as exc:
                 last_error = exc
 
         attempted_text = ", ".join(attempted)
-        raise LLMProviderError(attempted_text, "all configured providers were unavailable") from last_error
+        self.last_attempts = tuple(provider_attempts)
+        raise LLMProviderError(
+            attempted_text,
+            "all configured providers were unavailable",
+            provider_attempts=self.last_attempts,
+        ) from last_error
 
     def _provider_names(self, allow_fallback: bool) -> list[str]:
         provider_names = [self.settings.llm_primary_provider]
@@ -275,6 +373,54 @@ class OpenAICompatibleLLMGateway:
         if allow_fallback and fallback and fallback != provider_names[0].strip().lower():
             provider_names.append(fallback)
         return provider_names
+
+    async def _resilient_async_completion(self, config: LLMProviderConfig, *args, **kwargs):
+        try:
+            return await self._complete_with_provider(config, *args, **kwargs)
+        except (LLMProviderError, httpx.HTTPError) as exc:
+            raise _llm_call_failure(exc) from exc
+
+    async def _resilient_stream_probe(self, config: LLMProviderConfig, *args, **kwargs):
+        try:
+            return await self._probe_stream_with_provider(config, *args, **kwargs)
+        except httpx.TimeoutException as exc:
+            raise ProviderCallFailure(
+                ProviderFailureKind.TIMEOUT,
+                "stream request timed out",
+                retryable=True,
+            ) from exc
+        except httpx.HTTPError as exc:
+            raise ProviderCallFailure(
+                ProviderFailureKind.TRANSPORT,
+                "stream network error",
+                retryable=True,
+            ) from exc
+        except LLMProviderError as exc:
+            raise _llm_call_failure(exc) from exc
+
+    async def _resilient_stream_completion(
+        self,
+        config: LLMProviderConfig,
+        *args,
+        **kwargs,
+    ):
+        try:
+            return await self._stream_complete_with_provider(config, *args, **kwargs)
+        except (LLMProviderError, httpx.HTTPError) as exc:
+            if isinstance(exc, LLMProviderError) and exc.content_started:
+                raise ProviderCallFailure(
+                    ProviderFailureKind.STREAM_INTERRUPTED,
+                    exc.safe_message,
+                    status_code=exc.status_code,
+                    retryable=False,
+                ) from exc
+            raise _llm_call_failure(exc) from exc
+
+    def _resilient_sync_completion(self, config: LLMProviderConfig, *args, **kwargs):
+        try:
+            return self._complete_sync_with_provider(config, *args, **kwargs)
+        except (LLMProviderError, httpx.HTTPError) as exc:
+            raise _llm_call_failure(exc) from exc
 
     async def _complete_with_provider(
         self,
@@ -680,3 +826,54 @@ class OpenAICompatibleLLMGateway:
             attempted_providers=attempted_providers,
             usage=usage if isinstance(usage, dict) else {},
         )
+
+
+def _llm_call_failure(exc: Exception) -> ProviderCallFailure:
+    if isinstance(exc, LLMProviderError):
+        status = exc.status_code
+        if status == 429:
+            return ProviderCallFailure(
+                ProviderFailureKind.RATE_LIMITED,
+                exc.safe_message,
+                status_code=status,
+                retryable=True,
+            )
+        if status is not None and status >= 500:
+            return ProviderCallFailure(
+                ProviderFailureKind.UPSTREAM_5XX,
+                exc.safe_message,
+                status_code=status,
+                retryable=True,
+            )
+        if status is not None and status >= 400:
+            return ProviderCallFailure(
+                ProviderFailureKind.REJECTED,
+                exc.safe_message,
+                status_code=status,
+                retryable=False,
+            )
+        normalized = exc.safe_message.lower()
+        if "timed out" in normalized or "timeout" in normalized:
+            return ProviderCallFailure(
+                ProviderFailureKind.TIMEOUT,
+                exc.safe_message,
+                retryable=True,
+            )
+        if "network" in normalized:
+            return ProviderCallFailure(
+                ProviderFailureKind.TRANSPORT,
+                exc.safe_message,
+                retryable=True,
+            )
+        if any(token in normalized for token in ("invalid", "empty", "no visible")):
+            return ProviderCallFailure(
+                ProviderFailureKind.INVALID_RESPONSE,
+                exc.safe_message,
+                retryable=False,
+            )
+        return ProviderCallFailure(
+            ProviderFailureKind.STREAM_INTERRUPTED,
+            exc.safe_message,
+            retryable=False,
+        )
+    return failure_from_exception(exc, "LLM provider transport failure.")

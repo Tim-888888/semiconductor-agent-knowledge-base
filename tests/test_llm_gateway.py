@@ -185,12 +185,21 @@ async def test_primary_failure_falls_back_with_qwen_parameter_shape() -> None:
         max_output_tokens=32,
     )
 
-    assert [host for host, _ in payloads] == ["closeai.invalid", "qwen.invalid"]
-    assert payloads[1][1]["max_tokens"] == 32
-    assert "reasoning_effort" not in payloads[1][1]
+    assert [host for host, _ in payloads] == [
+        "closeai.invalid",
+        "closeai.invalid",
+        "qwen.invalid",
+    ]
+    assert payloads[2][1]["max_tokens"] == 32
+    assert "reasoning_effort" not in payloads[2][1]
     assert result.provider == "qwen"
     assert result.fallback_used is True
     assert result.attempted_providers == ("closeai", "qwen")
+    assert [attempt.outcome for attempt in result.provider_attempts] == [
+        "retrying",
+        "failed",
+        "succeeded",
+    ]
 
 
 class ChunkedAsyncStream(httpx.AsyncByteStream):
@@ -200,6 +209,12 @@ class ChunkedAsyncStream(httpx.AsyncByteStream):
     async def __aiter__(self):
         for chunk in self.chunks:
             yield chunk
+
+
+class FailingAfterContentStream(httpx.AsyncByteStream):
+    async def __aiter__(self):
+        yield b'data: {"choices":[{"delta":{"content":"partial"}}]}\n\n'
+        raise httpx.ReadError("stream interrupted")
 
 
 @pytest.mark.asyncio
@@ -344,3 +359,33 @@ async def test_production_stream_forwards_visible_deltas_and_metadata() -> None:
     assert all(item[1] == "closeai" for item in deltas)
     assert result.reported_model == "gpt-stream"
     assert "hidden" not in result.content
+
+
+@pytest.mark.asyncio
+async def test_stream_failure_after_visible_content_never_retries_or_falls_back() -> None:
+    hosts: list[str] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        hosts.append(request.url.host)
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            stream=FailingAfterContentStream(),
+        )
+
+    deltas: list[str] = []
+    gateway = OpenAICompatibleLLMGateway(
+        llm_settings(provider_backoff_base_seconds=0, provider_backoff_max_seconds=0),
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(LLMProviderError) as captured:
+        await gateway.stream_complete(
+            [{"role": "user", "content": "stream"}],
+            on_content_delta=lambda delta, _provider, _model: deltas.append(delta),
+        )
+
+    assert deltas == ["partial"]
+    assert hosts == ["closeai.invalid"]
+    assert captured.value.content_started is True
+    assert captured.value.provider_attempts[0].failure_kind == "stream_interrupted"

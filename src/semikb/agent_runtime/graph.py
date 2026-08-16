@@ -759,16 +759,19 @@ class ConversationGraph:
         if web_task is not None:
             try:
                 external = await web_task
-            except Exception as exc:
+            except Exception:
                 external = [
                     {
                         "source_type": "external_unavailable",
-                        "content": type(exc).__name__,
+                        "content": "web_provider_unavailable",
                         "url": "",
                     }
                 ]
         if trace is not None:
             trace.external_evidence = external
+            trace.provider_attempts.extend(getattr(self.web_search, "last_attempts", ()))
+            if any(item.get("source_type") == "external_unavailable" for item in external):
+                trace.warnings.append("web_search_unavailable:internal_evidence_only")
             self.retrieval.save_trace(trace)
             self._emit_stream(
                 "stage",
@@ -960,6 +963,10 @@ class ConversationGraph:
                         "answer_model": completion.reported_model,
                         "answer_fallback_used": completion.fallback_used,
                         "answer_streamed": True,
+                        "answer_provider_attempts": [
+                            attempt.model_dump(mode="json")
+                            for attempt in completion.provider_attempts
+                        ],
                     }
                 )
                 if assembler.warnings:

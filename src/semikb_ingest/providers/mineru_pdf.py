@@ -17,6 +17,14 @@ import httpx
 
 from semikb_ingest.errors import IngestError, IngestErrorCode
 from semikb_ingest.providers.types import MinerUContentItem, MinerUImage, MinerUPdfResult
+from semikb_provider_resilience import (
+    ProviderAttemptAudit,
+    ProviderRetriesExhausted,
+    ProviderRetryPolicy,
+    failure_from_response,
+    invalid_response,
+    run_with_retry,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,6 +36,9 @@ class MinerUPdfConfig:
     poll_seconds: float = 3
     max_archive_entries: int = 20_000
     max_archive_uncompressed_bytes: int = 1024 * 1024 * 1024
+    max_attempts: int = 2
+    backoff_base_seconds: float = 0.5
+    backoff_max_seconds: float = 2.0
 
 
 class MinerUPdfClient:
@@ -46,6 +57,7 @@ class MinerUPdfClient:
             )
         self.config = config
         self._transport = transport
+        self.last_attempts: tuple[ProviderAttemptAudit, ...] = ()
 
     @property
     def provider_version(self) -> str:
@@ -58,6 +70,7 @@ class MinerUPdfClient:
         content: bytes,
         correlation_id: str,
     ) -> MinerUPdfResult:
+        self.last_attempts = ()
         headers = {
             "Authorization": f"Bearer {self.config.api_key}",
             "X-SemiKB-Correlation-ID": correlation_id,
@@ -70,47 +83,47 @@ class MinerUPdfClient:
             "enable_formula": True,
         }
         deadline = time.monotonic() + self.config.timeout_seconds
-        try:
-            with httpx.Client(
-                timeout=min(60, self.config.timeout_seconds),
-                follow_redirects=True,
-                transport=self._transport,
-            ) as client:
-                initial = client.post(
-                    f"{self.config.base_url.rstrip('/')}/api/v4/file-urls/batch",
-                    headers=headers,
-                    json=request_payload,
-                )
-                data = self._validated_response(initial)
-                upload_urls = data.get("file_urls", [])
-                batch_id = data.get("batch_id")
-                if not batch_id or not isinstance(upload_urls, list) or len(upload_urls) != 1:
-                    self._raise_parse_failed("MinerU did not return one upload URL and batch ID.")
-                upload = client.put(str(upload_urls[0]), content=content)
-                upload.raise_for_status()
-                archive_url = self._wait_for_archive(client, headers, str(batch_id), deadline)
-                archive = client.get(archive_url)
-                archive.raise_for_status()
-        except IngestError:
-            raise
-        except httpx.TimeoutException as exc:
-            raise IngestError(
-                IngestErrorCode.PARSER_TIMEOUT,
-                "MinerU PDF extraction timed out.",
-            ) from exc
-        except httpx.HTTPStatusError as exc:
-            code = (
-                IngestErrorCode.PARSER_UNAVAILABLE
-                if exc.response.status_code == 429 or exc.response.status_code >= 500
-                else IngestErrorCode.PARSE_FAILED
+        with httpx.Client(
+            timeout=min(60, self.config.timeout_seconds),
+            follow_redirects=True,
+            transport=self._transport,
+        ) as client:
+            # Creating a batch is not replayed after an ambiguous timeout; the outer job retry
+            # reuses the stable correlation ID and remains the idempotency boundary.
+            data = self._call(
+                "create_batch",
+                lambda: self._validated_response(
+                    client.post(
+                        f"{self.config.base_url.rstrip('/')}/api/v4/file-urls/batch",
+                        headers=headers,
+                        json=request_payload,
+                    )
+                ),
+                max_attempts=1,
             )
-            raise IngestError(code, "MinerU PDF extraction request failed.") from exc
-        except httpx.HTTPError as exc:
+            upload_urls = data.get("file_urls", [])
+            batch_id = data.get("batch_id")
+            if not batch_id or not isinstance(upload_urls, list) or len(upload_urls) != 1:
+                raise self._invalid_result("MinerU did not return one upload URL and batch ID.")
+            self._call(
+                "upload_source",
+                lambda: self._validated_binary_response(
+                    client.put(str(upload_urls[0]), content=content)
+                ),
+            )
+            archive_url = self._wait_for_archive(client, headers, str(batch_id), deadline)
+            archive = self._call(
+                "download_archive",
+                lambda: self._validated_binary_response(client.get(archive_url)),
+            )
+        try:
+            return self.read_archive(archive.content, self.config)
+        except IngestError as exc:
             raise IngestError(
-                IngestErrorCode.PARSER_UNAVAILABLE,
-                "MinerU PDF extraction is unavailable.",
+                exc.code,
+                exc.safe_message,
+                provider_attempts=self.last_attempts,
             ) from exc
-        return self.read_archive(archive.content, self.config)
 
     def _wait_for_archive(
         self,
@@ -120,11 +133,15 @@ class MinerUPdfClient:
         deadline: float,
     ) -> str:
         while time.monotonic() < deadline:
-            response = client.get(
-                f"{self.config.base_url.rstrip('/')}/api/v4/extract-results/batch/{batch_id}",
-                headers=headers,
+            data = self._call(
+                "poll_batch",
+                lambda: self._validated_response(
+                    client.get(
+                        f"{self.config.base_url.rstrip('/')}/api/v4/extract-results/batch/{batch_id}",
+                        headers=headers,
+                    )
+                ),
             )
-            data = self._validated_response(response)
             raw = data.get("extract_result", [])
             records = raw if isinstance(raw, list) else [raw]
             if records and isinstance(records[0], dict):
@@ -132,35 +149,64 @@ class MinerUPdfClient:
                 if record.get("state") == "done" and record.get("full_zip_url"):
                     return str(record["full_zip_url"])
                 if record.get("state") == "failed":
-                    self._raise_parse_failed("MinerU reported an extraction failure.")
+                    raise self._invalid_result("MinerU reported an extraction failure.")
             time.sleep(self.config.poll_seconds)
-        raise IngestError(IngestErrorCode.PARSER_TIMEOUT, "MinerU PDF extraction timed out.")
+        raise IngestError(
+            IngestErrorCode.PARSER_TIMEOUT,
+            "MinerU PDF extraction timed out.",
+            provider_attempts=self.last_attempts,
+        )
 
     @staticmethod
     def _validated_response(response: httpx.Response) -> dict[str, Any]:
-        if response.status_code == 429 or response.status_code >= 500:
-            raise IngestError(
-                IngestErrorCode.PARSER_UNAVAILABLE,
-                "MinerU PDF extraction is temporarily unavailable.",
-            )
         if response.status_code >= 400:
-            raise IngestError(
-                IngestErrorCode.PARSE_FAILED,
-                "MinerU rejected the PDF extraction request.",
-            )
+            raise failure_from_response(response, "MinerU PDF extraction request failed.")
         try:
             result = response.json()
         except ValueError as exc:
-            raise IngestError(
-                IngestErrorCode.PARSE_FAILED,
-                "MinerU returned an invalid response.",
-            ) from exc
+            raise invalid_response("MinerU returned an invalid response.") from exc
         if result.get("code") != 0 or not isinstance(result.get("data"), dict):
-            raise IngestError(
-                IngestErrorCode.PARSE_FAILED,
-                "MinerU returned an unsuccessful extraction result.",
-            )
+            raise invalid_response("MinerU returned an unsuccessful extraction result.")
         return result["data"]
+
+    @staticmethod
+    def _validated_binary_response(response: httpx.Response) -> httpx.Response:
+        if response.status_code >= 400:
+            raise failure_from_response(response, "MinerU asset transfer failed.")
+        return response
+
+    def _call(self, operation: str, call, *, max_attempts: int | None = None):
+        policy = ProviderRetryPolicy(
+            max_attempts=max_attempts or self.config.max_attempts,
+            backoff_base_seconds=self.config.backoff_base_seconds,
+            backoff_max_seconds=self.config.backoff_max_seconds,
+        )
+        try:
+            result = run_with_retry(self.provider_name, operation, policy, call)
+        except ProviderRetriesExhausted as exc:
+            self.last_attempts = (*self.last_attempts, *exc.attempts)
+            kind = exc.failure.failure_kind.value
+            code = (
+                IngestErrorCode.PARSER_TIMEOUT
+                if kind == "timeout"
+                else IngestErrorCode.PARSE_FAILED
+                if kind in {"invalid_response", "rejected"}
+                else IngestErrorCode.PARSER_UNAVAILABLE
+            )
+            raise IngestError(
+                code,
+                "MinerU PDF extraction failed at a controlled Provider boundary.",
+                provider_attempts=self.last_attempts,
+            ) from exc
+        self.last_attempts = (*self.last_attempts, *result.attempts)
+        return result.value
+
+    def _invalid_result(self, message: str) -> IngestError:
+        return IngestError(
+            IngestErrorCode.PARSE_FAILED,
+            message,
+            provider_attempts=self.last_attempts,
+        )
 
     @classmethod
     def read_archive(

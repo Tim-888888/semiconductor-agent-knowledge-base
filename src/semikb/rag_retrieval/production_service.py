@@ -24,6 +24,7 @@ from semikb.rag_retrieval.production_repository import (
     build_access_filter,
 )
 from semikb.rag_retrieval.rerankers import Reranker, RerankerError, create_reranker
+from semikb_provider_resilience import ProviderAttemptAudit
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,6 +76,10 @@ class HydeGenerator:
             model=result.reported_model,
         )
 
+    @property
+    def last_attempts(self) -> tuple[ProviderAttemptAudit, ...]:
+        return self._gateway.last_attempts
+
 
 class ProductionRetrievalService:
     """Dense + sparse + optional HyDE recall, RRF, rerank, and governed assets."""
@@ -108,6 +113,7 @@ class ProductionRetrievalService:
         started = perf_counter()
         timings: dict[str, float] = {}
         warnings: list[str] = []
+        provider_attempts: list[ProviderAttemptAudit] = []
         component_versions = {
             "embedding": getattr(self.encoder, "model_name", self.settings.embedding_model),
             "embedding_dim": str(self.settings.embedding_dim),
@@ -137,13 +143,36 @@ class ProductionRetrievalService:
                 component_versions["hyde_model"] = hyde_result.model
             except Exception as exc:
                 warnings.append(f"hyde_unavailable:{type(exc).__name__}")
+            provider_attempts.extend(getattr(self.hyde_generator, "last_attempts", ()))
             timings["hyde"] = round((perf_counter() - stage) * 1000, 2)
 
         texts = [query]
         if hyde_result:
             texts.append(hyde_result.text)
         stage = perf_counter()
-        embeddings = self.encoder.encode(texts)
+        try:
+            embeddings = self.encoder.encode(texts)
+        except Exception as exc:
+            provider_attempts.extend(getattr(exc, "provider_attempts", ()))
+            timings["embedding"] = round((perf_counter() - stage) * 1000, 2)
+            timings["total"] = round((perf_counter() - started) * 1000, 2)
+            failure_trace = RetrievalTrace(
+                thread_id=thread_id,
+                actor_user_id=actor_scope.user_id,
+                access_scope_keys=actor_scope.access_scope_keys,
+                original_query=query,
+                hyde_query=hyde_result.text if hyde_result else None,
+                metadata_filters=metadata_filters,
+                routes=["embedding_failed", "fail_closed"],
+                cutoff_reason="embedding_provider_failed",
+                component_versions=component_versions,
+                warnings=[*warnings, "embedding_unavailable:retrieval_not_executed"],
+                provider_attempts=provider_attempts,
+                timings_ms=timings,
+            )
+            self.repository.save_trace(failure_trace)
+            raise
+        provider_attempts.extend(getattr(self.encoder, "last_attempts", ()))
         timings["embedding"] = round((perf_counter() - stage) * 1000, 2)
 
         stage = perf_counter()
@@ -203,6 +232,7 @@ class ProductionRetrievalService:
                 max_rrf = max((candidate.rrf_score for candidate in candidates), default=1.0)
                 for candidate in candidates:
                     candidate.rerank_score = round(candidate.rrf_score / max_rrf, 6)
+            provider_attempts.extend(getattr(self.reranker, "last_attempts", ()))
         elif candidates:
             max_rrf = max((candidate.rrf_score for candidate in candidates), default=1.0)
             for candidate in candidates:
@@ -260,6 +290,7 @@ class ProductionRetrievalService:
             image_asset_ids=image_asset_ids,
             component_versions=component_versions,
             warnings=warnings,
+            provider_attempts=provider_attempts,
             timings_ms=timings,
         )
         self.repository.save_trace(trace)
