@@ -1,0 +1,21 @@
+{
+  "overlay_version": "semikb-route-migration-history-to-chat-v3",
+  "description": "T9-4.4.6d 评测覆盖层：冻结集中的 history_direct 映射为 chat_direct，并将旧外部查询卡映射为 catalog v4 的通用受控语料卡；原文件不改写。",
+  "applies_to_dataset_versions": [
+    "semikb-intent-v1",
+    "semikb-intent-v2",
+    "semikb-intent-v3"
+  ],
+  "source_catalog_versions": [
+    "semikb-intent-catalog-v1",
+    "semikb-intent-catalog-v2",
+    "semikb-intent-catalog-v3"
+  ],
+  "target_catalog_version": "semikb-intent-catalog-v4",
+  "route_map": {
+    "history_direct": "chat_direct"
+  },
+  "intent_card_map": {
+    "knowledge.external_lookup": "knowledge.governed_corpus_lookup"
+  }
+}

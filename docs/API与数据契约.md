@@ -336,3 +336,34 @@ T9-4.3.4 起，SSE `completed`、幂等重放和 `GET thread` 必须返回相同
 第一项，并通过 `/api/assets/{image_id}/access` 重新校验当前用户、文档版本、有效期和 Scope 后取得短时
 链接；不得从 Retrieval Candidate、自行拼接的 MinIO 路径或上一轮全局状态展示图片。多图手动选择只在
 当前结果内保留，新结果无图时必须清空旧预览。
+
+## T9-4.4.6d Corpus 批量发布契约
+
+`CorpusPublicationBatch` 是标准化 Corpus 进入知识库的业务状态真相，Schema 为
+`semikb-corpus-publication-batch-v1`。请求必须引用不可变 `standardization_job_id`、人工复核结论、
+目标数据集版本、Actor 和质量警告确认；服务端不接受客户端直接传入 Chunk、向量或最终发布状态。
+
+```text
+POST /api/v1/corpus-publication-batches
+GET  /api/v1/corpus-publication-batches
+GET  /api/v1/corpus-publication-batches/{batch_id}
+POST /api/v1/corpus-publication-batches/{batch_id}/retry
+```
+
+批次保存每个 Item 的输入快照、Document/Revision、阶段、错误码、重试 revision、Chunk/图片/表格数和
+MongoDB/MinIO/Milvus 对账结果。完成状态只在全部项目通过治理门禁和跨存储读回后产生；失败批次不能
+被前端或检索层视为已发布。相同不可变输入和请求 ID 幂等，改变内容必须生成新请求或新 revision。
+
+## T9-4.4.6d 评测冻结契约
+
+`EvaluationReleaseFreeze` 使用 `semikb-evaluation-release-freeze-v1`，固定代码版本、检索/生成 Profile、
+发布批次、holdout 数据集版本与 Hash。holdout 在 `opened_at` 为空时，列表和详情接口只返回治理元数据，
+不返回 `cases`；只有匹配冻结的评估运行可以首次打开准确快照，并把 freeze ID/Hash 写入运行记录。
+
+```text
+POST /api/v1/evaluation-release-freezes
+GET  /api/v1/evaluation-release-freezes
+```
+
+默认意图目录从本阶段起为 `semikb-intent-catalog-v4`。旧目录和冻结评测数据不做破坏性迁移；
+`semikb-route-migration-history-to-chat-v3` 只在评测读取边界映射旧路由和旧意图卡期望。

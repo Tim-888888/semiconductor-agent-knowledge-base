@@ -156,14 +156,22 @@ CAPABILITY_PATTERN = re.compile(
 )
 GENERIC_TASK_REQUEST_PATTERN = re.compile(
     r"^\s*(?:请|麻烦|帮我|替我|给我|请你|能否|能不能|可以(?:帮我)?|"
-    r"我想(?:请你|让你|要你)|我要|写|生成|创建|推荐|规划|搜索|查询|分析|"
+    r"我想(?:请你|让你|要你)|让(?:你|知识库|智库|系统)|我要|写|生成|创建|推荐|规划|搜索|查询|分析|"
     r"完成|制作|设计)",
     re.IGNORECASE,
+)
+GOVERNED_CORPUS_SCOPE_PATTERN = re.compile(
+    r"(?=.*(?:知识库|已入库|内部资料|受控资料))"
+    r"(?=.*(?:查|检索|找|引用|说明|概括|总结|对比|数据集|论文|数据卡|文档|资料|报告|手册|字段|样本|特征|标签))"
 )
 FEEDBACK_PATTERN = re.compile(r"(?:回答|答复).*(?:太复杂|太长|不清楚|太慢|看不懂)|(?:太复杂|太长|看不懂)了")
 REFERENCE_TERMS = ("它", "这个", "该", "刚才", "上一轮", "继续", "基于之前", "上面")
 LATEST_TERMS = ("最新", "当前版本", "现行", "实时", "现在", "today", "latest")
 EXTERNAL_TERMS = ("外部", "互联网", "网上", "web", "公开资料", "行业最新", "官方公告")
+WEB_DISABLED_PATTERN = re.compile(
+    r"(?:不要|不需要|无需|不用|禁止|别)(?:使用|调用|查询|搜索|访问|走)?\s*(?:web|外部|互联网|网上)|"
+    r"(?:仅|只)(?:查询|检索|使用)?(?:内部|知识库|已入库)"
+)
 MUTATION_TERMS = ("修改", "下发", "写入", "删除", "停机", "执行变更", "调整recipe", "调整 recipe")
 ALARM_TERMS = ("报警", "告警", "alarm", "interlock")
 SEMICONDUCTOR_SCOPE_TERMS = (
@@ -1118,7 +1126,11 @@ class ConversationUnderstandingService:
         """Catch unsupported tasks by structure without enumerating outside topics."""
 
         lowered = request.lower()
-        if clarification_pending or any(term in lowered for term in SEMICONDUCTOR_SCOPE_TERMS):
+        if (
+            clarification_pending
+            or any(term in lowered for term in SEMICONDUCTOR_SCOPE_TERMS)
+            or GOVERNED_CORPUS_SCOPE_PATTERN.search(request)
+        ):
             return False
         if (
             ConversationUnderstandingService._is_history_recall_request(request)
@@ -1376,7 +1388,9 @@ class ConversationUnderstandingService:
             PrimaryIntent.DATA_QUERY in intents and PrimaryIntent.KNOWLEDGE_QUERY in intents
         ):
             return AgentRoute.RAG_AND_TOOL
-        if any(term in lowered for term in EXTERNAL_TERMS):
+        if any(term in lowered for term in EXTERNAL_TERMS) and not WEB_DISABLED_PATTERN.search(
+            lowered
+        ):
             return AgentRoute.RAG_AND_WEB
         if primary is PrimaryIntent.DATA_QUERY:
             return AgentRoute.TOOL_ONLY

@@ -1,0 +1,63 @@
+{
+  "verification": "T9-4.4.6d-governed-corpus-routing",
+  "catalog": {
+    "version": "semikb-intent-catalog-v4",
+    "hash": "dd0f8f1bc10d59761e71edb56dcde1e2e0c863de4a19ffc3f74107ad421718be",
+    "active_cards": 15,
+    "source_specific_markers": 0
+  },
+  "frozen_regressions": [
+    {
+      "dataset_version": "semikb-intent-v1",
+      "dataset_hash": "01caa8a4fa2180e2dea19df3ea04da2cb80512f10bf10076d47c42dbce53b228",
+      "evaluated_cases": 96,
+      "route_accuracy": 1.0,
+      "intent_card_accuracy": null,
+      "dangerous_execution_miss_rate": 0.0,
+      "deprecated_history_direct_emission_rate": 0.0,
+      "migration": {
+        "overlay_version": "semikb-route-migration-history-to-chat-v3",
+        "overlay_hash": "772070367f170f9a8e50fc4af3313bab0f6a3026d29a61ff77be58a0ec33fd80",
+        "applied": true,
+        "migrated_expectation_count": 16,
+        "migrated_intent_card_expectation_count": 0,
+        "frozen_dataset_unchanged": true
+      }
+    },
+    {
+      "dataset_version": "semikb-intent-v2",
+      "dataset_hash": "ad13bb6b49ff604f5e25eb1b27e85c6db2a7b455ee7b1d24fbcd9d85641b95be",
+      "evaluated_cases": 99,
+      "route_accuracy": 1.0,
+      "intent_card_accuracy": null,
+      "dangerous_execution_miss_rate": 0.0,
+      "deprecated_history_direct_emission_rate": 0.0,
+      "migration": {
+        "overlay_version": "semikb-route-migration-history-to-chat-v3",
+        "overlay_hash": "772070367f170f9a8e50fc4af3313bab0f6a3026d29a61ff77be58a0ec33fd80",
+        "applied": true,
+        "migrated_expectation_count": 19,
+        "migrated_intent_card_expectation_count": 0,
+        "frozen_dataset_unchanged": true
+      }
+    },
+    {
+      "dataset_version": "semikb-intent-v3",
+      "dataset_hash": "e5f2f689655e0eccd945bb25eec49e167c2dc07db5436c6dc4d360fc38976679",
+      "evaluated_cases": 108,
+      "route_accuracy": 1.0,
+      "intent_card_accuracy": 1.0,
+      "dangerous_execution_miss_rate": 0.0,
+      "deprecated_history_direct_emission_rate": 0.0,
+      "migration": {
+        "overlay_version": "semikb-route-migration-history-to-chat-v3",
+        "overlay_hash": "772070367f170f9a8e50fc4af3313bab0f6a3026d29a61ff77be58a0ec33fd80",
+        "applied": true,
+        "migrated_expectation_count": 19,
+        "migrated_intent_card_expectation_count": 4,
+        "frozen_dataset_unchanged": true
+      }
+    }
+  ],
+  "online_probes": []
+}

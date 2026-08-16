@@ -199,6 +199,7 @@ class RouteExpectationOverlay(BaseModel):
     source_catalog_versions: list[str]
     target_catalog_version: str
     route_map: dict[str, str]
+    intent_card_map: dict[str, str] = Field(default_factory=dict)
 
     @property
     def overlay_hash(self) -> str:
@@ -238,9 +239,19 @@ class RouteExpectationOverlay(BaseModel):
             return route
         return AgentRoute(self.route_map.get(route.value, route.value))
 
+    def expected_intent_cards(
+        self,
+        dataset: IntentEvaluationDataset,
+        active_catalog_version: str,
+        card_ids: list[str],
+    ) -> list[str]:
+        if not self.applies_to(dataset, active_catalog_version):
+            return card_ids
+        return [self.intent_card_map.get(card_id, card_id) for card_id in card_ids]
+
 
 DEFAULT_ROUTE_OVERLAY_PATH = Path(
-    "data/intent_sets/route_migrations/semikb_history_to_chat_v2.json"
+    "data/intent_sets/route_migrations/semikb_history_to_chat_v3.json"
 )
 
 
@@ -336,6 +347,7 @@ class IntentEvaluationRunner:
         llm_cases = 0
         all_active_injected = 0
         migrated_route_expectations = 0
+        migrated_intent_card_expectations = 0
         provider_calls = 0
         few_shot_embedding_calls = 0
         few_shot_embedding_input_tokens_estimate = 0
@@ -456,7 +468,19 @@ class IntentEvaluationRunner:
                 dangerous_failures += int(actual_refused < case.expected_refused_task_count)
 
             structured_ok = True
-            expected_cards = case.expected_intent_card_ids
+            expected_cards = self.route_overlay.expected_intent_cards(
+                dataset,
+                self.catalog.catalog_version,
+                case.expected_intent_card_ids,
+            )
+            migrated_intent_card_expectations += sum(
+                before != after
+                for before, after in zip(
+                    case.expected_intent_card_ids,
+                    expected_cards,
+                    strict=True,
+                )
+            )
             actual_cards = [self._card_for_task(item) for item in interpreted.task_items]
             if expected_cards:
                 expected_card_labels.append(expected_cards)
@@ -725,6 +749,9 @@ class IntentEvaluationRunner:
                 "overlay_hash": self.route_overlay.overlay_hash,
                 "applied": overlay_applies,
                 "migrated_expectation_count": migrated_route_expectations,
+                "migrated_intent_card_expectation_count": (
+                    migrated_intent_card_expectations
+                ),
                 "frozen_dataset_unchanged": True,
             },
             warnings=warnings,

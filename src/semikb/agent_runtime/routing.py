@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from semikb.contracts.models import (
@@ -19,6 +20,10 @@ from semikb.contracts.models import (
 
 LATEST_TERMS = ("最新", "当前版本", "现行", "实时", "现在", "today", "latest")
 EXTERNAL_TERMS = ("外部", "互联网", "网上", "web", "公开资料", "行业最新", "官方公告")
+WEB_DISABLED_PATTERN = re.compile(
+    r"(?:不要|不需要|无需|不用|禁止|别)(?:使用|调用|查询|搜索|访问|走)?\s*(?:web|外部|互联网|网上)|"
+    r"(?:仅|只)(?:查询|检索|使用)?(?:内部|知识库|已入库)"
+)
 MUTATION_ACTIONS = {IntentTaskAction.EXECUTE}
 MUTATION_TARGETS = {IntentTarget.RECIPE}
 ROUTE_THRESHOLDS = {
@@ -219,7 +224,9 @@ class RoutePolicy:
             return AgentRoute.TOOL_ONLY
         if task.primary_intent is PrimaryIntent.INVESTIGATION:
             return AgentRoute.RAG_AND_TOOL
-        if any(term in lowered for term in EXTERNAL_TERMS):
+        if any(term in lowered for term in EXTERNAL_TERMS) and not WEB_DISABLED_PATTERN.search(
+            lowered
+        ):
             return AgentRoute.RAG_AND_WEB
         if (
             any(term in lowered for term in ("继续", "基于刚才", "根据刚才", "再分析"))

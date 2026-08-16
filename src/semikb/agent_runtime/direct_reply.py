@@ -297,6 +297,7 @@ class DirectReplyGenerator:
         "product": "SEMIKB 半导体 Agent 智库",
         "supported": [
             "查询有权限访问的受控 SOP、Recipe 和历史 Case",
+            "查询已批准入库的半导体数据集、论文、数据卡和公开资料",
             "只读查询明确标记的模拟制造数据",
             "结合证据协助半导体异常排查",
             "处理当前线程内服务端选定的历史消息",

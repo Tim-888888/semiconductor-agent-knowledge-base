@@ -243,6 +243,48 @@ class MisclassifiedOutOfScopeLLM:
         )
 
 
+class GovernedCorpusLookupLLM:
+    async def complete(self, messages, **kwargs):
+        request = json.loads(messages[-1]["content"])["current_request"]
+        payload = {
+            "interaction_mode": "task",
+            "primary_intent": "knowledge_query",
+            "task_items": [
+                {
+                    "task_id": "task_1",
+                    "primary_intent": "knowledge_query",
+                    "target_type": "general",
+                    "action": "lookup",
+                    "depends_on": [],
+                    "execution_policy": "execute",
+                }
+            ],
+            "affect": {
+                "sentiment": "neutral",
+                "urgency": "normal",
+                "complaint_signal": False,
+            },
+            "slot_operations": [],
+            "explicit_slots": [],
+            "inherited_slot_names": [],
+            "missing_slots": [],
+            "context_message_ids": [],
+            "standalone_query": request,
+            "cancel_scope": None,
+            "suggested_route": "internal_rag",
+            "confidence": 0.94,
+        }
+        return LLMCompletion(
+            content=json.dumps(payload, ensure_ascii=False),
+            provider="test",
+            requested_model="test",
+            reported_model="test",
+            fallback_used=False,
+            attempted_providers=("test",),
+            usage={},
+        )
+
+
 def _service(seeded_services):
     store, _, retrieval, _, _ = seeded_services
     counting_retrieval = CountingRetrieval(retrieval)
@@ -716,6 +758,49 @@ async def test_llm_cannot_relabel_generic_out_of_scope_task_as_conversation() ->
 
 
 @pytest.mark.asyncio
+async def test_knowledge_base_word_alone_does_not_bypass_capability_boundary() -> None:
+    settings = Settings(_env_file=None, demo_mode=False)
+    understanding_service = ConversationUnderstandingService(
+        settings,
+        MisclassifiedOutOfScopeLLM(),
+    )
+
+    result = await understanding_service.understand(
+        "让知识库帮我写一首关于晚风的诗。",
+        {},
+    )
+
+    assert result.understanding.primary_intent is PrimaryIntent.ACTION_REQUEST
+    assert result.understanding.task_items[0].execution_policy is TaskExecutionDecision.REFUSE
+    assert result.understanding.suggested_route is AgentRoute.REFUSE
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "utterance",
+    [
+        "请查询知识库里批准入库的某公开数据集说明。",
+        "概括已入库论文中介绍的实验方法。",
+        "从内部资料中查找某工艺数据卡的字段定义。",
+    ],
+)
+async def test_generic_governed_corpus_queries_route_to_internal_rag(
+    utterance: str,
+) -> None:
+    settings = Settings(_env_file=None, demo_mode=False)
+    service = ConversationUnderstandingService(settings, GovernedCorpusLookupLLM())
+
+    result = await service.understand(utterance, {})
+    plan = RoutePolicy().decide(result.understanding, ActorScope(), {}, utterance)
+
+    assert result.understanding.primary_intent is PrimaryIntent.KNOWLEDGE_QUERY
+    assert result.understanding.task_items[0].target_type is IntentTarget.GENERAL
+    assert result.understanding.task_items[0].action is IntentTaskAction.LOOKUP
+    assert result.understanding.suggested_route is AgentRoute.INTERNAL_RAG
+    assert plan.route is AgentRoute.INTERNAL_RAG
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "utterance",
     [
@@ -943,3 +1028,30 @@ def test_unsupported_tool_and_web_combination_defers_incompatible_task() -> None
         TaskExecutionDecision.DEFER,
     ]
     assert plan.task_decisions[1].reason_code == "unsupported_route_combination_deferred"
+
+
+def test_explicit_no_web_instruction_forces_internal_rag() -> None:
+    understanding = ConversationUnderstanding(
+        classifier_source="llm",
+        interaction_mode=InteractionMode.TASK,
+        primary_intent=PrimaryIntent.KNOWLEDGE_QUERY,
+        task_items=[
+            IntentTaskItem(
+                task_id="task_1",
+                primary_intent=PrimaryIntent.KNOWLEDGE_QUERY,
+                target_type=IntentTarget.GENERAL,
+                action=IntentTaskAction.LOOKUP,
+            )
+        ],
+        suggested_route=AgentRoute.RAG_AND_WEB,
+        confidence=0.95,
+    )
+
+    plan = RoutePolicy().decide(
+        understanding,
+        ActorScope(),
+        {},
+        "查询内部知识库中的数据集说明，不要使用 Web。",
+    )
+
+    assert plan.route is AgentRoute.INTERNAL_RAG

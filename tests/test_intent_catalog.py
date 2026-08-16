@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CATALOG_PATH = ROOT / "data" / "intent_catalogs" / "semikb_intent_catalog_v1.json"
 CATALOG_V2_PATH = ROOT / "data" / "intent_catalogs" / "semikb_intent_catalog_v2.json"
 CATALOG_V3_PATH = ROOT / "data" / "intent_catalogs" / "semikb_intent_catalog_v3.json"
+CATALOG_V4_PATH = ROOT / "data" / "intent_catalogs" / "semikb_intent_catalog_v4.json"
 EXAMPLE_BANK_PATH = ROOT / "data" / "intent_examples" / "intent_example_bank_v1.json"
 V3_PATH = ROOT / "data" / "intent_sets" / "semikb_intent_v3.json"
 
@@ -128,6 +129,24 @@ def test_catalog_v3_adds_governed_text_to_image_asset_lookup() -> None:
     ]
     assert image_card.required_slots == []
     assert image_card.task_signatures[0].key == "knowledge_query:wafer_map:lookup:execute"
+
+
+def test_catalog_v4_generalizes_governed_corpus_lookup_without_source_names() -> None:
+    catalog = IntentCatalog.load(CATALOG_V4_PATH)
+    corpus_card = next(
+        card
+        for card in catalog.active_cards
+        if card.card_id == "knowledge.governed_corpus_lookup"
+    )
+
+    assert catalog.catalog_version == "semikb-intent-catalog-v4"
+    assert len(catalog.cards) == 17
+    assert len(catalog.active_cards) == 15
+    assert "internal_rag" in {route.value for route in corpus_card.allowed_routes}
+    assert "rag_and_web" in {route.value for route in corpus_card.allowed_routes}
+    assert corpus_card.task_signatures[0].key == "knowledge_query:general:lookup:execute"
+    serialized = json.dumps(corpus_card.model_dump(mode="json"), ensure_ascii=False).lower()
+    assert "secom" not in serialized
 
 
 @pytest.mark.asyncio

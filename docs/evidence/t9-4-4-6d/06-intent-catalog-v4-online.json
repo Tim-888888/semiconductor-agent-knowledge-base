@@ -1,0 +1,96 @@
+{
+  "verification": "T9-4.4.6d-governed-corpus-routing",
+  "catalog": {
+    "version": "semikb-intent-catalog-v4",
+    "hash": "dd0f8f1bc10d59761e71edb56dcde1e2e0c863de4a19ffc3f74107ad421718be",
+    "active_cards": 15,
+    "source_specific_markers": 0
+  },
+  "frozen_regressions": [
+    {
+      "dataset_version": "semikb-intent-v1",
+      "dataset_hash": "01caa8a4fa2180e2dea19df3ea04da2cb80512f10bf10076d47c42dbce53b228",
+      "evaluated_cases": 96,
+      "route_accuracy": 1.0,
+      "intent_card_accuracy": null,
+      "dangerous_execution_miss_rate": 0.0,
+      "deprecated_history_direct_emission_rate": 0.0,
+      "migration": {
+        "overlay_version": "semikb-route-migration-history-to-chat-v3",
+        "overlay_hash": "772070367f170f9a8e50fc4af3313bab0f6a3026d29a61ff77be58a0ec33fd80",
+        "applied": true,
+        "migrated_expectation_count": 16,
+        "migrated_intent_card_expectation_count": 0,
+        "frozen_dataset_unchanged": true
+      }
+    },
+    {
+      "dataset_version": "semikb-intent-v2",
+      "dataset_hash": "ad13bb6b49ff604f5e25eb1b27e85c6db2a7b455ee7b1d24fbcd9d85641b95be",
+      "evaluated_cases": 99,
+      "route_accuracy": 1.0,
+      "intent_card_accuracy": null,
+      "dangerous_execution_miss_rate": 0.0,
+      "deprecated_history_direct_emission_rate": 0.0,
+      "migration": {
+        "overlay_version": "semikb-route-migration-history-to-chat-v3",
+        "overlay_hash": "772070367f170f9a8e50fc4af3313bab0f6a3026d29a61ff77be58a0ec33fd80",
+        "applied": true,
+        "migrated_expectation_count": 19,
+        "migrated_intent_card_expectation_count": 0,
+        "frozen_dataset_unchanged": true
+      }
+    },
+    {
+      "dataset_version": "semikb-intent-v3",
+      "dataset_hash": "e5f2f689655e0eccd945bb25eec49e167c2dc07db5436c6dc4d360fc38976679",
+      "evaluated_cases": 108,
+      "route_accuracy": 1.0,
+      "intent_card_accuracy": 1.0,
+      "dangerous_execution_miss_rate": 0.0,
+      "deprecated_history_direct_emission_rate": 0.0,
+      "migration": {
+        "overlay_version": "semikb-route-migration-history-to-chat-v3",
+        "overlay_hash": "772070367f170f9a8e50fc4af3313bab0f6a3026d29a61ff77be58a0ec33fd80",
+        "applied": true,
+        "migrated_expectation_count": 19,
+        "migrated_intent_card_expectation_count": 4,
+        "frozen_dataset_unchanged": true
+      }
+    }
+  ],
+  "online_probes": [
+    {
+      "utterance_sha256": "16f97acb7bdff6b9df063e360a3e32571736810bbb5d74266bd8803d59819ebd",
+      "classifier_source": "llm",
+      "primary_intent": "knowledge_query",
+      "route": "internal_rag",
+      "provider_calls": 1,
+      "catalog_version": "semikb-intent-catalog-v4"
+    },
+    {
+      "utterance_sha256": "909972f1a1244aa533cbee420c676cd10e85cb068c7b78dbb1a022a38f9d7717",
+      "classifier_source": "llm",
+      "primary_intent": "knowledge_query",
+      "route": "internal_rag",
+      "provider_calls": 1,
+      "catalog_version": "semikb-intent-catalog-v4"
+    },
+    {
+      "utterance_sha256": "8754e1f0f066fb78ed80abc9efab27817e39609298f07398e237e819a0725453",
+      "classifier_source": "llm",
+      "primary_intent": "knowledge_query",
+      "route": "internal_rag",
+      "provider_calls": 1,
+      "catalog_version": "semikb-intent-catalog-v4"
+    },
+    {
+      "utterance_sha256": "8d11c40fb3871c43b220f6797201020131a337b46175ced2a4b6d9568c41cd82",
+      "classifier_source": "llm",
+      "primary_intent": "action_request",
+      "route": "refuse",
+      "provider_calls": 1,
+      "catalog_version": "semikb-intent-catalog-v4"
+    }
+  ]
+}
