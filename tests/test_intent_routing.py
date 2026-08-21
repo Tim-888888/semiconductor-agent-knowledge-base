@@ -119,6 +119,23 @@ class FixedUnderstandingLLM:
         )
 
 
+class FalseCancelUnderstandingLLM(FixedUnderstandingLLM):
+    async def complete(self, *args, **kwargs):
+        completion = await super().complete(*args, **kwargs)
+        payload = json.loads(completion.content)
+        payload["cancel_scope"] = "current_task"
+        payload["clarification_relation"] = "cancel_current"
+        return LLMCompletion(
+            content=json.dumps(payload, ensure_ascii=False),
+            provider=completion.provider,
+            requested_model=completion.requested_model,
+            reported_model=completion.reported_model,
+            fallback_used=completion.fallback_used,
+            attempted_providers=completion.attempted_providers,
+            usage=completion.usage,
+        )
+
+
 class UnsafeMixedLLM:
     async def complete(self, *args, **kwargs):
         payload = {
@@ -963,6 +980,20 @@ async def test_server_policy_keeps_investigation_route_and_rejects_wrong_slot_ty
     assert plan.missing_slots == []
     assert result.understanding.explicit_slots["tool_id"] == "ETCH-03"
     assert "chamber" not in result.understanding.explicit_slots
+
+
+@pytest.mark.asyncio
+async def test_llm_cannot_turn_process_term_into_cancel_control() -> None:
+    request = "ETCH-03 Chamber B 清腔后首片异常，当前 SOP 怎么要求？"
+    service = ConversationUnderstandingService(
+        Settings(_env_file=None, demo_mode=False),
+        FalseCancelUnderstandingLLM(),
+    )
+
+    result = await service.understand(request, {}, clarification_pending=True)
+
+    assert result.understanding.cancel_scope is None
+    assert result.understanding.clarification_relation.value == "ambiguous"
 
 
 @pytest.mark.asyncio

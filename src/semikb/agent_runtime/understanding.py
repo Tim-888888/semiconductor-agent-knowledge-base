@@ -815,7 +815,15 @@ class ConversationUnderstandingService:
             not tasks or primary is not raw.primary_intent or has_protected_task
         ):
             tasks = self._infer_tasks(request, primary)
-        effective_clarification_pending = clarification_pending and raw.clarification_relation not in {
+        explicit_cancel = bool(CANCEL_PATTERN.fullmatch(request.strip()))
+        cancel_scope = raw.cancel_scope if explicit_cancel else None
+        clarification_relation = raw.clarification_relation
+        if (
+            clarification_relation is ClarificationTurnRelation.CANCEL_CURRENT
+            and not explicit_cancel
+        ):
+            clarification_relation = ClarificationTurnRelation.AMBIGUOUS
+        effective_clarification_pending = clarification_pending and clarification_relation not in {
             ClarificationTurnRelation.REPLACE_WITH_NEW_REQUEST,
             ClarificationTurnRelation.SIDE_CONVERSATION,
             ClarificationTurnRelation.CANCEL_CURRENT,
@@ -862,8 +870,8 @@ class ConversationUnderstandingService:
             ),
             context_message_ids=context_ids,
             standalone_query=query,
-            cancel_scope=raw.cancel_scope,
-            clarification_relation=raw.clarification_relation,
+            cancel_scope=cancel_scope,
+            clarification_relation=clarification_relation,
             suggested_route=(
                 AgentRoute.REFUSE
                 if enforce_capability_boundary
