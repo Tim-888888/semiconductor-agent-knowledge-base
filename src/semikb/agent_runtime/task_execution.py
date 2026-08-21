@@ -66,6 +66,21 @@ ACTION_LABELS: dict[IntentTaskAction, str] = {
     IntentTaskAction.GENERATE: "生成",
 }
 
+MISSING_FIELD_LABELS: dict[str, str] = {
+    "product": "产品",
+    "time_range": "时间范围",
+    "tool_or_chamber": "设备或腔体",
+    "history_reference": "需要处理的历史内容",
+    "intent_target": "希望执行的任务类型",
+    "request_goal": "希望执行的任务类型",
+}
+
+
+def user_facing_missing_field(field: str) -> str:
+    """Keep stable internal slot keys out of user-facing replies."""
+
+    return MISSING_FIELD_LABELS.get(field, "必要信息")
+
 
 def route_generation_contract(route: AgentRoute | str | None) -> str:
     """Return the evidence contract injected into the answer prompt."""
@@ -135,7 +150,7 @@ class TaskExecutionCoordinator:
                     message=self._status_message(label, "未执行：请求对象超出当前授权范围。"),
                 )
             elif decision.decision is TaskExecutionDecision.CLARIFY:
-                detail = "、".join(missing) or "关键条件"
+                detail = "、".join(user_facing_missing_field(item) for item in missing) or "关键条件"
                 result = TaskExecutionResult(
                     task_id=decision.task_id,
                     status=TaskExecutionStatus.CLARIFY,

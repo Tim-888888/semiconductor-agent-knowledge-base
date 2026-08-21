@@ -12,6 +12,15 @@ from langgraph.config import get_stream_writer
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 
+from semikb.agent_runtime.clarification import (
+    INTENT_TARGET_KEY,
+    adapt_legacy_frame,
+    build_clarification_frame,
+    decide_turn_relation,
+    merge_continuation_understanding,
+    terminal_transition,
+    update_frame_after_answer,
+)
 from semikb.agent_runtime.direct_reply import (
     DirectReplyGenerator,
     DirectReplyKind,
@@ -24,6 +33,7 @@ from semikb.agent_runtime.streaming_answer import StreamingAnswerAssembler, form
 from semikb.agent_runtime.task_execution import (
     TaskExecutionCoordinator,
     route_generation_contract,
+    user_facing_missing_field,
 )
 from semikb.agent_runtime.tools import ManufacturingToolbox
 from semikb.agent_runtime.understanding import CHAMBER_PATTERN, ConversationUnderstandingService
@@ -35,10 +45,16 @@ from semikb.contracts.models import (
     AgentRoute,
     AnswerClaim,
     AuditEvent,
+    CancelScope,
     Chunk,
+    ClarificationFrame,
+    ClarificationFrameStatus,
+    ClarificationTransitionAudit,
+    ClarificationTurnRelation,
     ConversationUnderstanding,
     EvidenceLedgerEntry,
     IntentTaskItem,
+    InteractionMode,
     RetrievalConstraints,
     RoutePlan,
     TaskExecutionDecision,
@@ -76,6 +92,10 @@ class CaseState(TypedDict, total=False):
     clarification_questions: list[str]
     clarification_round: int
     clarification_response: str | None
+    clarification_frame: dict[str, Any]
+    clarification_relation: str | None
+    clarification_resume_only: bool
+    clarification_transition_audit: dict[str, Any]
     retrieval_query: str
     retrieval_routes: list[str]
     candidate_ids: list[str]
@@ -92,6 +112,16 @@ class CaseState(TypedDict, total=False):
     status: str
     model_metadata: dict[str, Any]
     verification_warnings: list[str]
+
+
+CLARIFICATION_PROMPTS = {
+    "product": "受影响的 Product 是什么？",
+    "time_range": "异常从何时开始，或需要查询哪个时间范围？",
+    "tool_or_chamber": "涉及哪个 Tool 或 Chamber？若未知，请提供已知 FDC 报警或 Lot 范围。",
+    "history_reference": "当前线程没有可引用的上一轮内容，请明确需要处理的文本或问题。",
+    INTENT_TARGET_KEY: "请明确希望查询受控知识、查看制造数据，还是处理上一轮内容。",
+    "request_goal": "请明确希望查询知识、查看制造数据，还是处理上一轮内容。",
+}
 
 
 class ConversationGraph:
@@ -128,6 +158,11 @@ class ConversationGraph:
         workflow.add_node("validate_required_fields", self._validate_required_fields)
         workflow.add_node("prepare_clarification_reply", self._prepare_clarification_reply)
         workflow.add_node("clarify_missing_fields", self._clarify_missing_fields)
+        workflow.add_node("resolve_clarification_turn", self._resolve_clarification_turn)
+        workflow.add_node("answer_side_conversation", self._answer_side_conversation)
+        workflow.add_node("resume_clarification", self._resume_clarification)
+        workflow.add_node("prepare_relation_clarification", self._prepare_relation_clarification)
+        workflow.add_node("pause_clarification", self._pause_clarification)
         workflow.add_node("direct_answer", self._direct_answer)
         workflow.add_node("refuse_request", self._refuse_request)
         workflow.add_node("execute_combination_prelude", self._execute_combination_prelude)
@@ -155,7 +190,23 @@ class ConversationGraph:
             },
         )
         workflow.add_edge("prepare_clarification_reply", "clarify_missing_fields")
-        workflow.add_edge("clarify_missing_fields", "classify_and_extract")
+        workflow.add_edge("clarify_missing_fields", "resolve_clarification_turn")
+        workflow.add_conditional_edges(
+            "resolve_clarification_turn",
+            self._route_after_clarification_resolution,
+            {
+                "continue": "validate_required_fields",
+                "resume": "resume_clarification",
+                "replace": "validate_required_fields",
+                "cancel": "direct_answer",
+                "side": "answer_side_conversation",
+                "ambiguous": "prepare_relation_clarification",
+            },
+        )
+        workflow.add_edge("answer_side_conversation", "pause_clarification")
+        workflow.add_edge("resume_clarification", "resolve_clarification_turn")
+        workflow.add_edge("prepare_relation_clarification", "pause_clarification")
+        workflow.add_edge("pause_clarification", "resolve_clarification_turn")
         workflow.add_edge("direct_answer", "finalize_task_results")
         workflow.add_edge("refuse_request", "finalize_task_results")
         workflow.add_edge("execute_combination_prelude", "retrieve_evidence")
@@ -202,6 +253,10 @@ class ConversationGraph:
             "authorization_errors": [],
             "missing_required_fields": [],
             "clarification_questions": [],
+            "clarification_frame": {},
+            "clarification_relation": None,
+            "clarification_resume_only": False,
+            "clarification_transition_audit": {},
             "retrieval_query": state["request"],
             "retrieval_routes": [],
             "candidate_ids": [],
@@ -233,18 +288,31 @@ class ConversationGraph:
             stage="routing_request",
             message="正在识别任务、上下文引用与受控路由",
         )
-        actor_scope = ActorScope.model_validate(state["user_scope"])
         result = await self.understanding.understand(
             state["request"],
             state.get("conversation_context", {}),
-            clarification_pending=bool(state.get("clarification_response")),
         )
-        understanding = result.understanding
+        return self._classification_update(
+            state,
+            result.understanding,
+            result.metadata,
+            request=state["request"],
+        )
+
+    def _classification_update(
+        self,
+        state: CaseState,
+        understanding: ConversationUnderstanding,
+        metadata: dict[str, Any],
+        *,
+        request: str,
+    ) -> CaseState:
+        actor_scope = ActorScope.model_validate(state["user_scope"])
         plan = self.route_policy.decide(
             understanding,
             actor_scope,
             state.get("conversation_context", {}),
-            state["request"],
+            request,
         )
         constraints = {
             **understanding.inherited_slots,
@@ -302,7 +370,7 @@ class ConversationGraph:
             "intent": intent,
             "risk_level": risk,
             "constraints": constraints,
-            "retrieval_query": understanding.standalone_query or state["request"],
+            "retrieval_query": understanding.standalone_query or request,
             "standalone_query": understanding.standalone_query,
             "understanding": understanding.model_dump(mode="json"),
             "route_plan": plan.model_dump(mode="json"),
@@ -318,7 +386,7 @@ class ConversationGraph:
             "retrieval_skipped_reason": plan.retrieval_skipped_reason,
             "invalidated_context_refs": plan.invalidated_context_refs,
             "cancel_scope": understanding.cancel_scope.value if understanding.cancel_scope else None,
-            "model_metadata": {**state.get("model_metadata", {}), **result.metadata},
+            "model_metadata": {**state.get("model_metadata", {}), **metadata},
         }
 
     @staticmethod
@@ -423,8 +491,7 @@ class ConversationGraph:
         risk = "high" if any(term in lowered for term in ("修改", "下发", "停机", "执行")) else "low"
         return {"intent": intent, "risk_level": risk, "constraints": constraints}
 
-    @staticmethod
-    def _validate_required_fields(state: CaseState) -> CaseState:
+    def _validate_required_fields(self, state: CaseState) -> CaseState:
         constraints = state.get("constraints", {})
         scope = ActorScope.model_validate(state["user_scope"])
         authorization_errors = list(state.get("authorization_errors", []))
@@ -435,20 +502,56 @@ class ConversationGraph:
 
         route_plan = RoutePlan.model_validate(state.get("route_plan", {}))
         missing = list(route_plan.missing_slots)
-        if route_plan.route is AgentRoute.CLARIFY and not missing:
-            missing.append("request_goal")
-        prompts = {
-            "product": "受影响的 Product 是什么？",
-            "time_range": "异常从何时开始，或需要查询哪个时间范围？",
-            "tool_or_chamber": "涉及哪个 Tool 或 Chamber？若未知，请提供已知 FDC 报警或 Lot 范围。",
-            "history_reference": "当前线程没有可引用的上一轮内容，请明确需要处理的文本或问题。",
-            "request_goal": "请明确希望查询知识、查看制造数据，还是处理上一轮内容。",
-        }
+        if (
+            not self.settings.agent_clarification_frame_v1_enabled
+            and route_plan.route is AgentRoute.CLARIFY
+            and not missing
+        ):
+            missing = ["request_goal"]
+        frame_payload = state.get("clarification_frame")
+        frame = (
+            ClarificationFrame.model_validate(frame_payload)
+            if isinstance(frame_payload, dict) and frame_payload
+            else None
+        )
+        active_frame = (
+            frame
+            if frame
+            and frame.status
+            in {ClarificationFrameStatus.WAITING, ClarificationFrameStatus.PAUSED}
+            else None
+        )
+        if self.settings.agent_clarification_frame_v1_enabled and (
+            missing or route_plan.route is AgentRoute.CLARIFY
+        ):
+            understanding = ConversationUnderstanding.model_validate(state.get("understanding", {}))
+            frame = build_clarification_frame(
+                request=state["request"],
+                understanding=understanding,
+                route_plan=route_plan,
+                missing_keys=missing,
+                prompts=CLARIFICATION_PROMPTS,
+                existing=active_frame,
+            )
+            missing = frame.pending_keys
+            questions = self._frame_questions(frame)
+        else:
+            questions = [CLARIFICATION_PROMPTS[field] for field in missing[:3]]
         return {
             "authorization_errors": sorted(set(authorization_errors)),
             "missing_required_fields": missing[:3],
-            "clarification_questions": [prompts[field] for field in missing[:3]],
+            "clarification_questions": questions,
+            "clarification_frame": frame.model_dump(mode="json") if frame else {},
         }
+
+    @staticmethod
+    def _frame_questions(frame: ClarificationFrame) -> list[str]:
+        questions = [item.prompt for item in frame.pending_items]
+        if frame.no_progress_count and questions:
+            questions[0] = (
+                f"{questions[0]} 如果暂时无法确认，可以提供已知报警、Lot、设备或文档范围。"
+            )
+        return questions
 
     def _route_after_validation(
         self,
@@ -492,21 +595,353 @@ class ConversationGraph:
             "task_results": task_results,
         }
 
-    @staticmethod
-    def _clarify_missing_fields(state: CaseState) -> CaseState:
+    def _clarify_missing_fields(self, state: CaseState) -> CaseState:
+        if not self.settings.agent_clarification_frame_v1_enabled:
+            response = interrupt(
+                {
+                    "kind": "clarification",
+                    "round": state.get("clarification_round", 0) + 1,
+                    "missing_fields": state.get("missing_required_fields", []),
+                    "questions": state.get("clarification_questions", []),
+                    "response": state.get("answer_text", ""),
+                }
+            )
+            return {
+                "request": f"{state['request']}\n用户补充：{response}",
+                "clarification_response": str(response),
+                "clarification_round": state.get("clarification_round", 0) + 1,
+                "clarification_relation": ClarificationTurnRelation.CONTINUE_CURRENT.value,
+            }
+
+        frame = adapt_legacy_frame(state=state, prompts=CLARIFICATION_PROMPTS)
+        asked_round = frame.round + 1
         payload = {
             "kind": "clarification",
-            "round": state.get("clarification_round", 0) + 1,
-            "missing_fields": state.get("missing_required_fields", []),
-            "questions": state.get("clarification_questions", []),
+            "round": asked_round,
+            "frame_id": frame.frame_id,
+            "frame_schema_version": frame.schema_version,
+            "missing_fields": frame.pending_keys,
+            "questions": self._frame_questions(frame),
             "response": state.get("answer_text", ""),
         }
         response = interrupt(payload)
-        merged = f"{state['request']}\n用户补充：{response}"
+        if isinstance(response, dict):
+            response = response.get("content", "")
+        updated_frame = frame.model_copy(
+            update={
+                "round": asked_round,
+                "status": ClarificationFrameStatus.WAITING,
+            }
+        )
         return {
-            "request": merged,
             "clarification_response": str(response),
-            "clarification_round": state.get("clarification_round", 0) + 1,
+            "clarification_round": asked_round,
+            "clarification_frame": updated_frame.model_dump(mode="json"),
+        }
+
+    async def _resolve_clarification_turn(self, state: CaseState) -> CaseState:
+        if not self.settings.agent_clarification_frame_v1_enabled:
+            result = await self.understanding.understand(
+                state["request"],
+                state.get("conversation_context", {}),
+                clarification_pending=True,
+            )
+            return self._classification_update(
+                state,
+                result.understanding,
+                result.metadata,
+                request=state["request"],
+            )
+
+        frame = adapt_legacy_frame(state=state, prompts=CLARIFICATION_PROMPTS)
+        response = str(state.get("clarification_response") or "").strip()
+        result = await self.understanding.understand(
+            response,
+            state.get("conversation_context", {}),
+            clarification_pending=True,
+            clarification_frame=frame.model_dump(mode="json"),
+        )
+        decision = decide_turn_relation(
+            frame=frame,
+            message=response,
+            understanding=result.understanding,
+        )
+        source_message_id = str(
+            state.get("conversation_context", {}).get("current_message_id") or ""
+        ) or None
+
+        if decision.relation is ClarificationTurnRelation.CONTINUE_CURRENT:
+            if "explicit_resume_without_answer" in decision.warning_codes:
+                audit = ClarificationTransitionAudit(
+                    frame_id=frame.frame_id,
+                    relation=decision.relation,
+                    classifier_source=decision.classifier_source,
+                    previous_status=frame.status,
+                    next_status=ClarificationFrameStatus.WAITING,
+                    pending_before=frame.pending_keys,
+                    resolved_by_answer=[],
+                    pending_after=frame.pending_keys,
+                    made_progress=False,
+                    warning_codes=list(decision.warning_codes),
+                )
+                waiting_frame = frame.model_copy(
+                    update={
+                        "status": ClarificationFrameStatus.WAITING,
+                        "last_transition": decision.relation,
+                        "last_source_message_id": source_message_id,
+                    }
+                )
+                return {
+                    "route_decision": AgentRoute.CLARIFY.value,
+                    "interaction_mode": InteractionMode.CLARIFICATION_ANSWER.value,
+                    "clarification_frame": waiting_frame.model_dump(mode="json"),
+                    "clarification_relation": decision.relation.value,
+                    "clarification_resume_only": True,
+                    "clarification_transition_audit": audit.model_dump(mode="json"),
+                    "missing_required_fields": waiting_frame.pending_keys,
+                    "clarification_questions": self._frame_questions(waiting_frame),
+                    "clarification_round": waiting_frame.round,
+                }
+            understanding = merge_continuation_understanding(
+                frame,
+                response,
+                result.understanding,
+            )
+            update = self._classification_update(
+                state,
+                understanding,
+                result.metadata,
+                request=frame.original_request,
+            )
+            route_plan = RoutePlan.model_validate(update["route_plan"])
+            pending_after = list(route_plan.missing_slots)
+            if route_plan.route is AgentRoute.CLARIFY and not pending_after:
+                pending_after = (
+                    [INTENT_TARGET_KEY]
+                    if frame.kind.value == "intent_disambiguation"
+                    else frame.pending_keys
+                )
+            updated_frame, audit = update_frame_after_answer(
+                frame=frame,
+                understanding=understanding,
+                pending_after=pending_after,
+                source_message_id=source_message_id,
+                classifier_source=decision.classifier_source,
+            )
+            return {
+                **update,
+                "request": frame.original_request,
+                "clarification_frame": updated_frame.model_dump(mode="json"),
+                "clarification_relation": decision.relation.value,
+                "clarification_resume_only": False,
+                "clarification_transition_audit": audit.model_dump(mode="json"),
+                "missing_required_fields": pending_after,
+                "clarification_questions": self._frame_questions(updated_frame),
+                "clarification_round": updated_frame.round,
+            }
+
+        if decision.relation is ClarificationTurnRelation.REPLACE_WITH_NEW_REQUEST:
+            updated_frame, audit = terminal_transition(
+                frame=frame,
+                relation=decision.relation,
+                classifier_source=decision.classifier_source,
+                source_message_id=source_message_id,
+                request_id=state.get("run_id"),
+                warning_codes=decision.warning_codes,
+            )
+            understanding = result.understanding.model_copy(
+                update={
+                    "interaction_mode": (
+                        InteractionMode.CONVERSATION
+                        if result.understanding.primary_intent.value == "conversation"
+                        else InteractionMode.TASK
+                    ),
+                    "clarification_relation": decision.relation,
+                }
+            )
+            reset_state = self._reset_task_state(response)
+            update = self._classification_update(
+                {**state, **reset_state},
+                understanding,
+                result.metadata,
+                request=response,
+            )
+            return {
+                **reset_state,
+                **update,
+                "clarification_frame": updated_frame.model_dump(mode="json"),
+                "clarification_relation": decision.relation.value,
+                "clarification_resume_only": False,
+                "clarification_transition_audit": audit.model_dump(mode="json"),
+                "clarification_round": 0,
+            }
+
+        updated_frame, audit = terminal_transition(
+            frame=frame,
+            relation=decision.relation,
+            classifier_source=decision.classifier_source,
+            source_message_id=source_message_id,
+            warning_codes=decision.warning_codes,
+        )
+        if decision.relation in {
+            ClarificationTurnRelation.CANCEL_CURRENT,
+            ClarificationTurnRelation.SIDE_CONVERSATION,
+        }:
+            understanding = result.understanding.model_copy(
+                update={
+                    "clarification_relation": decision.relation,
+                    "cancel_scope": (
+                        CancelScope.CLARIFICATION
+                        if decision.relation is ClarificationTurnRelation.CANCEL_CURRENT
+                        else result.understanding.cancel_scope
+                    ),
+                }
+            )
+            update = self._classification_update(
+                state,
+                understanding,
+                result.metadata,
+                request=response,
+            )
+        else:
+            update = {
+                "model_metadata": {
+                    **state.get("model_metadata", {}),
+                    **result.metadata,
+                }
+            }
+        return {
+            **update,
+            "clarification_frame": updated_frame.model_dump(mode="json"),
+            "clarification_relation": decision.relation.value,
+            "clarification_resume_only": False,
+            "clarification_transition_audit": audit.model_dump(mode="json"),
+            "missing_required_fields": updated_frame.pending_keys,
+            "clarification_questions": self._frame_questions(updated_frame),
+            "clarification_round": 0
+            if decision.relation is ClarificationTurnRelation.CANCEL_CURRENT
+            else updated_frame.round,
+        }
+
+    @staticmethod
+    def _route_after_clarification_resolution(
+        state: CaseState,
+    ) -> Literal["continue", "resume", "replace", "cancel", "side", "ambiguous"]:
+        if state.get("clarification_resume_only"):
+            return "resume"
+        relation = ClarificationTurnRelation(
+            str(state.get("clarification_relation", ClarificationTurnRelation.AMBIGUOUS))
+        )
+        return {
+            ClarificationTurnRelation.CONTINUE_CURRENT: "continue",
+            ClarificationTurnRelation.REPLACE_WITH_NEW_REQUEST: "replace",
+            ClarificationTurnRelation.CANCEL_CURRENT: "cancel",
+            ClarificationTurnRelation.SIDE_CONVERSATION: "side",
+            ClarificationTurnRelation.AMBIGUOUS: "ambiguous",
+        }[relation]
+
+    async def _answer_side_conversation(self, state: CaseState) -> CaseState:
+        return await self._direct_answer(state)
+
+    @staticmethod
+    def _resume_clarification(state: CaseState) -> CaseState:
+        frame = ClarificationFrame.model_validate(state["clarification_frame"])
+        questions = [item.prompt for item in frame.pending_items]
+        response_text = "好的，我们继续当前问题。\n" + "\n".join(
+            f"- {question}" for question in questions
+        )
+        response = interrupt(
+            {
+                "kind": "clarification_resumed",
+                "round": frame.round,
+                "frame_id": frame.frame_id,
+                "frame_schema_version": frame.schema_version,
+                "missing_fields": frame.pending_keys,
+                "questions": questions,
+                "response": response_text,
+            }
+        )
+        if isinstance(response, dict):
+            response = response.get("content", "")
+        return {
+            "clarification_response": str(response),
+            "clarification_resume_only": False,
+        }
+
+    async def _prepare_relation_clarification(self, state: CaseState) -> CaseState:
+        question = "你是要继续补充当前调查，还是开始一个新问题？"
+        result = await self.direct_reply.generate(
+            DirectReplyRequest(
+                kind=DirectReplyKind.CLARIFICATION,
+                user_request=str(state.get("clarification_response") or ""),
+                conversation_context=state.get("conversation_context", {}),
+                missing_slots=("clarification_relation",),
+                clarification_questions=(question,),
+            ),
+            self._emit_direct_delta,
+        )
+        metadata = dict(state.get("model_metadata", {}))
+        metadata["direct_reply_audit"] = result.audit.model_dump(mode="json")
+        return {
+            "answer_text": result.text,
+            "model_metadata": metadata,
+        }
+
+    @staticmethod
+    def _pause_clarification(state: CaseState) -> CaseState:
+        frame = ClarificationFrame.model_validate(state["clarification_frame"])
+        payload = {
+            "kind": "clarification_paused",
+            "round": frame.round,
+            "frame_id": frame.frame_id,
+            "frame_schema_version": frame.schema_version,
+            "missing_fields": frame.pending_keys,
+            "questions": [item.prompt for item in frame.pending_items],
+            "response": state.get("answer_text", ""),
+        }
+        response = interrupt(payload)
+        if isinstance(response, dict):
+            response = response.get("content", "")
+        waiting_frame = frame.model_copy(update={"status": ClarificationFrameStatus.WAITING})
+        return {
+            "clarification_response": str(response),
+            "clarification_frame": waiting_frame.model_dump(mode="json"),
+        }
+
+    @staticmethod
+    def _reset_task_state(request: str) -> CaseState:
+        return {
+            "request": request,
+            "understanding": {},
+            "route_plan": {},
+            "constraints": {},
+            "authorization_errors": [],
+            "missing_required_fields": [],
+            "clarification_questions": [],
+            "clarification_resume_only": False,
+            "task_items": [],
+            "task_results": [],
+            "task_outputs": {},
+            "combined_direct_text": "",
+            "slot_operations": [],
+            "inherited_slots": {},
+            "context_message_ids": [],
+            "retrieval_skipped_reason": None,
+            "invalidated_context_refs": [],
+            "cancel_scope": None,
+            "retrieval_query": request,
+            "retrieval_routes": [],
+            "candidate_ids": [],
+            "reranked_evidence": [],
+            "image_evidence": [],
+            "external_evidence": [],
+            "live_data_refs": [],
+            "evidence_ledger": [],
+            "answer": {},
+            "answer_text": "",
+            "citations": [],
+            "trace_id": None,
+            "verification_warnings": [],
         }
 
     async def _direct_answer(self, state: CaseState) -> CaseState:
@@ -1143,7 +1578,10 @@ class ConversationGraph:
         if state.get("authorization_errors"):
             response = "请求中的 Product 或 Tool 超出当前用户权限范围，系统未执行检索或工具调用。"
         else:
-            missing = "、".join(state.get("missing_required_fields", []))
+            missing = "、".join(
+                user_facing_missing_field(item)
+                for item in state.get("missing_required_fields", [])
+            )
             response = f"经过两轮追问后信息仍不足，系统停止调查以避免猜测。仍缺少：{missing}。"
         return {
             "answer_text": response,
@@ -1189,6 +1627,7 @@ class ConversationGraph:
                 "retrieval_skipped_reason": state.get("retrieval_skipped_reason"),
                 "invalidated_context_refs": state.get("invalidated_context_refs", []),
                 "cancel_scope": state.get("cancel_scope"),
+                "clarification_transition": state.get("clarification_transition_audit", {}),
                 "risk_level": state.get("risk_level"),
                 "missing_fields": state.get("missing_required_fields", []),
                 "evidence_ids": [item["evidence_id"] for item in state.get("evidence_ledger", [])],

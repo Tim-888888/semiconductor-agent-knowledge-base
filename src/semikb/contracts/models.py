@@ -826,6 +826,34 @@ class CancelScope(StrEnum):
     CLARIFICATION = "clarification"
 
 
+class ClarificationKind(StrEnum):
+    INTENT_DISAMBIGUATION = "intent_disambiguation"
+    SLOT_COLLECTION = "slot_collection"
+    HISTORY_REFERENCE = "history_reference"
+    CONTROL_CONFIRMATION = "control_confirmation"
+
+
+class ClarificationFrameStatus(StrEnum):
+    WAITING = "waiting"
+    PAUSED = "paused"
+    RESOLVED = "resolved"
+    CANCELLED = "cancelled"
+    SUPERSEDED = "superseded"
+
+
+class ClarificationItemType(StrEnum):
+    SLOT = "slot"
+    CHOICE = "choice"
+
+
+class ClarificationTurnRelation(StrEnum):
+    CONTINUE_CURRENT = "continue_current"
+    CANCEL_CURRENT = "cancel_current"
+    REPLACE_WITH_NEW_REQUEST = "replace_with_new_request"
+    SIDE_CONVERSATION = "side_conversation"
+    AMBIGUOUS = "ambiguous"
+
+
 class AgentRoute(StrEnum):
     HISTORY_DIRECT = "history_direct"
     CHAT_DIRECT = "chat_direct"
@@ -884,8 +912,71 @@ class ConversationUnderstanding(BaseModel):
     context_message_ids: list[str] = Field(default_factory=list, max_length=8)
     standalone_query: str = Field(default="", max_length=8000)
     cancel_scope: CancelScope | None = None
+    clarification_relation: ClarificationTurnRelation | None = None
     suggested_route: AgentRoute
     confidence: float = Field(ge=0, le=1)
+
+
+class ClarificationPendingItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    key: str = Field(min_length=1, max_length=64)
+    item_type: ClarificationItemType
+    prompt: str = Field(min_length=1, max_length=500)
+    allowed_values: list[str] = Field(default_factory=list, max_length=12)
+
+
+class ClarificationResolvedItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    key: str = Field(min_length=1, max_length=64)
+    value: str = Field(min_length=1, max_length=512)
+    source_message_id: str | None = Field(default=None, max_length=128)
+
+
+class ClarificationFrame(BaseModel):
+    """Versioned task-local truth for a bounded clarification lifecycle."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    frame_id: str = Field(default_factory=lambda: new_id("clarify"), min_length=1, max_length=128)
+    schema_version: Literal["semikb-clarification-frame-v1"] = "semikb-clarification-frame-v1"
+    kind: ClarificationKind
+    original_request: str = Field(min_length=1, max_length=8000)
+    candidate_route: AgentRoute
+    task_ids: list[str] = Field(default_factory=list, max_length=3)
+    pending_items: list[ClarificationPendingItem] = Field(default_factory=list, max_length=3)
+    resolved_items: list[ClarificationResolvedItem] = Field(default_factory=list, max_length=12)
+    round: int = Field(default=0, ge=0, le=3)
+    no_progress_count: int = Field(default=0, ge=0, le=3)
+    signature: str = Field(min_length=8, max_length=128)
+    status: ClarificationFrameStatus = ClarificationFrameStatus.WAITING
+    last_transition: ClarificationTurnRelation | None = None
+    last_source_message_id: str | None = Field(default=None, max_length=128)
+    superseded_by_request_id: str | None = Field(default=None, max_length=128)
+    base_understanding: dict[str, Any] = Field(default_factory=dict)
+    base_route_plan: dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def pending_keys(self) -> list[str]:
+        return [item.key for item in self.pending_items]
+
+
+class ClarificationTransitionAudit(BaseModel):
+    """Prompt-free request audit for one clarification state transition."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    frame_id: str = Field(min_length=1, max_length=128)
+    relation: ClarificationTurnRelation
+    classifier_source: str = Field(pattern="^(l0|llm|deterministic_fallback|server_policy)$")
+    previous_status: ClarificationFrameStatus
+    next_status: ClarificationFrameStatus
+    pending_before: list[str] = Field(default_factory=list, max_length=3)
+    resolved_by_answer: list[str] = Field(default_factory=list, max_length=3)
+    pending_after: list[str] = Field(default_factory=list, max_length=3)
+    made_progress: bool = False
+    warning_codes: list[str] = Field(default_factory=list, max_length=12)
 
 
 class RouteTaskDecision(BaseModel):

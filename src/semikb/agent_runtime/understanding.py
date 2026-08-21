@@ -21,6 +21,7 @@ from semikb.contracts.models import (
     AffectSignals,
     AgentRoute,
     CancelScope,
+    ClarificationTurnRelation,
     ConversationUnderstanding,
     IntentTarget,
     IntentTaskAction,
@@ -255,6 +256,7 @@ class _RawUnderstanding(BaseModel):
     context_message_ids: list[str] = Field(max_length=8)
     standalone_query: str = Field(max_length=8000)
     cancel_scope: CancelScope | None
+    clarification_relation: ClarificationTurnRelation | None = None
     suggested_route: AgentRoute
     confidence: float = Field(ge=0, le=1)
 
@@ -298,6 +300,7 @@ class ConversationUnderstandingService:
         context: dict[str, Any],
         *,
         clarification_pending: bool = False,
+        clarification_frame: dict[str, Any] | None = None,
     ) -> UnderstandingResult:
         started = time.perf_counter()
         empty_selection = IntentFewShotSelection()
@@ -334,7 +337,13 @@ class ConversationUnderstandingService:
             )
 
         selection = await self.experiment_profile.select_examples(request)
-        messages = self._prompt(request, context, clarification_pending, selection)
+        messages = self._prompt(
+            request,
+            context,
+            clarification_pending,
+            selection,
+            clarification_frame=clarification_frame,
+        )
         estimated_tokens = self._estimate_prompt_tokens(messages)
         cards_in_prompt = (
             len(self.intent_catalog.active_cards)
@@ -507,8 +516,21 @@ class ConversationUnderstandingService:
         context: dict[str, Any],
         clarification_pending: bool,
         selection: IntentFewShotSelection,
+        *,
+        clarification_frame: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         if not self.experiment_profile.include_catalog:
+            payload: dict[str, Any] = {
+                "current_request": request,
+                "clarification_pending": clarification_pending,
+                "conversation_context": ConversationUnderstandingService._safe_context(context),
+            }
+            if clarification_frame:
+                payload["clarification_frame"] = (
+                    ConversationUnderstandingService._safe_clarification_frame(
+                        clarification_frame
+                    )
+                )
             return [
                 {
                     "role": "system",
@@ -520,21 +542,15 @@ class ConversationUnderstandingService:
                         "data deletion, and out-of-scope actions must use execution_policy=refuse. Ordinary conversation "
                         "covers social exchange, Agent capability, feedback, control, and grounded history only; a request "
                         "to create, advise, look up, analyze, or execute outside that capability is out of scope. The suggested route "
-                        "is advisory; server policy makes the final decision. Do not include reasoning or prose."
+                        "is advisory; server policy makes the final decision. When a clarification frame is supplied, "
+                        "classify clarification_relation as continue_current, cancel_current, "
+                        "replace_with_new_request, side_conversation, or ambiguous. A complete standalone task can "
+                        "replace the pending task without explicit switch words. Do not include reasoning or prose."
                     ),
                 },
                 {
                     "role": "user",
-                    "content": json.dumps(
-                        {
-                            "current_request": request,
-                            "clarification_pending": clarification_pending,
-                            "conversation_context": ConversationUnderstandingService._safe_context(
-                                context
-                            ),
-                        },
-                        ensure_ascii=False,
-                    ),
+                    "content": json.dumps(payload, ensure_ascii=False),
                 },
             ]
 
@@ -551,12 +567,23 @@ class ConversationUnderstandingService:
             "The complete active catalog is authoritative; do not invent another intent. Do not include "
             "reasoning, card IDs, or prose in the response."
         )
+        if clarification_frame:
+            system_content += (
+                " A clarification frame is active. Set clarification_relation using the current message's relation "
+                "to that frame. A complete standalone task may replace the old task even without switch words. "
+                "continue_current is only for an answer, partial answer, correction, unknown answer, or explicit "
+                "continuation of the pending items. Return the current message's tasks as well as grounded slots."
+            )
         payload: dict[str, Any] = {
             "current_request": request,
             "clarification_pending": clarification_pending,
             "conversation_context": ConversationUnderstandingService._safe_context(context),
             "intent_catalog": self.intent_catalog.prompt_payload(),
         }
+        if clarification_frame:
+            payload["clarification_frame"] = self._safe_clarification_frame(
+                clarification_frame
+            )
         if selection.examples:
             system_content += (
                 " The supplied intent examples are classification precedents only. Use them to distinguish "
@@ -686,6 +713,34 @@ class ConversationUnderstandingService:
                     )
         return {"recent_messages": recent, "valid_slots": valid_slots}
 
+    @staticmethod
+    def _safe_clarification_frame(frame: dict[str, Any] | None) -> dict[str, Any] | None:
+        if not isinstance(frame, dict):
+            return None
+        pending = []
+        for item in frame.get("pending_items", [])[:3]:
+            if not isinstance(item, dict):
+                continue
+            pending.append(
+                {
+                    "key": str(item.get("key", "")),
+                    "item_type": str(item.get("item_type", "")),
+                    "prompt": str(item.get("prompt", ""))[:500],
+                    "allowed_values": [
+                        str(value)[:128] for value in item.get("allowed_values", [])[:12]
+                    ],
+                }
+            )
+        return {
+            "frame_id": str(frame.get("frame_id", "")),
+            "kind": str(frame.get("kind", "")),
+            "original_request": str(frame.get("original_request", ""))[:4000],
+            "candidate_route": str(frame.get("candidate_route", "")),
+            "pending_items": pending,
+            "round": int(frame.get("round", 0) or 0),
+            "status": str(frame.get("status", "waiting")),
+        }
+
     def _normalize_raw(
         self,
         raw: _RawUnderstanding,
@@ -760,10 +815,15 @@ class ConversationUnderstandingService:
             not tasks or primary is not raw.primary_intent or has_protected_task
         ):
             tasks = self._infer_tasks(request, primary)
+        effective_clarification_pending = clarification_pending and raw.clarification_relation not in {
+            ClarificationTurnRelation.REPLACE_WITH_NEW_REQUEST,
+            ClarificationTurnRelation.SIDE_CONVERSATION,
+            ClarificationTurnRelation.CANCEL_CURRENT,
+        }
         enforce_capability_boundary = self._requires_capability_boundary(
             request,
             primary,
-            clarification_pending=clarification_pending,
+            clarification_pending=effective_clarification_pending,
             has_context_target=bool(context_ids),
         )
         if enforce_capability_boundary:
@@ -787,7 +847,7 @@ class ConversationUnderstandingService:
                 else raw.interaction_mode,
                 primary,
                 request,
-                clarification_pending,
+                effective_clarification_pending,
             ),
             primary_intent=primary,
             task_items=tasks,
@@ -803,6 +863,7 @@ class ConversationUnderstandingService:
             context_message_ids=context_ids,
             standalone_query=query,
             cancel_scope=raw.cancel_scope,
+            clarification_relation=raw.clarification_relation,
             suggested_route=(
                 AgentRoute.REFUSE
                 if enforce_capability_boundary

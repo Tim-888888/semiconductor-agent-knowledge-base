@@ -27,6 +27,7 @@ from semikb.contracts.models import (
     AgentAnswer,
     AgentRoute,
     ChatMessage,
+    ClarificationTransitionAudit,
     IntentTaskItem,
     InteractionMode,
     MessageRenderMode,
@@ -649,6 +650,11 @@ class ConversationService:
             str(item) for item in result.get("invalidated_context_refs", [])
         ]
         record.cancel_scope = result.get("cancel_scope")
+        transition_audit = result.get("clarification_transition_audit")
+        if isinstance(transition_audit, dict) and transition_audit:
+            record.clarification_transition_audit = ClarificationTransitionAudit.model_validate(
+                transition_audit
+            )
         understanding = result.get("understanding", {})
         if isinstance(understanding, dict) and understanding.get("affect"):
             record.affect = AffectSignals.model_validate(understanding["affect"])

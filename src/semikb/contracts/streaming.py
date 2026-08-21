@@ -12,6 +12,7 @@ from semikb.contracts.models import (
     AffectSignals,
     AgentRoute,
     CancelScope,
+    ClarificationTransitionAudit,
     IntentTaskItem,
     InteractionMode,
     RouteTaskDecision,
@@ -163,6 +164,7 @@ class AgentMessageRequestRecord(BaseModel):
     affect: AffectSignals = Field(default_factory=AffectSignals)
     understanding_audit: UnderstandingAudit = Field(default_factory=UnderstandingAudit)
     direct_reply_audit: DirectReplyAudit | None = None
+    clarification_transition_audit: ClarificationTransitionAudit | None = None
     error_code: AgentStreamErrorCode | None = None
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)

@@ -98,7 +98,7 @@ export function Workbench({
 
       {thread?.status === "waiting_for_clarification" && <div className="clarification-band" data-testid="clarification-band">
         <AlertTriangle size={18} />
-        <div><strong>等待补充信息 · 第 {thread.clarification_round} 轮</strong><span>{thread.pending_fields.join(" / ")}</span></div>
+        <div><strong>等待补充信息 · 第 {thread.clarification_round} 轮</strong><span>{thread.pending_fields.map(pendingFieldLabel).join(" / ")}</span></div>
       </div>}
 
       <div className="message-list" data-testid="message-list" ref={messageListRef}>
@@ -144,7 +144,7 @@ export function Workbench({
           data-testid="question-input"
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
-          placeholder={thread?.status === "waiting_for_clarification" ? "补充缺失的产品、机台、时间或 Lot 信息" : "输入半导体制造或检测问题"}
+          placeholder={thread?.status === "waiting_for_clarification" ? "补充当前信息，或直接输入一个新问题" : "输入半导体制造或检测问题"}
           rows={3}
         />
         <button type="submit" className="icon-command" title="发送问题" disabled={loading || !query.trim()}>
@@ -186,6 +186,18 @@ export function Workbench({
       {selectedEvidence && <EvidenceDetail evidence={selectedEvidence} />}
     </aside>
   </section>;
+}
+
+function pendingFieldLabel(field: string) {
+  const labels: Record<string, string> = {
+    product: "产品",
+    time_range: "时间范围",
+    tool_or_chamber: "设备或腔体",
+    history_reference: "需要处理的历史内容",
+    intent_target: "希望执行的任务类型",
+    request_goal: "希望执行的任务类型"
+  };
+  return labels[field] ?? "必要信息";
 }
 
 function StreamMessage({

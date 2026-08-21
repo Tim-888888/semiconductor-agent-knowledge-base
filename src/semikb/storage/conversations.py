@@ -516,6 +516,11 @@ class MongoConversationRepository:
                         if record.direct_reply_audit is not None
                         else None
                     ),
+                    "clarification_transition_audit": (
+                        record.clarification_transition_audit.model_dump(mode="python")
+                        if record.clarification_transition_audit is not None
+                        else None
+                    ),
                     "error_code": error_code,
                     "updated_at": now,
                     "finished_at": now,

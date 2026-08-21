@@ -740,6 +740,16 @@ class DemoStore:
             current.cancel_scope = record.cancel_scope
             current.affect = record.affect.model_copy(deep=True)
             current.understanding_audit = record.understanding_audit.model_copy(deep=True)
+            current.direct_reply_audit = (
+                record.direct_reply_audit.model_copy(deep=True)
+                if record.direct_reply_audit is not None
+                else None
+            )
+            current.clarification_transition_audit = (
+                record.clarification_transition_audit.model_copy(deep=True)
+                if record.clarification_transition_audit is not None
+                else None
+            )
             current.error_code = error_code
             current.updated_at = datetime.now(UTC)
             current.finished_at = current.updated_at
