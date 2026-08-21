@@ -103,6 +103,8 @@ async def test_side_conversation_does_not_consume_business_clarification_round(
     assert result["clarification_required"] is True
     assert result["clarification_round"] == first["clarification_round"]
     assert result["missing_fields"] == first["missing_fields"]
+    assert result["task_results"] == []
+    assert "半导体" in result["response"]
     assert len(store.traces) == traces_before
     request_id = result["thread"]["messages"][-1]["request_id"]
     record = store.get_message_request(thread.thread_id, thread.actor_scope.user_id, request_id)

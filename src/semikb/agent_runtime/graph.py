@@ -797,12 +797,14 @@ class ConversationGraph:
                     ),
                 }
             )
+            reset_state = self._reset_task_state(response)
             update = self._classification_update(
-                state,
+                {**state, **reset_state},
                 understanding,
                 result.metadata,
                 request=response,
             )
+            update = {**reset_state, **update}
         else:
             update = {
                 "model_metadata": {
