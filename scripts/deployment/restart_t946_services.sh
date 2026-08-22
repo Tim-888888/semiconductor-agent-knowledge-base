@@ -25,9 +25,24 @@ snapshot() {
   for service in "${SERVICES[@]}"; do
     id="$(compose_id "$service")"
     [[ -n "$id" ]] || { echo "service is missing: $service" >&2; exit 1; }
-    docker inspect --format \
-      '{{.Id}}|{{.Name}}|{{.State.Status}}|{{if .Config.Healthcheck}}{{.State.Health.Status}}{{else}}none{{end}}|{{.RestartCount}}|{{.State.OOMKilled}}' \
-      "$id" >> "$destination"
+    docker inspect "$id" | python3 -c '
+import json
+import sys
+
+item = json.load(sys.stdin)[0]
+state = item["State"]
+health = state.get("Health", {}).get("Status", "none")
+print(
+    "{}|{}|{}|{}|{}|{}".format(
+        item["Id"],
+        item["Name"],
+        state["Status"],
+        health,
+        item["RestartCount"],
+        str(state["OOMKilled"]).lower(),
+    )
+)
+' >> "$destination"
   done
 }
 
@@ -37,7 +52,10 @@ wait_running() {
     id="$(compose_id "$service")"
     if [[ -n "$id" ]]; then
       status="$(docker inspect --format '{{.State.Status}}' "$id")"
-      health="$(docker inspect --format '{{if .Config.Healthcheck}}{{.State.Health.Status}}{{else}}none{{end}}' "$id")"
+      health="$(
+        docker inspect "$id" \
+          | python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["State"].get("Health", {}).get("Status", "none"))'
+      )"
       if [[ "$status" == "running" && ("$health" == "healthy" || "$health" == "none") ]]; then
         return 0
       fi
