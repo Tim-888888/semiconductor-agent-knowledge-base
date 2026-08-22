@@ -136,6 +136,8 @@ def test_t946_runtime_scripts_are_bounded_and_restart_requires_double_confirmati
     assert "docker compose" in restart
     assert " restart \"$service\"" in restart
     assert 'state.get("Health", {}).get("Status", "none")' in restart
+    assert '[[ "$ping_output" == *pong* ]]' in restart
+    assert "| grep -q pong" not in restart
     assert "{{if .State.Health}}" not in restart
     assert "{{if .Config.Healthcheck}}" not in restart
     assert "docker compose down" not in restart

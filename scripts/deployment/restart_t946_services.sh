@@ -67,11 +67,14 @@ wait_running() {
 }
 
 worker_ping() {
-  local deadline=$((SECONDS + 90))
+  local deadline=$((SECONDS + 90)) ping_output
   while ((SECONDS < deadline)); do
-    if "${COMPOSE[@]}" exec -T worker \
-      celery -A semikb.workers.celery_app:celery_app inspect ping --timeout 10 2>/dev/null \
-      | grep -q pong; then
+    ping_output="$(
+      "${COMPOSE[@]}" exec -T worker \
+        celery -A semikb.workers.celery_app:celery_app inspect ping --timeout 10 \
+        2>/dev/null || true
+    )"
+    if [[ "$ping_output" == *pong* ]]; then
       return 0
     fi
     sleep 3
