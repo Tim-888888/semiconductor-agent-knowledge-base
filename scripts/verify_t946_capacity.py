@@ -117,20 +117,29 @@ def access_key_headers() -> dict[str, str]:
 
 
 async def create_token(client: httpx.AsyncClient, user_id: str) -> str:
-    response = await client.post(
-        "/api/v1/auth/demo-token",
-        headers=access_key_headers(),
-        json={
-            "user_id": user_id,
-            "roles": ["engineer", "knowledge_admin"],
-            "access_scope_keys": ["demo_engineering"],
-            "fabs": ["FAB-01"],
-            "products": ["P-ALPHA"],
-            "tool_ids": ["ETCH-03"],
-        },
-    )
+    payload = {
+        "user_id": user_id,
+        "roles": ["engineer", "knowledge_admin"],
+        "access_scope_keys": ["demo_engineering"],
+        "fabs": ["FAB-01"],
+        "products": ["P-ALPHA"],
+        "tool_ids": ["ETCH-03"],
+    }
+    response: httpx.Response | None = None
+    for attempt in range(6):
+        response = await client.post(
+            "/api/v1/auth/demo-token",
+            headers=access_key_headers(),
+            json=payload,
+        )
+        if response.status_code != 429:
+            response.raise_for_status()
+            return str(response.json()["access_token"])
+        if attempt < 5:
+            await asyncio.sleep(min(12 * (attempt + 1), 30))
+    assert response is not None
     response.raise_for_status()
-    return str(response.json()["access_token"])
+    raise AssertionError("unreachable")
 
 
 async def create_thread(
@@ -155,16 +164,14 @@ def provider_attempt_count(result: dict[str, Any], trace: dict[str, Any] | None)
 async def run_stream_probe(
     client: httpx.AsyncClient,
     *,
+    token: str,
     level: int,
     wave: int,
     index: int,
     timeout: int,
 ) -> StreamProbe:
     label, question = QUESTIONS[index]
-    user_id = f"t946_l{level}_w{wave}_{index}_{int(time.time() * 1000)}"
-    token = await create_token(client, user_id)
     headers = {"Authorization": f"Bearer {token}", "Accept": "text/event-stream"}
-    thread_id = await create_thread(client, headers, f"T9-4.6 L{level} W{wave} {label}")
     request_id = f"req_t946_l{level}_w{wave}_{index}_{int(time.time() * 1000)}"
     started = time.perf_counter()
     probe = StreamProbe(
@@ -172,12 +179,14 @@ async def run_stream_probe(
         level=level,
         wave=wave,
         request_id=request_id,
-        thread_id=thread_id,
+        thread_id="",
         status_code=0,
     )
     decoder = SSEDecoder()
     completed_result: dict[str, Any] | None = None
     try:
+        thread_id = await create_thread(client, headers, f"T9-4.6 L{level} W{wave} {label}")
+        probe.thread_id = thread_id
         async with client.stream(
             "POST",
             f"/api/v1/threads/{thread_id}/messages/stream",
@@ -278,10 +287,10 @@ async def wait_terminal(
 
 async def run_background_work(
     client: httpx.AsyncClient,
+    token: str,
     timeout: int,
     dataset_version: str,
 ) -> dict[str, Any]:
-    token = await create_token(client, f"t946_background_{int(time.time() * 1000)}")
     headers = {"Authorization": f"Bearer {token}"}
     document = (
         b"# Bounded capacity acceptance\n\n"
@@ -351,9 +360,11 @@ async def run_background_work(
     }
 
 
-async def run_disconnect_probe(client: httpx.AsyncClient, timeout: int) -> dict[str, Any]:
-    user_id = f"t946_disconnect_{int(time.time() * 1000)}"
-    token = await create_token(client, user_id)
+async def run_disconnect_probe(
+    client: httpx.AsyncClient,
+    token: str,
+    timeout: int,
+) -> dict[str, Any]:
     headers = {"Authorization": f"Bearer {token}", "Accept": "text/event-stream"}
     thread_id = await create_thread(client, headers, "T9-4.6 disconnect recovery")
     request_id = f"req_t946_disconnect_{int(time.time() * 1000)}"
@@ -466,16 +477,23 @@ async def verify(args: argparse.Namespace) -> dict[str, Any]:
     async with httpx.AsyncClient(base_url=args.base_url, timeout=timeout) as client:
         live = await client.get("/api/v1/live")
         live.raise_for_status()
+        token = await create_token(client, f"t946_capacity_{int(time.time() * 1000)}")
         for level in args.levels:
             for wave in range(1, args.waves + 1):
                 if level == MAX_CONCURRENCY and wave == 1 and not args.skip_background:
                     background_task = asyncio.create_task(
-                        run_background_work(client, args.background_timeout, args.dataset_version)
+                        run_background_work(
+                            client,
+                            token,
+                            args.background_timeout,
+                            args.dataset_version,
+                        )
                     )
                 wave_results = await asyncio.gather(
                     *(
                         run_stream_probe(
                             client,
+                            token=token,
                             level=level,
                             wave=wave,
                             index=index,
@@ -497,7 +515,7 @@ async def verify(args: argparse.Namespace) -> dict[str, Any]:
         disconnect = (
             None
             if args.skip_disconnect
-            else await run_disconnect_probe(client, args.request_timeout)
+            else await run_disconnect_probe(client, token, args.request_timeout)
         )
 
     summary = build_summary(probes)

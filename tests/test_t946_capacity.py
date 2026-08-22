@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import httpx
 import pytest
 
+from scripts import verify_t946_capacity as capacity
 from scripts.summarize_t946_runtime import parse_size, summarize
 from scripts.verify_t946_capacity import (
     SSEDecoder,
@@ -53,6 +55,36 @@ def test_capacity_ingestion_uses_complete_published_governance() -> None:
     assert metadata["dataset_version"] == "demo-v2"
     assert metadata["source_license_status"] == "verified"
     assert metadata["redistribution_policy"] == "allowed"
+
+
+@pytest.mark.asyncio
+async def test_capacity_token_creation_retries_bounded_auth_rate_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+    delays: list[float] = []
+
+    async def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            return httpx.Response(429, json={"detail": "rate limited"})
+        return httpx.Response(200, json={"access_token": "test-token"})
+
+    async def fake_sleep(delay: float) -> None:
+        delays.append(delay)
+
+    monkeypatch.setenv("DEMO_ACCESS_KEY", "test-access-key")
+    monkeypatch.setattr(capacity.asyncio, "sleep", fake_sleep)
+    async with httpx.AsyncClient(
+        base_url="http://test",
+        transport=httpx.MockTransport(handler),
+    ) as client:
+        token = await capacity.create_token(client, "capacity-user")
+
+    assert token == "test-token"
+    assert attempts == 2
+    assert delays == [12]
 
 
 def test_capacity_summary_counts_failures_and_provider_attempts() -> None:
