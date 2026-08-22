@@ -242,12 +242,18 @@ def ingestion_metadata() -> dict[str, Any]:
         "source_kind": "synthetic_acceptance",
         "source_uri": "synthetic://t9-4.6/bounded-capacity",
         "source_license": "CC0-1.0",
+        "source_id": "semikb.demo.synthetic",
+        "source_manifest_version": "1.0.0",
+        "dataset_version": "demo-v2",
+        "source_license_status": "verified",
+        "redistribution_policy": "allowed",
         "access_scope_key": "demo_engineering",
         "fab": "FAB-01",
         "product": "P-ALPHA",
         "process_layer": "ETCH",
         "tool_id": "ETCH-03",
         "chamber": "B",
+        "retrieval_policy": "protected",
     }
 
 
@@ -479,7 +485,15 @@ async def verify(args: argparse.Namespace) -> dict[str, Any]:
                     )
                 )
                 probes.extend(wave_results)
-        background = await background_task if background_task else None
+        background: dict[str, Any] | None = None
+        if background_task:
+            try:
+                background = await background_task
+            except Exception as exc:  # noqa: BLE001 - retain an acceptance artifact on failure
+                background = {
+                    "error_code": type(exc).__name__,
+                    "detail": str(exc)[:500],
+                }
         disconnect = (
             None
             if args.skip_disconnect
@@ -488,7 +502,8 @@ async def verify(args: argparse.Namespace) -> dict[str, Any]:
 
     summary = build_summary(probes)
     background_passed = background is None or (
-        background["ingestion"]["status"] == "published"
+        "error_code" not in background
+        and background["ingestion"]["status"] == "published"
         and background["evaluation"]["status"] == "completed"
     )
     disconnect_passed = disconnect is None or bool(disconnect["passed"])

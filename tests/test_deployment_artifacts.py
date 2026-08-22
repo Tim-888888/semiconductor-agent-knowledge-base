@@ -130,6 +130,7 @@ def test_t946_runtime_scripts_are_bounded_and_restart_requires_double_confirmati
     assert "SAMPLES <= 900" in sampler
     assert "INTERVAL_SECONDS <= 60" in sampler
     assert "docker stats --no-stream" in sampler
+    assert ".State.Health" not in sampler
     assert "T946_RESTART_CONFIRM" in restart
     assert '"--apply"' in restart
     assert "docker compose" in restart

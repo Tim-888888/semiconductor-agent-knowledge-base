@@ -22,7 +22,7 @@ snapshot_state() {
   while IFS= read -r container; do
     [[ -n "$container" ]] || continue
     docker inspect --format \
-      '{{.Id}}|{{.Name}}|{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}|{{.RestartCount}}|{{.State.OOMKilled}}|{{.LogPath}}' \
+      '{{.Id}}|{{.Name}}|{{.State.Status}}|{{.RestartCount}}|{{.State.OOMKilled}}|{{.LogPath}}' \
       "$container" >> "$destination"
   done < <(docker ps --format '{{.Names}}' | sort)
 }

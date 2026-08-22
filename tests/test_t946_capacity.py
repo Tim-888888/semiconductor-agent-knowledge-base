@@ -10,6 +10,7 @@ from scripts.verify_t946_capacity import (
     SSEDecoder,
     StreamProbe,
     build_summary,
+    ingestion_metadata,
     parse_levels,
     percentile,
 )
@@ -40,6 +41,18 @@ def test_capacity_levels_are_hard_bounded() -> None:
     assert parse_levels("3,1,2,2") == [1, 2, 3]
     with pytest.raises(Exception, match="1..3"):
         parse_levels("1,4")
+
+
+def test_capacity_ingestion_uses_complete_published_governance() -> None:
+    metadata = ingestion_metadata()
+
+    assert metadata["approval_status"] == "approved"
+    assert metadata["lifecycle"] == "published"
+    assert metadata["source_id"] == "semikb.demo.synthetic"
+    assert metadata["source_manifest_version"] == "1.0.0"
+    assert metadata["dataset_version"] == "demo-v2"
+    assert metadata["source_license_status"] == "verified"
+    assert metadata["redistribution_policy"] == "allowed"
 
 
 def test_capacity_summary_counts_failures_and_provider_attempts() -> None:
