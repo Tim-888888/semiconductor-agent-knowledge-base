@@ -123,6 +123,22 @@ def test_deployment_scripts_keep_restore_and_stage_guards() -> None:
     assert 'source "$env_backup"' not in restore
 
 
+def test_t946_runtime_scripts_are_bounded_and_restart_requires_double_confirmation() -> None:
+    sampler = (ROOT / "scripts/deployment/sample_t946_runtime.sh").read_text(encoding="utf-8")
+    restart = (ROOT / "scripts/deployment/restart_t946_services.sh").read_text(encoding="utf-8")
+
+    assert "SAMPLES <= 900" in sampler
+    assert "INTERVAL_SECONDS <= 60" in sampler
+    assert "docker stats --no-stream" in sampler
+    assert "T946_RESTART_CONFIRM" in restart
+    assert '"--apply"' in restart
+    assert "docker compose" in restart
+    assert " restart \"$service\"" in restart
+    assert "docker compose down" not in restart
+    assert "docker system prune" not in restart
+    assert "docker volume rm" not in restart
+
+
 def test_alibaba_linux_installer_is_platform_gated_and_non_destructive() -> None:
     installer = (ROOT / "scripts/deployment/install_moby_alinux4.sh").read_text(encoding="utf-8")
 
