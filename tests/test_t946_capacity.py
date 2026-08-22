@@ -220,3 +220,13 @@ def test_state_comparison_ignores_capture_time_and_redis_queue_depth() -> None:
     after = {**base, "captured_at": "after", "redis": {"celery_queue_depth": 0}}
 
     assert compare_snapshots(base, after) == {"matched": True, "differences": {}}
+
+
+def test_state_snapshot_uses_strong_logical_milvus_count() -> None:
+    source = (Path(__file__).parents[1] / "scripts/verify_t946_state.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'output_fields=["count(*)"]' in source
+    assert 'consistency_level="Strong"' in source
+    assert "get_collection_stats" not in source

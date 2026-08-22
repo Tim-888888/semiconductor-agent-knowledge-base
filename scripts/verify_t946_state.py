@@ -44,7 +44,13 @@ def capture(settings: Settings) -> dict[str, Any]:
     active_collection = collection_name(settings.milvus_index_version)
     with factory.milvus() as client:
         alias = client.describe_alias("semikb_chunks_active")
-        stats = client.get_collection_stats(active_collection)
+        counts = client.query(
+            active_collection,
+            filter="",
+            output_fields=["count(*)"],
+            consistency_level="Strong",
+        )
+    logical_row_count = int(counts[0].get("count(*)", 0)) if counts else 0
 
     minio = factory.create_minio()
     minio_counts: dict[str, int] = {}
@@ -63,7 +69,8 @@ def capture(settings: Settings) -> dict[str, Any]:
         "milvus": {
             "active_collection": active_collection,
             "alias_collection": alias.get("collection_name"),
-            "row_count": int(stats.get("row_count", 0)),
+            "row_count": logical_row_count,
+            "row_count_consistency": "Strong",
         },
         "minio_object_counts": minio_counts,
         "redis": redis_state,
