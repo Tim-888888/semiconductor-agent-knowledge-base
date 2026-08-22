@@ -384,7 +384,7 @@ async def run_disconnect_probe(
             if "accepted" in seen_events and "stage" in seen_events:
                 break
 
-    deadline = time.monotonic() + 30
+    deadline = time.monotonic() + min(max(timeout, 30), 180)
     request_status = "unknown"
     while time.monotonic() < deadline:
         status_response = await client.get(
@@ -396,6 +396,16 @@ async def run_disconnect_probe(
         if request_status in {"cancelled", "failed", "completed"}:
             break
         await asyncio.sleep(0.5)
+
+    if request_status not in {"cancelled", "failed", "completed"}:
+        return {
+            "thread_id": thread_id,
+            "disconnected_request_status": request_status,
+            "events_before_disconnect": seen_events,
+            "recovery_status": "not_attempted",
+            "recovery_route": None,
+            "passed": False,
+        }
 
     recovery = await run_existing_thread_probe(
         client,
@@ -426,20 +436,26 @@ async def run_existing_thread_probe(
     request_id = f"req_t946_recovery_{int(time.time() * 1000)}"
     decoder = SSEDecoder()
     result: dict[str, Any] | None = None
-    async with client.stream(
-        "POST",
-        f"/api/v1/threads/{thread_id}/messages/stream",
-        headers=headers,
-        json={"content": content, "request_id": request_id},
-        timeout=timeout,
-    ) as response:
-        response.raise_for_status()
-        async for chunk in response.aiter_text():
-            for event in decoder.feed(chunk):
-                if event.get("event") == "completed":
-                    result = event.get("data", {}).get("result", {})
-                elif event.get("event") == "error":
-                    return {"status": "failed", "route": None}
+    for attempt in range(10):
+        async with client.stream(
+            "POST",
+            f"/api/v1/threads/{thread_id}/messages/stream",
+            headers=headers,
+            json={"content": content, "request_id": request_id},
+            timeout=timeout,
+        ) as response:
+            if response.status_code == 409 and attempt < 9:
+                await response.aread()
+                await asyncio.sleep(0.5)
+                continue
+            response.raise_for_status()
+            async for chunk in response.aiter_text():
+                for event in decoder.feed(chunk):
+                    if event.get("event") == "completed":
+                        result = event.get("data", {}).get("result", {})
+                    elif event.get("event") == "error":
+                        return {"status": "failed", "route": None}
+            break
     return {
         "status": "completed" if result is not None else "failed",
         "route": (result or {}).get("route_decision"),
@@ -512,11 +528,16 @@ async def verify(args: argparse.Namespace) -> dict[str, Any]:
                     "error_code": type(exc).__name__,
                     "detail": str(exc)[:500],
                 }
-        disconnect = (
-            None
-            if args.skip_disconnect
-            else await run_disconnect_probe(client, token, args.request_timeout)
-        )
+        disconnect: dict[str, Any] | None = None
+        if not args.skip_disconnect:
+            try:
+                disconnect = await run_disconnect_probe(client, token, args.request_timeout)
+            except Exception as exc:  # noqa: BLE001 - retain an acceptance artifact on failure
+                disconnect = {
+                    "error_code": type(exc).__name__,
+                    "detail": str(exc)[:500],
+                    "passed": False,
+                }
 
     summary = build_summary(probes)
     background_passed = background is None or (

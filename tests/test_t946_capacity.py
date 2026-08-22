@@ -87,6 +87,46 @@ async def test_capacity_token_creation_retries_bounded_auth_rate_limit(
     assert delays == [12]
 
 
+@pytest.mark.asyncio
+async def test_disconnect_recovery_retries_until_thread_lock_is_released(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+
+    async def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            return httpx.Response(409, json={"detail": "thread busy"})
+        return httpx.Response(
+            200,
+            text=(
+                'data: {"event":"completed","data":{"result":'
+                '{"route_decision":"chat_direct"}}}\n\n'
+            ),
+            headers={"content-type": "text/event-stream"},
+        )
+
+    async def fake_sleep(_: float) -> None:
+        return None
+
+    monkeypatch.setattr(capacity.asyncio, "sleep", fake_sleep)
+    async with httpx.AsyncClient(
+        base_url="http://test",
+        transport=httpx.MockTransport(handler),
+    ) as client:
+        result = await capacity.run_existing_thread_probe(
+            client,
+            headers={"Authorization": "Bearer test"},
+            thread_id="thread_test",
+            content="hello",
+            timeout=10,
+        )
+
+    assert attempts == 2
+    assert result == {"status": "completed", "route": "chat_direct"}
+
+
 def test_capacity_summary_counts_failures_and_provider_attempts() -> None:
     probes = [
         StreamProbe(
