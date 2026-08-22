@@ -135,6 +135,8 @@ def test_t946_runtime_scripts_are_bounded_and_restart_requires_double_confirmati
     assert '"--apply"' in restart
     assert "docker compose" in restart
     assert " restart \"$service\"" in restart
+    assert ".Config.Healthcheck" in restart
+    assert "{{if .State.Health}}" not in restart
     assert "docker compose down" not in restart
     assert "docker system prune" not in restart
     assert "docker volume rm" not in restart
