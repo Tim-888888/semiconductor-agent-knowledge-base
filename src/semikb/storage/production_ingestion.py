@@ -24,6 +24,7 @@ from semikb.storage.milvus_chunks import MilvusChunkRepository
 from semikb.storage.minio_artifacts import MinioArtifactRepository
 from semikb.storage.mongo_ingestion import MongoIngestionRepository
 from semikb.storage.source_manifests import MongoSourceManifestRepository
+from semikb_provider_resilience import ProviderAttemptAudit
 
 
 class ProductionIngestionStore:
@@ -115,6 +116,19 @@ class ProductionIngestionStore:
 
     def set_job_parse_audit(self, job_id: str, **kwargs: Any) -> IngestionJob:
         return self.mongo.set_job_parse_audit(job_id, **kwargs)
+
+    def record_provider_attempts(
+        self,
+        job_id: str,
+        attempts: Sequence[ProviderAttemptAudit],
+        *,
+        message: str,
+    ) -> IngestionJob:
+        return self.mongo.record_provider_attempts(
+            job_id,
+            attempts,
+            message=message,
+        )
 
     def store_source(self, **kwargs: Any) -> ObjectRef:
         return self.artifacts.store_source(**kwargs)

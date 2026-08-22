@@ -29,6 +29,9 @@ snapshot_state() {
 
 snapshot_state "$OUTPUT_DIR/container-state-before.txt"
 
+stop_requested=0
+trap 'stop_requested=1' TERM INT
+
 for ((index=1; index<=SAMPLES; index++)); do
   timestamp="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
   mem_available_kib="$(awk '/MemAvailable/ {print $2}' /proc/meminfo)"
@@ -40,8 +43,14 @@ for ((index=1; index<=SAMPLES; index++)); do
     "$timestamp" "$mem_available_kib" "$swap_total_kib" "$swap_free_kib" \
     "$root_available_bytes" "$load_1m" >> "$OUTPUT_DIR/host.jsonl"
   docker stats --no-stream --format '{{json .}}' >> "$OUTPUT_DIR/containers.jsonl"
+  if ((stop_requested == 1)); then
+    break
+  fi
   if ((index < SAMPLES)); then
-    sleep "$INTERVAL_SECONDS"
+    sleep "$INTERVAL_SECONDS" || true
+    if ((stop_requested == 1)); then
+      break
+    fi
   fi
 done
 

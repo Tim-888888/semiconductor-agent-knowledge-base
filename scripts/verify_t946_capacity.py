@@ -314,6 +314,13 @@ async def run_background_work(
     evaluation_response.raise_for_status()
     ingestion = upload_response.json()
     evaluation = evaluation_response.json()
+    if ingestion.get("status") == "failed":
+        retry_response = await client.post(
+            f"/api/v1/ingestion-jobs/{ingestion['job_id']}/retry",
+            headers=headers,
+        )
+        retry_response.raise_for_status()
+        ingestion = retry_response.json()
     started = time.perf_counter()
     ingestion_wait = wait_terminal(
         client,
@@ -384,9 +391,9 @@ async def run_disconnect_probe(
             if "accepted" in seen_events and "stage" in seen_events:
                 break
 
-    deadline = time.monotonic() + min(max(timeout, 30), 180)
+    auto_cancel_deadline = time.monotonic() + 5
     request_status = "unknown"
-    while time.monotonic() < deadline:
+    while time.monotonic() < auto_cancel_deadline:
         status_response = await client.get(
             f"/api/v1/threads/{thread_id}/message-requests/{request_id}",
             headers=headers,
@@ -397,6 +404,30 @@ async def run_disconnect_probe(
             break
         await asyncio.sleep(0.5)
 
+    cancel_endpoint_called = request_status not in {"cancelled", "failed", "completed"}
+    cancel_endpoint_status: int | None = None
+    if cancel_endpoint_called:
+        cancel_response = await client.post(
+            f"/api/v1/threads/{thread_id}/message-requests/{request_id}/cancel",
+            headers=headers,
+        )
+        cancel_endpoint_status = cancel_response.status_code
+        cancel_response.raise_for_status()
+        request_status = str(cancel_response.json().get("status", request_status))
+
+    terminal_deadline = time.monotonic() + 30
+    while (
+        request_status not in {"cancelled", "failed", "completed"}
+        and time.monotonic() < terminal_deadline
+    ):
+        status_response = await client.get(
+            f"/api/v1/threads/{thread_id}/message-requests/{request_id}",
+            headers=headers,
+        )
+        status_response.raise_for_status()
+        request_status = str(status_response.json().get("status"))
+        await asyncio.sleep(0.5)
+
     if request_status not in {"cancelled", "failed", "completed"}:
         return {
             "thread_id": thread_id,
@@ -404,6 +435,8 @@ async def run_disconnect_probe(
             "events_before_disconnect": seen_events,
             "recovery_status": "not_attempted",
             "recovery_route": None,
+            "cancel_endpoint_called": cancel_endpoint_called,
+            "cancel_endpoint_status": cancel_endpoint_status,
             "passed": False,
         }
 
@@ -418,6 +451,8 @@ async def run_disconnect_probe(
         "thread_id": thread_id,
         "disconnected_request_status": request_status,
         "events_before_disconnect": seen_events,
+        "cancel_endpoint_called": cancel_endpoint_called,
+        "cancel_endpoint_status": cancel_endpoint_status,
         "recovery_status": recovery["status"],
         "recovery_route": recovery.get("route"),
         "passed": request_status in {"cancelled", "failed", "completed"}

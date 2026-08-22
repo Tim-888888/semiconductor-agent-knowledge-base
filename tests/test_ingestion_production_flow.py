@@ -25,6 +25,7 @@ from semikb.rag_retrieval.encoders import (
 )
 from semikb.storage.memory import DemoStore
 from semikb.storage.production_ingestion import ProductionIngestionStore
+from semikb_provider_resilience import ProviderAttemptAudit
 
 
 def payload(document_id: str = "T4-TEST-SOP") -> dict[str, object]:
@@ -409,3 +410,33 @@ def test_production_stage_routes_tables_to_mongo_and_only_chunks_to_milvus() -> 
 
     assert store.mongo.staged_tables == [table]
     assert store.vectors.received_chunks == [chunk]
+
+
+def test_production_store_forwards_embedding_provider_attempt_audit() -> None:
+    attempt = ProviderAttemptAudit(
+        provider="qianwen-embedding",
+        operation="dense_sparse_embedding",
+        attempt=1,
+        max_attempts=2,
+        outcome="succeeded",
+        latency_ms=12.5,
+    )
+
+    class Mongo:
+        received: tuple[str, list[ProviderAttemptAudit], str] | None = None
+
+        def record_provider_attempts(self, job_id, attempts, *, message):
+            self.received = (job_id, list(attempts), message)
+            return "stored"
+
+    store = object.__new__(ProductionIngestionStore)
+    store.mongo = Mongo()
+
+    result = store.record_provider_attempts(
+        "ing_test",
+        [attempt],
+        message="credential-safe audit",
+    )
+
+    assert result == "stored"
+    assert store.mongo.received == ("ing_test", [attempt], "credential-safe audit")
