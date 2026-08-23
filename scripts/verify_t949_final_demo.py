@@ -39,7 +39,7 @@ class StreamResult:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--base-url", default="http://web")
+    parser.add_argument("--base-url", default="http://web:8080")
     parser.add_argument("--timeout", type=int, default=300)
     parser.add_argument("--output", type=Path)
     return parser.parse_args()

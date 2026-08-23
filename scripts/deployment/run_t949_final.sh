@@ -53,7 +53,7 @@ compose=(docker compose --env-file .env -f docker-compose.prod.yml)
 "${compose[@]}" ps > "$output_dir/compose-ps.txt"
 
 docker exec semikb-api-1 python -m scripts.verify_t949_final_demo \
-  --base-url http://web > "$output_dir/final-demo.json"
+  --base-url http://web:8080 > "$output_dir/final-demo.json"
 
 python3 scripts/verify_t948_security.py \
   --env .env --base-url http://127.0.0.1 \
