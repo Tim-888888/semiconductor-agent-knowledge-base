@@ -7,6 +7,12 @@
     "javascript": "assets/index-B-qNh5U6.js",
     "stylesheet": "assets/index-LDsfGknq.css"
   },
+  "screenshots": [
+    "desktop-clarification-collapsed.jpg",
+    "desktop-clarification-expanded.jpg",
+    "mobile-clarification-collapsed.jpg",
+    "mobile-clarification-expanded.jpg"
+  ],
   "desktop": {
     "viewport": {"width": 1440, "height": 900},
     "body": {"client_height": 900, "scroll_height": 900},
