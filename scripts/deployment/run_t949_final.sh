@@ -71,7 +71,7 @@ docker exec semikb-worker-1 celery -A semikb.workers.celery_app inspect ping --t
 curl -fsS http://127.0.0.1/api/v1/health > "$output_dir/health.json"
 ss -lntup > "$output_dir/listeners.txt"
 
-python3 scripts/summarize_t949_acceptance.py \
+python3 -m scripts.summarize_t949_acceptance \
   --evidence-dir "$output_dir" \
   --baseline docs/evidence/t9-4-8/state-after.json \
   --output "$output_dir/final-verdict.json"
