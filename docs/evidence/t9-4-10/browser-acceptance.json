@@ -1,0 +1,57 @@
+{
+  "stage": "T9-4.10",
+  "date": "2026-08-23",
+  "public_url": "http://112.74.99.143/",
+  "implementation_commit": "89096fb",
+  "assets": {
+    "javascript": "assets/index-B-qNh5U6.js",
+    "stylesheet": "assets/index-LDsfGknq.css"
+  },
+  "desktop": {
+    "viewport": {"width": 1440, "height": 900},
+    "body": {"client_height": 900, "scroll_height": 900},
+    "clarification": {"top": 160, "bottom": 219, "height": 59},
+    "notice_count": 0,
+    "collapsed": {
+      "composer": {"top": 793, "bottom": 900, "height": 107},
+      "textarea_height": 74,
+      "resize": "none"
+    },
+    "expanded": {
+      "composer": {"top": 543, "bottom": 900, "height": 357},
+      "textarea_height": 324,
+      "message_list_height": 324
+    },
+    "value_preserved": true
+  },
+  "mobile": {
+    "viewport": {"width": 390, "height": 844},
+    "document_scroll_width": 390,
+    "main": {"top": 58, "bottom": 844, "height": 786},
+    "clarification": {"top": 197, "bottom": 256, "height": 59},
+    "collapsed": {
+      "composer": {"top": 432, "bottom": 530, "height": 99},
+      "textarea_height": 74
+    },
+    "expanded": {
+      "composer": {"top": 284, "bottom": 613, "height": 329},
+      "textarea_height": 304
+    },
+    "value_preserved": true
+  },
+  "browser_console": {"errors": 0, "warnings": 0},
+  "deployment": {
+    "web_only": true,
+    "web_container_id": "b48af3b3fa4bb7acfd5dcea1fab3220813b49cf35b6a339d80efe5fb3dedda00",
+    "protected_container_ids_unchanged": true,
+    "protected_containers": {
+      "mongodb": "e6bd110ad3202d8448b470f4e7085192377c757d7fd65c7975be748eb8f94770",
+      "milvus_minio": "6c9133e777d257b103dfa97ced473e27bab93ad15ccf9e27d05330d60146cf96",
+      "milvus": "2f6827ca640e81452a9f368996b3d35b09797df7cda5315d92e26fdd2ab91afe",
+      "minio": "54dab754141ecb1f3398bed22fc6df12fee23bab0b815f900234053a7139e590",
+      "etcd": "9deab8ba18050f4f92bf9c18abe351093cb20e1ad849eca3d075b82e5a7837f6",
+      "redis": "ada0a643b6a62ba4d263337a80b580e1d70abb2127b03ba3a1e5004d1dae8fdd"
+    }
+  },
+  "result": "passed"
+}
