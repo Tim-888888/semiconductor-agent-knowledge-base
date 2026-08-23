@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from scripts.verify_t947_restore import aggregate_digest, compare_snapshots
+from types import SimpleNamespace
+
+from scripts import verify_t947_restore
+from scripts.verify_t947_restore import (
+    aggregate_digest,
+    compare_snapshots,
+    retrieval_smoke,
+)
 
 
 def _snapshot(*, mongo_hash: str = "mongo", queue_depth: int = 0) -> dict[str, object]:
@@ -44,3 +51,34 @@ def test_restore_snapshot_comparison_reports_changed_collection_and_queue() -> N
 
     assert comparison["matched"] is False
     assert set(comparison["differences"]) == {"mongodb", "redis"}
+
+
+def test_retrieval_smoke_uses_current_governed_case_scope(monkeypatch) -> None:
+    class FakeRetrievalService:
+        def __init__(self, settings: object) -> None:
+            assert settings is sentinel_settings
+
+        def search(self, query, actor_scope, **kwargs):
+            assert query == "ETCH-03 Chamber B 清腔后首片异常，当前 SOP 怎么要求？"
+            assert actor_scope.access_scope_keys == ["demo_engineering"]
+            assert actor_scope.fabs == ["FAB-01"]
+            assert actor_scope.products == ["P-ALPHA"]
+            assert actor_scope.tool_ids == ["ETCH-03"]
+            assert kwargs["options"].rerank is False
+            return [], SimpleNamespace(
+                final_evidence_ids=["SOP-ETCH-03-R2-001"],
+                routes=["dense", "sparse", "rrf", "rrf_only"],
+            )
+
+    sentinel_settings = object()
+    monkeypatch.setattr(
+        verify_t947_restore,
+        "ProductionRetrievalService",
+        FakeRetrievalService,
+    )
+
+    result = retrieval_smoke(sentinel_settings)
+
+    assert result["dataset_version"] == "demo-v2"
+    assert result["case_id"] == "eval-current-sop"
+    assert result["passed"] is True

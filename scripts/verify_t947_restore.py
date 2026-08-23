@@ -183,7 +183,7 @@ def compare_snapshots(before: dict[str, Any], after: dict[str, Any]) -> dict[str
 def retrieval_smoke(settings: Settings) -> dict[str, Any]:
     root = Path(__file__).resolve().parents[1]
     payload = json.loads(
-        (root / "data" / "golden_sets" / "t5_live_v1.json").read_text(encoding="utf-8")
+        (root / "data" / "golden_sets" / "demo_v2.json").read_text(encoding="utf-8")
     )
     case = EvaluationCase.model_validate(payload["cases"][0])
     service = ProductionRetrievalService(settings)
@@ -196,6 +196,7 @@ def retrieval_smoke(settings: Settings) -> dict[str, Any]:
     expected = set(case.expected_chunk_ids)
     actual = trace.final_evidence_ids
     return {
+        "dataset_version": payload["dataset_version"],
         "case_id": case.case_id,
         "expected_chunk_ids": sorted(expected),
         "actual_chunk_ids": actual,
