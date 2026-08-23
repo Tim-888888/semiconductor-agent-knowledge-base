@@ -195,13 +195,21 @@ def retrieval_smoke(settings: Settings) -> dict[str, Any]:
     )
     expected = set(case.expected_chunk_ids)
     actual = trace.final_evidence_ids
+    trace_id = str(trace.trace_id)
+    factory = StorageClientFactory(settings)
+    with factory.mongodb() as client:
+        traces = client[settings.mongodb_database].retrieval_traces
+        traces.delete_one({"trace_id": trace_id})
+        cleanup_verified = traces.count_documents({"trace_id": trace_id}) == 0
+    retrieval_passed = bool(expected.intersection(actual))
     return {
         "dataset_version": payload["dataset_version"],
         "case_id": case.case_id,
         "expected_chunk_ids": sorted(expected),
         "actual_chunk_ids": actual,
         "routes": trace.routes,
-        "passed": bool(expected.intersection(actual)),
+        "trace_cleanup_verified": cleanup_verified,
+        "passed": retrieval_passed and cleanup_verified,
     }
 
 

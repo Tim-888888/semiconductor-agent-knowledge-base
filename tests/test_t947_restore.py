@@ -54,6 +54,34 @@ def test_restore_snapshot_comparison_reports_changed_collection_and_queue() -> N
 
 
 def test_retrieval_smoke_uses_current_governed_case_scope(monkeypatch) -> None:
+    deleted_trace_ids: list[str] = []
+
+    class FakeCollection:
+        def delete_one(self, selector: dict[str, str]) -> None:
+            deleted_trace_ids.append(selector["trace_id"])
+
+        def count_documents(self, selector: dict[str, str]) -> int:
+            return 0 if selector["trace_id"] in deleted_trace_ids else 1
+
+    class FakeMongoClient:
+        def __enter__(self) -> FakeMongoClient:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def __getitem__(self, name: str) -> object:
+            if name == "semikb-test":
+                return SimpleNamespace(retrieval_traces=FakeCollection())
+            raise AssertionError(name)
+
+    class FakeStorageClientFactory:
+        def __init__(self, settings: object) -> None:
+            assert settings is sentinel_settings
+
+        def mongodb(self) -> FakeMongoClient:
+            return FakeMongoClient()
+
     class FakeRetrievalService:
         def __init__(self, settings: object) -> None:
             assert settings is sentinel_settings
@@ -66,19 +94,27 @@ def test_retrieval_smoke_uses_current_governed_case_scope(monkeypatch) -> None:
             assert actor_scope.tool_ids == ["ETCH-03"]
             assert kwargs["options"].rerank is False
             return [], SimpleNamespace(
+                trace_id="trace_smoke_1",
                 final_evidence_ids=["SOP-ETCH-03-R2-001"],
                 routes=["dense", "sparse", "rrf", "rrf_only"],
             )
 
-    sentinel_settings = object()
+    sentinel_settings = SimpleNamespace(mongodb_database="semikb-test")
     monkeypatch.setattr(
         verify_t947_restore,
         "ProductionRetrievalService",
         FakeRetrievalService,
+    )
+    monkeypatch.setattr(
+        verify_t947_restore,
+        "StorageClientFactory",
+        FakeStorageClientFactory,
     )
 
     result = retrieval_smoke(sentinel_settings)
 
     assert result["dataset_version"] == "demo-v2"
     assert result["case_id"] == "eval-current-sop"
+    assert result["trace_cleanup_verified"] is True
+    assert deleted_trace_ids == ["trace_smoke_1"]
     assert result["passed"] is True
