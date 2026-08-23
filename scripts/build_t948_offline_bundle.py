@@ -63,6 +63,20 @@ def compose_config(root: Path, env_path: Path, compose_path: Path) -> dict[str, 
     return json.loads(raw)
 
 
+def runtime_image_tag(config: dict[str, Any], service: str) -> str:
+    service_config = config["services"][service]
+    if image := service_config.get("image"):
+        return str(image)
+    if "build" in service_config:
+        project_name = str(config.get("name") or "").strip()
+        if not project_name:
+            raise SystemExit(
+                f"Compose service {service!r} uses build but the project has no fixed name."
+            )
+        return f"{project_name}-{service}:latest"
+    raise SystemExit(f"Compose service {service!r} defines neither image nor build.")
+
+
 def image_record(service: str, runtime_tag: str, source_ref: str, root: Path) -> dict[str, Any]:
     inspected = json.loads(run("docker", "image", "inspect", runtime_tag, cwd=root))[0]
     alias = f"semikb-offline/{service}:{source_ref[:12]}"
@@ -101,7 +115,7 @@ def main() -> None:
         raise SystemExit(f"Compose is missing required services: {', '.join(missing_services)}")
 
     records = [
-        image_record(service, config["services"][service]["image"], source_ref, root)
+        image_record(service, runtime_image_tag(config, service), source_ref, root)
         for service in SERVICES
     ]
     unique_image_sizes = {

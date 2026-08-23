@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from scripts.build_t948_offline_bundle import SERVICES, sha256_file
+from scripts.build_t948_offline_bundle import SERVICES, runtime_image_tag, sha256_file
 from scripts.verify_t948_offline_bundle import checksum_entries
 
 
@@ -30,6 +30,19 @@ def test_t948_offline_bundle_covers_every_production_service() -> None:
         "worker",
         "web",
     )
+
+
+def test_t948_runtime_image_tag_supports_pulled_and_compose_built_images() -> None:
+    config = {
+        "name": "semikb",
+        "services": {
+            "mongodb": {"image": "mongo:8.2.6"},
+            "api": {"build": {"context": "."}},
+        },
+    }
+
+    assert runtime_image_tag(config, "mongodb") == "mongo:8.2.6"
+    assert runtime_image_tag(config, "api") == "semikb-api:latest"
 
 
 def test_t948_bundle_uses_an_explicit_git_archive_instead_of_the_worktree() -> None:
