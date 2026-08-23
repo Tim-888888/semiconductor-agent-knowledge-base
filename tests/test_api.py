@@ -3,14 +3,17 @@ from __future__ import annotations
 import json
 from types import SimpleNamespace
 
+import jwt
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from semikb.api.main import _enqueue_ingestion, app
+from semikb.api.auth import get_actor_scope
+from semikb.api.main import _enqueue_ingestion, app, get_app_container
 from semikb.bootstrap import get_container
 from semikb.config import Settings, get_settings
 from semikb.contracts.models import IngestionStatus
+from semikb.demo_factory import demo_actor_scope
 from semikb.rag_ingestion.service import IngestionService
 from semikb.rag_retrieval.encoders import DeterministicHybridEncoder
 from semikb.storage.memory import DemoStore
@@ -88,7 +91,11 @@ def test_production_demo_token_requires_configured_access_key() -> None:
 
     app.dependency_overrides[get_app_settings] = lambda: protected
     client = TestClient(app)
-    payload = {"user_id": "test_engineer", "roles": ["engineer"]}
+    payload = {
+        "user_id": "client_selected_identity",
+        "roles": ["admin"],
+        "access_scope_keys": ["client_selected_scope"],
+    }
     try:
         assert client.post("/api/v1/auth/demo-token", json=payload).status_code == 401
         assert client.post(
@@ -106,6 +113,40 @@ def test_production_demo_token_requires_configured_access_key() -> None:
 
     assert accepted.status_code == 200
     assert accepted.json()["token_type"] == "bearer"
+    claims = jwt.decode(
+        accepted.json()["access_token"],
+        protected.jwt_secret,
+        algorithms=[protected.jwt_algorithm],
+    )
+    assert claims["sub"] == "demo_engineer"
+    assert claims["scope"] == {
+        "user_id": "demo_engineer",
+        "roles": ["engineer", "knowledge_admin"],
+        "access_scope_keys": ["demo_engineering"],
+        "fabs": ["FAB-01"],
+        "products": ["P-ALPHA"],
+        "tool_ids": ["ETCH-03"],
+    }
+
+
+def test_production_demo_token_accepts_no_client_identity_body() -> None:
+    protected = Settings(
+        _env_file=None,
+        app_env="production",
+        demo_access_key="deployment-access-code",
+    )
+    from semikb.api.main import get_app_settings
+
+    app.dependency_overrides[get_app_settings] = lambda: protected
+    try:
+        response = TestClient(app).post(
+            "/api/v1/auth/demo-token",
+            headers={"X-Demo-Access-Key": "deployment-access-code"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
 
 
 def test_production_demo_token_fails_closed_without_access_key_configuration() -> None:
@@ -122,6 +163,25 @@ def test_production_demo_token_fails_closed_without_access_key_configuration() -
         app.dependency_overrides.clear()
 
     assert response.status_code == 503
+
+
+def test_production_demo_seed_endpoint_is_disabled_before_mutation() -> None:
+    seeded: list[bool] = []
+    fake_container = SimpleNamespace(
+        settings=Settings(_env_file=None, app_env="production", demo_mode=False),
+        seed_demo_data=lambda: seeded.append(True),
+    )
+    app.dependency_overrides[get_app_container] = lambda: fake_container
+    app.dependency_overrides[get_actor_scope] = lambda: demo_actor_scope(
+        roles=["knowledge_admin"]
+    )
+    try:
+        response = TestClient(app).post("/api/v1/demo/seed")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+    assert not seeded
 
 
 def test_api_accepts_markdown_upload_as_an_ingestion_job() -> None:

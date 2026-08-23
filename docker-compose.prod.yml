@@ -277,7 +277,7 @@ services:
     build:
       context: ./web
     ports:
-      - "80:80"
+      - "80:8080"
     networks:
       - edge
       - assets
@@ -287,10 +287,15 @@ services:
       minio:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
       interval: 10s
       timeout: 3s
       retries: 10
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
     mem_limit: 64m
     cpus: 0.20
     pids_limit: 100

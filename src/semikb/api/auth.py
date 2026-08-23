@@ -19,6 +19,17 @@ def create_demo_token(scope: ActorScope, settings: Settings) -> str:
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
+def resolve_demo_token_scope(
+    requested_scope: ActorScope | None,
+    settings: Settings,
+) -> ActorScope:
+    """Use a server-owned identity for the shared production demonstration."""
+
+    if settings.app_env.lower() == "production":
+        return demo_actor_scope(roles=["engineer", "knowledge_admin"])
+    return requested_scope or demo_actor_scope(roles=["engineer", "knowledge_admin"])
+
+
 def get_actor_scope(
     settings: Annotated[Settings, Depends(get_settings)],
     authorization: Annotated[str | None, Header()] = None,

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import (
+    Body,
     Depends,
     FastAPI,
     File,
@@ -25,7 +26,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 
-from semikb.api.auth import create_demo_token, get_actor_scope
+from semikb.api.auth import create_demo_token, get_actor_scope, resolve_demo_token_scope
 from semikb.bootstrap import ApplicationContainer, get_container
 from semikb.config import Settings
 from semikb.contracts.corpus import (
@@ -143,8 +144,8 @@ def live() -> dict[str, str]:
 
 @app.post("/api/v1/auth/demo-token")
 def issue_demo_token(
-    scope: ActorScope,
     settings: Annotated[Settings, Depends(get_app_settings)],
+    scope: Annotated[ActorScope | None, Body()] = None,
     x_demo_access_key: Annotated[str | None, Header(alias="X-Demo-Access-Key")] = None,
 ) -> dict[str, str]:
     if settings.demo_access_key:
@@ -161,11 +162,18 @@ def issue_demo_token(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Demo access key is not configured.",
         )
-    return {"access_token": create_demo_token(scope, settings), "token_type": "bearer"}
+    token_scope = resolve_demo_token_scope(scope, settings)
+    return {"access_token": create_demo_token(token_scope, settings), "token_type": "bearer"}
 
 
 @app.post("/api/v1/demo/seed")
-def seed_demo(container: Annotated[ApplicationContainer, Depends(get_app_container)]) -> dict[str, int]:
+def seed_demo(
+    container: Annotated[ApplicationContainer, Depends(get_app_container)],
+    actor_scope: Annotated[ActorScope, Depends(get_actor_scope)],
+) -> dict[str, int]:
+    if not container.settings.demo_mode:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found.")
+    _require_knowledge_admin(actor_scope)
     container.seed_demo_data()
     return {
         "documents": len(container.store.documents),

@@ -5,19 +5,45 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
 seed_demo=false
-if [[ "${1:-}" == "--seed-demo" ]]; then
-  seed_demo=true
-elif [[ $# -gt 0 ]]; then
-  echo "Usage: $0 [--seed-demo]" >&2
-  exit 2
-fi
+offline=false
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --seed-demo)
+      seed_demo=true
+      ;;
+    --offline)
+      offline=true
+      ;;
+    *)
+      echo "Usage: $0 [--seed-demo] [--offline]" >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
 
 ./scripts/deployment/host_preflight.sh .env
 ./scripts/deployment/prepare_data_dirs.sh .env
 docker compose --env-file .env -f docker-compose.prod.yml config --quiet
-docker compose --env-file .env -f docker-compose.prod.yml pull --policy missing \
-  etcd milvus-minio milvus mongodb minio redis
-docker compose --env-file .env -f docker-compose.prod.yml build api worker web milvus-init
+if [[ "$offline" == "true" ]]; then
+  mapfile -t required_images < <(
+    docker compose --env-file .env -f docker-compose.prod.yml config --images | sort -u
+  )
+  missing_images=()
+  for image in "${required_images[@]}"; do
+    if ! docker image inspect "$image" >/dev/null 2>&1; then
+      missing_images+=("$image")
+    fi
+  done
+  if (( ${#missing_images[@]} > 0 )); then
+    printf 'Offline deployment is missing image: %s\n' "${missing_images[@]}" >&2
+    exit 1
+  fi
+else
+  docker compose --env-file .env -f docker-compose.prod.yml pull --policy missing \
+    etcd milvus-minio milvus mongodb minio redis
+  docker compose --env-file .env -f docker-compose.prod.yml build api worker web milvus-init
+fi
 docker compose --env-file .env -f docker-compose.prod.yml up -d etcd milvus-minio milvus mongodb minio redis
 docker compose --env-file .env -f docker-compose.prod.yml up -d milvus-init
 milvus_init_id="$(docker compose --env-file .env -f docker-compose.prod.yml ps -q milvus-init)"

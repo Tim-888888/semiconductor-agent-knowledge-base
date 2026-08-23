@@ -72,7 +72,7 @@ def test_production_compose_is_single_node_hardened_and_exposes_only_web() -> No
     ):
         assert image in compose
     assert compose.count("ports:") == 1
-    assert '"80:80"' in compose
+    assert '"80:8080"' in compose
     assert "internal: true" in compose
     assert "assets:" in compose
     assert "--requirepass" in compose
@@ -83,6 +83,10 @@ def test_production_compose_is_single_node_hardened_and_exposes_only_web() -> No
     assert "--concurrency=1" in compose
     assert compose.count("mem_limit:") == 10
     assert "MINIO_PUBLIC_BASE_URL: /objects" in compose
+    web_section = compose.split("  web:\n", maxsplit=1)[1].split("\nnetworks:", maxsplit=1)[0]
+    assert "read_only: true" in web_section
+    assert "cap_drop:\n      - ALL" in web_section
+    assert "/tmp:size=64m,mode=1777" in web_section
 
 
 def test_production_python_image_uses_hashed_dependency_lock() -> None:
@@ -109,6 +113,9 @@ def test_deployment_scripts_keep_restore_and_stage_guards() -> None:
 
     assert "host_preflight.sh" in deploy
     assert "pull --policy missing" in deploy
+    assert 'if [[ "$offline" == "true" ]]' in deploy
+    assert "config --images" in deploy
+    assert "Offline deployment is missing image" in deploy
     assert "semikb.storage.provisioning" in deploy
     assert 'docker wait "$milvus_init_id"' in deploy
     assert "--seed-demo" in deploy
@@ -142,7 +149,20 @@ def test_production_compose_can_bind_an_independent_restore_environment() -> Non
     compose = (ROOT / "docker-compose.prod.yml").read_text(encoding="utf-8")
 
     assert compose.count("env_file: ${SEMIKB_APP_ENV_FILE:-.env}") == 2
-    assert 'ports:\n      - "80:80"' in compose
+    assert 'ports:\n      - "80:8080"' in compose
+
+
+def test_web_image_runs_nginx_as_non_root_on_an_unprivileged_port() -> None:
+    dockerfile = (ROOT / "web/Dockerfile").read_text(encoding="utf-8")
+    nginx = (ROOT / "web/nginx.conf").read_text(encoding="utf-8")
+    nginx_main = (ROOT / "web/nginx-main.conf").read_text(encoding="utf-8")
+
+    assert "USER 101:101" in dockerfile
+    assert "EXPOSE 8080" in dockerfile
+    assert 'ENTRYPOINT ["nginx"]' in dockerfile
+    assert "listen 8080;" in nginx
+    assert "pid /tmp/nginx.pid;" in nginx_main
+    assert "client_body_temp_path /tmp/client_temp;" in nginx_main
 
 
 def test_t946_runtime_scripts_are_bounded_and_restart_requires_double_confirmation() -> None:

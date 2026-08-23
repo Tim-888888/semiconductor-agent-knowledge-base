@@ -68,15 +68,7 @@ export async function bootstrapToken(accessKey = ""): Promise<void> {
   if (accessKey) headers.set("X-Demo-Access-Key", accessKey);
   const response = await request<{ access_token: string }>("/auth/demo-token", {
     method: "POST",
-    headers,
-    body: JSON.stringify({
-      user_id: "demo_engineer",
-      roles: ["engineer", "knowledge_admin"],
-      access_scope_keys: ["demo_engineering"],
-      fabs: ["FAB-01"],
-      products: ["P-ALPHA"],
-      tool_ids: ["ETCH-03"]
-    })
+    headers
   });
   token = response.access_token;
 }
