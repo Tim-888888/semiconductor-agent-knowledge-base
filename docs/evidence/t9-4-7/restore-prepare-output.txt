@@ -1,0 +1,6 @@
+Cold restore prepared in independent data root: /opt/semiconductor-agent-knowledge-base-restore-t947-data
+Protected restore environment created: /opt/semiconductor-agent-knowledge-base-backups/t947-restore.env
+Restore plan created: /opt/semiconductor-agent-knowledge-base-backups/t947-restore.env.plan.json
+Start only the isolated project with docker compose -p semikb-restore-t947 --env-file /opt/semiconductor-agent-knowledge-base-backups/t947-restore.env.
+restore_prepare_elapsed_seconds=6
+restore_prepare_rc=0

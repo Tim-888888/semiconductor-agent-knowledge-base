@@ -1,0 +1,6 @@
+Environment checksum validation failed.
+checksum_guard_rc=1 target_exists=no env_exists=no
+Refusing restore because target is not empty: /opt/semikb-t947-negative-nonempty
+nonempty_guard_rc=1 sentinel_exists=yes env_exists=no
+Restore target must differ from the source data root.
+live_target_guard_rc=2 env_exists=no

@@ -1,0 +1,2 @@
+/opt/semiconductor-agent-knowledge-base-backups/semikb-20260823T041454Z.tar.gz: OK
+/opt/semiconductor-agent-knowledge-base-backups/semikb-20260823T041454Z.env: OK

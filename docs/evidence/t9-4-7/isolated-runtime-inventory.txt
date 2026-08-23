@@ -1,0 +1,25 @@
+[restore containers]
+semikb-restore-t947-api-1|113cce035672|Up 48 seconds (healthy)|8000/tcp
+semikb-restore-t947-milvus-init-1|65114fa3516b|Exited (0) 48 seconds ago|
+semikb-restore-t947-milvus-1|1ac69d836ede|Up About a minute (healthy)|
+semikb-restore-t947-milvus-minio-1|592d98e03692|Up About a minute (healthy)|
+semikb-restore-t947-mongodb-1|7d4de4c594cf|Up About a minute (healthy)|
+semikb-restore-t947-minio-1|d35ced4d6d8d|Up About a minute (healthy)|
+semikb-restore-t947-redis-1|a4fad11ffb3c|Up About a minute (healthy)|
+semikb-restore-t947-etcd-1|4dac06ac8227|Up About a minute (healthy)|
+[restore mounts]
+/semikb-restore-t947-api-1|
+/semikb-restore-t947-milvus-init-1|
+/semikb-restore-t947-milvus-1|bind:/opt/semiconductor-agent-knowledge-base-restore-t947-data/milvus/data->/var/lib/milvus:rw=true;
+/semikb-restore-t947-milvus-minio-1|bind:/opt/semiconductor-agent-knowledge-base-restore-t947-data/milvus/minio->/minio_data:rw=true;volume:/var/lib/docker/volumes/6365d319684bd84ba6df9a2500d4071c8906e61096e7d00f4056738131151c81/_data->/data:rw=true;
+/semikb-restore-t947-mongodb-1|bind:/opt/semiconductor-agent-knowledge-base/deploy/mongodb/init-semikb.sh->/docker-entrypoint-initdb.d/10-init-semikb.sh:rw=false;volume:/var/lib/docker/volumes/d38d6108eb1f8a1733857f36620a180706ef3a2d9cc88b26af5cb25a106ab3ef/_data->/data/configdb:rw=true;bind:/opt/semiconductor-agent-knowledge-base-restore-t947-data/mongodb->/data/db:rw=true;
+/semikb-restore-t947-minio-1|bind:/opt/semiconductor-agent-knowledge-base-restore-t947-data/minio->/data:rw=true;
+/semikb-restore-t947-redis-1|bind:/opt/semiconductor-agent-knowledge-base-restore-t947-data/redis->/data:rw=true;
+/semikb-restore-t947-etcd-1|bind:/opt/semiconductor-agent-knowledge-base-restore-t947-data/milvus/etcd->/etcd:rw=true;
+[live protected containers]
+/semikb-etcd-1|9deab8ba18050f4f92bf9c18abe351093cb20e1ad849eca3d075b82e5a7837f6|running
+/semikb-milvus-1|2f6827ca640e81452a9f368996b3d35b09797df7cda5315d92e26fdd2ab91afe|running
+/semikb-milvus-minio-1|6c9133e777d257b103dfa97ced473e27bab93ad15ccf9e27d05330d60146cf96|running
+/semikb-minio-1|54dab754141ecb1f3398bed22fc6df12fee23bab0b815f900234053a7139e590|running
+/semikb-mongodb-1|e6bd110ad3202d8448b470f4e7085192377c757d7fd65c7975be748eb8f94770|running
+/semikb-redis-1|ada0a643b6a62ba4d263337a80b580e1d70abb2127b03ba3a1e5004d1dae8fdd|running

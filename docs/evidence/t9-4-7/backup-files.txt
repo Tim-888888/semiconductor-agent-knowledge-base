@@ -1,0 +1,3 @@
+600 190703528 /opt/semiconductor-agent-knowledge-base-backups/semikb-20260823T041454Z.tar.gz
+600 3697 /opt/semiconductor-agent-knowledge-base-backups/semikb-20260823T041454Z.env
+600 564 /opt/semiconductor-agent-knowledge-base-backups/semikb-20260823T041454Z.manifest.json

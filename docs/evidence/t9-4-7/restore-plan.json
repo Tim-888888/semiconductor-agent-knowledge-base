@@ -1,0 +1,11 @@
+{
+  "schema": "semikb-t947-independent-restore-v1",
+  "prepared_at": "2026-08-23T04:18:37.784983+00:00",
+  "archive_name": "semikb-20260823T041454Z.tar.gz",
+  "archive_sha256": "60f5545c08e87de0ecaf097bf67be03343b2c7a973416493cb719d40cda3a384",
+  "source_data_root": "/opt/semiconductor-agent-knowledge-base-data",
+  "target_data_root": "/opt/semiconductor-agent-knowledge-base-restore-t947-data",
+  "restore_env": "/opt/semiconductor-agent-knowledge-base-backups/t947-restore.env",
+  "project_name": "semikb-restore-t947",
+  "live_environment_overwritten": false
+}

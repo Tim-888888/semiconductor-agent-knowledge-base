@@ -1,0 +1,83 @@
+{
+  "project": "semikb-restore-t947",
+  "selected_services": {
+    "mongodb": {
+      "ports": [],
+      "bind_mounts": [
+        {
+          "source": "/opt/semiconductor-agent-knowledge-base-restore-t947-data/mongodb",
+          "target": "/data/db",
+          "read_only": false
+        },
+        {
+          "source": "/opt/semiconductor-agent-knowledge-base/deploy/mongodb/init-semikb.sh",
+          "target": "/docker-entrypoint-initdb.d/10-init-semikb.sh",
+          "read_only": true
+        }
+      ]
+    },
+    "redis": {
+      "ports": [],
+      "bind_mounts": [
+        {
+          "source": "/opt/semiconductor-agent-knowledge-base-restore-t947-data/redis",
+          "target": "/data",
+          "read_only": false
+        }
+      ]
+    },
+    "minio": {
+      "ports": [],
+      "bind_mounts": [
+        {
+          "source": "/opt/semiconductor-agent-knowledge-base-restore-t947-data/minio",
+          "target": "/data",
+          "read_only": false
+        }
+      ]
+    },
+    "etcd": {
+      "ports": [],
+      "bind_mounts": [
+        {
+          "source": "/opt/semiconductor-agent-knowledge-base-restore-t947-data/milvus/etcd",
+          "target": "/etcd",
+          "read_only": false
+        }
+      ]
+    },
+    "milvus-minio": {
+      "ports": [],
+      "bind_mounts": [
+        {
+          "source": "/opt/semiconductor-agent-knowledge-base-restore-t947-data/milvus/minio",
+          "target": "/minio_data",
+          "read_only": false
+        }
+      ]
+    },
+    "milvus": {
+      "ports": [],
+      "bind_mounts": [
+        {
+          "source": "/opt/semiconductor-agent-knowledge-base-restore-t947-data/milvus/data",
+          "target": "/var/lib/milvus",
+          "read_only": false
+        }
+      ]
+    },
+    "milvus-init": {
+      "ports": [],
+      "bind_mounts": []
+    },
+    "api": {
+      "ports": [],
+      "bind_mounts": []
+    }
+  },
+  "selected_have_published_ports": false,
+  "all_mutable_bind_sources_isolated": true,
+  "immutable_project_bind_sources": [
+    "/opt/semiconductor-agent-knowledge-base/deploy/mongodb/init-semikb.sh"
+  ]
+}

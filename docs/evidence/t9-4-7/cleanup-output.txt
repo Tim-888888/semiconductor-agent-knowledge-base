@@ -1,0 +1,45 @@
+ Container semikb-restore-t947-api-1  Stopping
+ Container semikb-restore-t947-api-1  Stopped
+ Container semikb-restore-t947-api-1  Removing
+ Container semikb-restore-t947-api-1  Removed
+ Container semikb-restore-t947-milvus-init-1  Stopping
+ Container semikb-restore-t947-mongodb-1  Stopping
+ Container semikb-restore-t947-redis-1  Stopping
+ Container semikb-restore-t947-minio-1  Stopping
+ Container semikb-restore-t947-milvus-init-1  Stopped
+ Container semikb-restore-t947-milvus-init-1  Removing
+ Container semikb-restore-t947-milvus-init-1  Removed
+ Container semikb-restore-t947-milvus-1  Stopping
+ Container semikb-restore-t947-minio-1  Stopped
+ Container semikb-restore-t947-minio-1  Removing
+ Container semikb-restore-t947-minio-1  Removed
+ Container semikb-restore-t947-mongodb-1  Stopped
+ Container semikb-restore-t947-mongodb-1  Removing
+ Container semikb-restore-t947-mongodb-1  Removed
+ Container semikb-restore-t947-redis-1  Stopped
+ Container semikb-restore-t947-redis-1  Removing
+ Container semikb-restore-t947-redis-1  Removed
+ Container semikb-restore-t947-milvus-1  Stopped
+ Container semikb-restore-t947-milvus-1  Removing
+ Container semikb-restore-t947-milvus-1  Removed
+ Container semikb-restore-t947-milvus-minio-1  Stopping
+ Container semikb-restore-t947-etcd-1  Stopping
+ Container semikb-restore-t947-etcd-1  Stopped
+ Container semikb-restore-t947-etcd-1  Removing
+ Container semikb-restore-t947-etcd-1  Removed
+ Container semikb-restore-t947-milvus-minio-1  Stopped
+ Container semikb-restore-t947-milvus-minio-1  Removing
+ Container semikb-restore-t947-milvus-minio-1  Removed
+ Network semikb-restore-t947_assets  Removing
+ Network semikb-restore-t947_edge  Removing
+ Network semikb-restore-t947_data  Removing
+ Network semikb-restore-t947_edge  Removed
+ Network semikb-restore-t947_data  Removed
+ Network semikb-restore-t947_assets  Removed
+Independent T9-4.7 restore copy removed: /opt/semiconductor-agent-knowledge-base-restore-t947-data
+cleanup_elapsed_seconds=12
+cleanup_rc=0
+Untagged: semikb-restore-t947-api:latest
+Deleted: sha256:af8da51f4abe8a01a899163c8eb33b2889f098169e30ba89240155fdc4127928
+Untagged: semikb-restore-t947-milvus-init:latest
+Deleted: sha256:2b1614e4b953c4d8e8bb91d87ccd14877fe013b6d9d68995122367b3d505e4a0

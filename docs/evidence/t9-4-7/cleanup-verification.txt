@@ -1,0 +1,4 @@
+remaining_restore_containers=0
+remaining_restore_networks=0
+restore_root_exists=no
+restore_env_exists=no
