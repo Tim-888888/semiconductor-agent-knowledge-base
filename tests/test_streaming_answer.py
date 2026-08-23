@@ -85,3 +85,63 @@ def test_streaming_answer_adds_cited_fact_before_non_fact_units() -> None:
     assert answer.facts[0].text == ledger[0].content
     assert "deterministic_fact_added_without_valid_model_fact" in assembler.warnings
     assert "".join(deltas) == format_answer(answer)
+
+
+def test_streaming_answer_rejects_full_dataset_total_from_truncated_preview() -> None:
+    deltas: list[str] = []
+    ledger = [
+        EvidenceLedgerEntry(
+            evidence_id="chunk:dataset-profile",
+            source_type="internal_controlled",
+            content=(
+                "Observed rows: 200\nColumn count: 590\n"
+                "Sample truncated: true\nColumns truncated: true"
+            ),
+        )
+    ]
+    assembler = StreamingAnswerAssembler(ledger, deltas.append)
+
+    assembler.feed(
+        json.dumps(
+            {
+                "type": "fact",
+                "text": "该数据集包含 200 个样本，共有 590 列。",
+                "citation_ids": ["chunk:dataset-profile"],
+            },
+            ensure_ascii=False,
+        )
+    )
+    assembler.feed(json.dumps({"type": "confidence", "value": "medium"}))
+    answer = assembler.finish()
+
+    assert answer.facts[0].text == ledger[0].content
+    assert "bounded_preview_total_claim_removed" in assembler.warnings
+    assert "deterministic_fact_added_without_valid_model_fact" in assembler.warnings
+    assert "".join(deltas) == format_answer(answer)
+
+
+def test_streaming_answer_keeps_explicitly_qualified_preview_count() -> None:
+    ledger = [
+        EvidenceLedgerEntry(
+            evidence_id="chunk:dataset-profile",
+            source_type="internal_controlled",
+            content="Observed preview rows: 200\nSample truncated: true",
+        )
+    ]
+    assembler = StreamingAnswerAssembler(ledger, lambda _: None)
+
+    assembler.feed(
+        json.dumps(
+            {
+                "type": "fact",
+                "text": "当前预览观测到 200 行，且证据标记为截断样本。",
+                "citation_ids": ["chunk:dataset-profile"],
+            },
+            ensure_ascii=False,
+        )
+    )
+    assembler.feed(json.dumps({"type": "confidence", "value": "medium"}))
+    answer = assembler.finish()
+
+    assert answer.facts[0].text == "当前预览观测到 200 行，且证据标记为截断样本。"
+    assert "bounded_preview_total_claim_removed" not in assembler.warnings

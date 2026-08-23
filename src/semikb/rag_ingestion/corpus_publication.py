@@ -490,10 +490,12 @@ class CorpusPublicationService:
                 [
                     f"## Sheet: {sheet.name}",
                     "",
-                    f"- Observed rows: {sheet.observed_rows}",
+                    f"- Observed preview rows: {sheet.observed_rows}",
                     f"- Column count: {sheet.column_count}",
                     f"- Sample truncated: {str(sheet.sample_truncated).lower()}",
                     f"- Columns truncated: {str(sheet.columns_truncated).lower()}",
+                    "- Full row count: "
+                    + ("unknown from this bounded preview" if sheet.sample_truncated else str(sheet.observed_rows)),
                     "",
                     "### Data dictionary",
                     "",

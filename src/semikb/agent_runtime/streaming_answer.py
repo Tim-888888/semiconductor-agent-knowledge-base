@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from typing import Any
 
@@ -71,6 +72,11 @@ class StreamingAnswerAssembler:
         }
         self._source_by_id = {item.evidence_id: item.source_type for item in ledger}
         self._has_internal = any(item.source_type == "internal_controlled" for item in ledger)
+        self._bounded_preview_ids = {
+            item.evidence_id
+            for item in ledger
+            if self._is_bounded_preview(item.content)
+        }
 
     def feed(self, delta: str) -> None:
         if not delta:
@@ -216,9 +222,50 @@ class StreamingAnswerAssembler:
         ):
             self.warnings.append("external_only_fact_removed_when_internal_evidence_exists")
             return None
+        if fact and any(
+            citation in self._bounded_preview_ids for citation in normalized
+        ) and self._overstates_bounded_preview(text):
+            self.warnings.append("bounded_preview_total_claim_removed")
+            return None
         if not fact:
             text = text.replace("根因是", "待验证假设是")
         return AnswerClaim(text=text, citation_ids=normalized)
+
+    @staticmethod
+    def _is_bounded_preview(content: str) -> bool:
+        normalized = content.lower()
+        return bool(
+            re.search(
+                r"(?:sample|rows?|columns?|preview)[ _-]*truncated\s*[:=]\s*true",
+                normalized,
+            )
+        )
+
+    @staticmethod
+    def _overstates_bounded_preview(text: str) -> bool:
+        normalized = text.lower()
+        bounded_qualifiers = (
+            "当前预览",
+            "检索片段",
+            "截断",
+            "抽样",
+            "观测到",
+            "observed",
+            "preview",
+            "sampled",
+            "truncated",
+            "partial",
+        )
+        if any(qualifier in normalized for qualifier in bounded_qualifiers):
+            return False
+        population_claims = (
+            r"数据集.{0,12}(?:包含|共有|总计|总共|有)\s*\d+",
+            r"(?:文件|数据).{0,8}(?:包含|共有|总计|总共|有)\s*\d+\s*(?:行|列|条|个)",
+            r"总(?:样本|行|列|记录)数.{0,8}\d+",
+            r"\b(?:dataset|file|data)\b.{0,24}\b(?:contains?|has|total)\b.{0,12}\d+",
+            r"\b\d+\s+(?:total\s+)?(?:samples?|rows?|columns?|records?)\b",
+        )
+        return any(re.search(pattern, normalized) for pattern in population_claims)
 
     @staticmethod
     def _clean_text(value: Any) -> str:

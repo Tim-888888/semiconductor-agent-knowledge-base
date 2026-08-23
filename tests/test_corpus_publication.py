@@ -205,6 +205,8 @@ def test_publication_reuses_governed_ingestion_and_reconciles_all_stores() -> No
         if chunk.document_id == table_document.document_id
     ]
     assert any("Raw rows are retained privately" in text for text in table_chunks)
+    assert any("Observed preview rows: 2" in text for text in table_chunks)
+    assert any("Full row count: 2" in text for text in table_chunks)
     assert not any("1,0" in text or "2,1" in text for text in table_chunks)
 
 

@@ -1375,6 +1375,10 @@ class ConversationGraph:
                                 "confidence object. Claim objects use {type,text,citation_ids}; unknown and next_action use "
                                 "{type,text}; confidence uses {type,value}. Every fact must cite one or more exact evidence_id "
                                 "values. Confidence value must be low, medium, or high."
+                                " Counts marked observed, preview, sampled, partial, or accompanied by a true "
+                                "truncation flag describe only the bounded evidence representation. Never present "
+                                "them as totals for the full source; preserve the qualifier and state that the full "
+                                "count is unknown unless separate evidence proves it."
                             ),
                         },
                         {
