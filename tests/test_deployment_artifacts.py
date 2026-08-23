@@ -163,6 +163,9 @@ def test_web_image_runs_nginx_as_non_root_on_an_unprivileged_port() -> None:
     assert "listen 8080;" in nginx
     assert "pid /tmp/nginx.pid;" in nginx_main
     assert "client_body_temp_path /tmp/client_temp;" in nginx_main
+    assert '"$request_method $uri $server_protocol"' in nginx_main
+    assert '"$request"' not in nginx_main
+    assert "$http_referer" not in nginx_main
 
 
 def test_t946_runtime_scripts_are_bounded_and_restart_requires_double_confirmation() -> None:
