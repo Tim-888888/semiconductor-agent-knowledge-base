@@ -52,7 +52,7 @@ compose=(docker compose --env-file .env -f docker-compose.prod.yml)
 "${compose[@]}" config --quiet
 "${compose[@]}" ps > "$output_dir/compose-ps.txt"
 
-docker exec semikb-api-1 python scripts/verify_t949_final_demo.py \
+docker exec semikb-api-1 python -m scripts.verify_t949_final_demo \
   --base-url http://web > "$output_dir/final-demo.json"
 
 python3 scripts/verify_t948_security.py \

@@ -84,7 +84,7 @@ def test_t949_shell_entrypoint_is_guarded_and_non_destructive() -> None:
     assert "T949_ACCEPTANCE_CONFIRM" in script
     assert "--apply" in script
     assert "Refusing to overwrite non-empty evidence directory" in script
-    assert "verify_t949_final_demo.py" in script
+    assert "python -m scripts.verify_t949_final_demo" in script
     assert "verify_t948_security.py" in script
     assert "verify_t948_offline_bundle.py" in script
     assert "verify_t947_restore.py" in script
