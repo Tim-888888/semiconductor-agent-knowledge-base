@@ -851,6 +851,71 @@ async def test_l0_history_rule_never_calls_llm(utterance: str) -> None:
 @pytest.mark.parametrize(
     "utterance",
     [
+        "其中哪条证据提到了 RF match？",
+        "上述证据来自哪个来源？",
+        "这条引用的依据是什么？",
+    ],
+)
+async def test_l0_evidence_followup_requires_valid_thread_evidence(
+    utterance: str,
+) -> None:
+    service = ConversationUnderstandingService(
+        Settings(_env_file=None, demo_mode=False),
+        ForbiddenLLM(),
+    )
+    context = {
+        "active_context": {
+            "evidence_refs": [
+                {
+                    "evidence_id": "chunk:SOP-001",
+                    "trace_id": "trace_1",
+                    "valid": True,
+                }
+            ]
+        }
+    }
+
+    result = await service.understand(utterance, context)
+    plan = RoutePolicy().decide(result.understanding, ActorScope(), context, utterance)
+
+    assert result.understanding.classifier_source == "l0"
+    assert result.understanding.suggested_route is AgentRoute.REUSE_EVIDENCE
+    assert result.metadata["understanding_calls"] == 0
+    assert plan.route is AgentRoute.REUSE_EVIDENCE
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "utterance",
+    [
+        "找一张边缘环状缺陷的晶圆图，并说明应该先核对哪些证据。",
+        "有没有 ETCH-03 Chamber B 的边缘环状缺陷晶圆图？",
+        "从历史 Case 里查找缺陷图片并返回原图。",
+    ],
+)
+async def test_l0_governed_image_asset_lookup_does_not_collect_live_data_slots(
+    utterance: str,
+) -> None:
+    service = ConversationUnderstandingService(
+        Settings(_env_file=None, demo_mode=False),
+        ForbiddenLLM(),
+    )
+
+    result = await service.understand(utterance, {})
+    plan = RoutePolicy().decide(result.understanding, ActorScope(), {}, utterance)
+
+    assert result.understanding.classifier_source == "l0"
+    assert result.understanding.task_items[0].target_type is IntentTarget.WAFER_MAP
+    assert result.understanding.suggested_route is AgentRoute.INTERNAL_RAG
+    assert result.metadata["understanding_calls"] == 0
+    assert plan.route is AgentRoute.INTERNAL_RAG
+    assert plan.missing_slots == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "utterance",
+    [
         "不是 Chamber B，是 Chamber A",
         "不是腔体B，改成腔体A",
         "不是B腔，换成A腔",

@@ -16,6 +16,7 @@ from semikb.agent_runtime.intent_experiments import (
     IntentFewShotSelection,
 )
 from semikb.agent_runtime.llm_gateway import LLMProviderError, OpenAICompatibleLLMGateway
+from semikb.agent_runtime.routing import is_evidence_followup
 from semikb.config import Settings
 from semikb.contracts.models import (
     AffectSignals,
@@ -172,6 +173,16 @@ EXTERNAL_TERMS = ("外部", "互联网", "网上", "web", "公开资料", "行�
 WEB_DISABLED_PATTERN = re.compile(
     r"(?:不要|不需要|无需|不用|禁止|别)(?:使用|调用|查询|搜索|访问|走)?\s*(?:web|外部|互联网|网上)|"
     r"(?:仅|只)(?:查询|检索|使用)?(?:内部|知识库|已入库)"
+)
+IMAGE_ASSET_LOOKUP_PATTERN = re.compile(
+    r"(?=.*(?:找|查找|查询|检索|有没有|是否有|调出|返回|展示|给我看))"
+    r"(?=.*(?:晶圆图|wafer\s*map|缺陷图|设备图片|图片|原图))",
+    re.IGNORECASE,
+)
+IMAGE_LIVE_OR_DIAGNOSIS_PATTERN = re.compile(
+    r"(?:实时|当前数据|最近\s*\d+\s*(?:小时|天|周)|"
+    r"分析(?:这|该|当前)?.{0,8}(?:晶圆图|图片)|诊断|根因|异常原因)",
+    re.IGNORECASE,
 )
 MUTATION_TERMS = ("修改", "下发", "写入", "删除", "停机", "执行变更", "调整recipe", "调整 recipe")
 ALARM_TERMS = ("报警", "告警", "alarm", "interlock")
@@ -969,6 +980,24 @@ class ConversationUnderstandingService:
         previous_user = self._last_substantive_user_message_id(context)
         previous_answer = self._last_message_id(context, "assistant")
 
+        if is_evidence_followup(content) and self._has_valid_evidence(context):
+            return self._direct_understanding(
+                InteractionMode.TASK,
+                PrimaryIntent.KNOWLEDGE_QUERY,
+                IntentTarget.GENERAL,
+                IntentTaskAction.EXPLAIN,
+                AgentRoute.REUSE_EVIDENCE,
+            )
+        if IMAGE_ASSET_LOOKUP_PATTERN.search(content) and not (
+            TIME_PATTERN.search(content) or IMAGE_LIVE_OR_DIAGNOSIS_PATTERN.search(content)
+        ):
+            return self._direct_understanding(
+                InteractionMode.TASK,
+                PrimaryIntent.KNOWLEDGE_QUERY,
+                IntentTarget.WAFER_MAP,
+                IntentTaskAction.LOOKUP,
+                AgentRoute.INTERNAL_RAG,
+            )
         if HISTORY_RECALL_PATTERN.search(content):
             return self._direct_understanding(
                 InteractionMode.CONVERSATION,
@@ -1059,6 +1088,12 @@ class ConversationUnderstandingService:
                 AgentRoute.CHAT_DIRECT,
             )
         return None
+
+    @staticmethod
+    def _has_valid_evidence(context: dict[str, Any]) -> bool:
+        active = context.get("active_context", {})
+        refs = active.get("evidence_refs", []) if isinstance(active, dict) else []
+        return any(isinstance(item, dict) and item.get("valid") is True for item in refs)
 
     def _heuristic(
         self,

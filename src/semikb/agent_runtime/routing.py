@@ -24,6 +24,11 @@ WEB_DISABLED_PATTERN = re.compile(
     r"(?:不要|不需要|无需|不用|禁止|别)(?:使用|调用|查询|搜索|访问|走)?\s*(?:web|外部|互联网|网上)|"
     r"(?:仅|只)(?:查询|检索|使用)?(?:内部|知识库|已入库)"
 )
+EVIDENCE_FOLLOWUP_PATTERN = re.compile(
+    r"(?=.*(?:刚才|上一轮|上面|上述|其中|这些|该条|这条))"
+    r"(?=.*(?:证据|来源|引用|依据))",
+    re.IGNORECASE,
+)
 MUTATION_ACTIONS = {IntentTaskAction.EXECUTE}
 MUTATION_TARGETS = {IntentTarget.RECIPE}
 ROUTE_THRESHOLDS = {
@@ -34,6 +39,12 @@ ROUTE_THRESHOLDS = {
     AgentRoute.RAG_AND_TOOL: 0.72,
     AgentRoute.RAG_AND_WEB: 0.72,
 }
+
+
+def is_evidence_followup(request: str) -> bool:
+    """Identify a deictic question about evidence already selected in this thread."""
+
+    return EVIDENCE_FOLLOWUP_PATTERN.search(request) is not None
 
 
 class RoutePolicy:
@@ -186,6 +197,8 @@ class RoutePolicy:
         request: str,
     ) -> AgentRoute:
         lowered = request.lower()
+        if is_evidence_followup(request) and RoutePolicy._has_valid_evidence(context):
+            return AgentRoute.REUSE_EVIDENCE
         if (
             task.target_type is IntentTarget.PREVIOUS_USER_MESSAGE
             and task.action is IntentTaskAction.RECALL

@@ -223,7 +223,7 @@ def verify(args: argparse.Namespace) -> dict[str, Any]:
                 sop.route == "internal_rag"
                 and sop.trace_id is not None
                 and sop.evidence_count > 0
-                and latest_assistant_presentation(sop.result).get("mode") == "structured",
+                and latest_assistant_presentation(sop.result).get("mode") == "structured_card",
                 safe_stream_result(sop),
             )
             trace = client.get(f"/api/v1/retrieval-traces/{sop.trace_id}", headers=headers)
