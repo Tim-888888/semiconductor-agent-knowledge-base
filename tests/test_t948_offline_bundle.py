@@ -3,7 +3,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from scripts.build_t948_offline_bundle import SERVICES, runtime_image_tag, sha256_file
+import scripts.build_t948_offline_bundle as bundle_builder
+from scripts.build_t948_offline_bundle import (
+    SERVICES,
+    resolve_source_ref,
+    runtime_image_tag,
+    sha256_file,
+)
 from scripts.verify_t948_offline_bundle import checksum_entries
 
 
@@ -50,9 +56,26 @@ def test_t948_bundle_uses_an_explicit_git_archive_instead_of_the_worktree() -> N
         encoding="utf-8"
     )
 
-    assert 'run("git", "rev-parse", args.source_ref' in source
+    assert "source_ref = resolve_source_ref(root, args.source_ref)" in source
     assert '"git", "archive", "--format=tar.gz"' in source
     assert '"git", "diff"' not in source
+
+
+def test_t948_source_ref_is_verified_as_a_commit_before_export(monkeypatch) -> None:
+    calls: list[tuple[tuple[str, ...], Path]] = []
+
+    def fake_run(*command: str, cwd: Path, text: bool = True) -> str:
+        del text
+        calls.append((command, cwd))
+        return "a" * 40 + "\n"
+
+    monkeypatch.setattr(bundle_builder, "run", fake_run)
+    root = Path("repo")
+
+    assert resolve_source_ref(root, "release-candidate") == "a" * 40
+    assert calls == [
+        (("git", "rev-parse", "--verify", "release-candidate^{commit}"), root)
+    ]
 
 
 def test_t948_bundle_manifest_contract_contains_no_credentials(tmp_path: Path) -> None:

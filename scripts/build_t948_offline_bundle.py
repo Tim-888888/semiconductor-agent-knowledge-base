@@ -47,6 +47,18 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def resolve_source_ref(root: Path, source_ref: str) -> str:
+    return str(
+        run(
+            "git",
+            "rev-parse",
+            "--verify",
+            f"{source_ref}^{{commit}}",
+            cwd=root,
+        )
+    ).strip()
+
+
 def compose_config(root: Path, env_path: Path, compose_path: Path) -> dict[str, Any]:
     raw = run(
         "docker",
@@ -104,11 +116,11 @@ def main() -> None:
     env_path = args.env.resolve()
     compose_path = args.compose_file.resolve()
     output = args.output_dir.resolve()
+    source_ref = resolve_source_ref(root, args.source_ref)
     if output.exists() and any(output.iterdir()):
         raise SystemExit(f"Refusing to overwrite non-empty output directory: {output}")
     output.mkdir(parents=True, exist_ok=True)
 
-    source_ref = str(run("git", "rev-parse", args.source_ref, cwd=root)).strip()
     config = compose_config(root, env_path, compose_path)
     missing_services = [service for service in SERVICES if service not in config["services"]]
     if missing_services:
