@@ -82,6 +82,8 @@ class StreamingAnswerAssembler:
         self._consume_available(final=True)
         if self._processed_units == 0:
             raise ValueError("streaming answer contained no valid answer units")
+        if not self._facts:
+            self._append_deterministic_fact()
         if self._confidence is None:
             self.warnings.append("confidence_defaulted_to_low")
             self._confidence = "low"
@@ -142,6 +144,9 @@ class StreamingAnswerAssembler:
             self.warnings.append("answer_unit_after_confidence_removed")
             return
 
+        if order > self._ORDER["fact"] and not self._facts:
+            self._append_deterministic_fact()
+
         changed = False
         if unit_type in {"fact", "hypothesis"}:
             claim = self._validated_claim(payload, fact=unit_type == "fact")
@@ -169,6 +174,23 @@ class StreamingAnswerAssembler:
         self._processed_units += 1
         if changed:
             self._emit_render_growth()
+
+    def _append_deterministic_fact(self) -> None:
+        if self._facts or not self._ledger:
+            return
+        controlled = [
+            item for item in self._ledger if item.source_type == "internal_controlled"
+        ]
+        non_external = [item for item in self._ledger if item.source_type != "external"]
+        source = (controlled or non_external or self._ledger)[0]
+        self._facts.append(
+            AnswerClaim(
+                text=source.content[:360],
+                citation_ids=[source.evidence_id],
+            )
+        )
+        self.warnings.append("deterministic_fact_added_without_valid_model_fact")
+        self._emit_render_growth()
 
     def _validated_claim(self, payload: dict[str, Any], *, fact: bool) -> AnswerClaim | None:
         text = self._clean_text(payload.get("text"))

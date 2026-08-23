@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from semikb.agent_runtime.streaming_answer import StreamingAnswerAssembler, format_answer
@@ -47,3 +49,39 @@ def test_streaming_answer_rejects_incomplete_json() -> None:
 
     with pytest.raises(ValueError, match="invalid JSON"):
         assembler.finish()
+
+
+def test_streaming_answer_adds_cited_fact_before_non_fact_units() -> None:
+    deltas: list[str] = []
+    ledger = [
+        EvidenceLedgerEntry(
+            evidence_id="chunk:approved-1",
+            source_type="internal_controlled",
+            content="受控 SOP 要求复核 RF match。",
+        )
+    ]
+    assembler = StreamingAnswerAssembler(ledger, deltas.append)
+
+    assembler.feed(
+        json.dumps(
+            {
+                "type": "fact",
+                "text": "模型给出了无效引用",
+                "citation_ids": ["chunk:missing"],
+            },
+            ensure_ascii=False,
+        )
+    )
+    assembler.feed(
+        json.dumps(
+            {"type": "next_action", "text": "继续核对受控证据"},
+            ensure_ascii=False,
+        )
+    )
+    assembler.feed(json.dumps({"type": "confidence", "value": "medium"}))
+    answer = assembler.finish()
+
+    assert answer.facts[0].citation_ids == [ledger[0].evidence_id]
+    assert answer.facts[0].text == ledger[0].content
+    assert "deterministic_fact_added_without_valid_model_fact" in assembler.warnings
+    assert "".join(deltas) == format_answer(answer)

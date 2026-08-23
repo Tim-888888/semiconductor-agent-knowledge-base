@@ -252,7 +252,9 @@ def verify(args: argparse.Namespace) -> dict[str, Any]:
             results.append(reuse)
             check(
                 "evidence_reuse",
-                reuse.route == "reuse_evidence" and reuse.evidence_count > 0,
+                reuse.route == "reuse_evidence"
+                and reuse.evidence_count > 0
+                and reuse.task_statuses == ["completed"],
                 safe_stream_result(reuse),
             )
 
