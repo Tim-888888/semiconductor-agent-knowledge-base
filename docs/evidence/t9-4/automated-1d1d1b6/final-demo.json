@@ -1,0 +1,660 @@
+{
+  "schema": "semikb-t949-final-demo-v1",
+  "captured_at": "2026-08-23T10:09:04.945994+00:00",
+  "base_url": "http://web:8080",
+  "case_count": 9,
+  "checks": [
+    {
+      "name": "public_health",
+      "passed": true,
+      "evidence": 200
+    },
+    {
+      "name": "natural_chat_without_retrieval",
+      "passed": true,
+      "evidence": {
+        "case_id": "capability",
+        "route": "chat_direct",
+        "interaction_mode": "conversation",
+        "status_code": 200,
+        "accepted_ms": 10.040621971711516,
+        "first_delta_ms": 8954.785814043134,
+        "total_ms": 9060.280881007202,
+        "event_names": [
+          "accepted",
+          "stage",
+          "stage",
+          "task_status",
+          "stage",
+          "task_status",
+          "answer_delta",
+          "task_status",
+          "stage",
+          "completed"
+        ],
+        "answer_delta_count": 1,
+        "evidence_count": 0,
+        "image_count": 0,
+        "task_statuses": [
+          "completed"
+        ],
+        "trace_id": null
+      }
+    },
+    {
+      "name": "controlled_rag_with_trace",
+      "passed": true,
+      "evidence": {
+        "case_id": "current_sop",
+        "route": "internal_rag",
+        "interaction_mode": "task",
+        "status_code": 200,
+        "accepted_ms": 5.225959001109004,
+        "first_delta_ms": 9328.228878905065,
+        "total_ms": 10962.19634800218,
+        "event_names": [
+          "accepted",
+          "stage",
+          "stage",
+          "task_status",
+          "task_status",
+          "stage",
+          "stage",
+          "evidence",
+          "stage",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "stage",
+          "task_status",
+          "stage",
+          "completed"
+        ],
+        "answer_delta_count": 5,
+        "evidence_count": 5,
+        "image_count": 0,
+        "task_statuses": [
+          "completed"
+        ],
+        "trace_id": "trace_9613439650734a228111d41d9b6cb776"
+      }
+    },
+    {
+      "name": "trace_reproduces_final_evidence",
+      "passed": true,
+      "evidence": {
+        "status": 200,
+        "candidate_count": 26,
+        "final_evidence_count": 5,
+        "routes": [
+          "dense",
+          "sparse",
+          "rrf",
+          "reranker"
+        ]
+      }
+    },
+    {
+      "name": "evidence_reuse",
+      "passed": true,
+      "evidence": {
+        "case_id": "reuse_evidence",
+        "route": "reuse_evidence",
+        "interaction_mode": "task",
+        "status_code": 200,
+        "accepted_ms": 5.424798000603914,
+        "first_delta_ms": 2448.523164028302,
+        "total_ms": 2466.5890510659665,
+        "event_names": [
+          "accepted",
+          "stage",
+          "stage",
+          "task_status",
+          "task_status",
+          "stage",
+          "evidence",
+          "stage",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "stage",
+          "task_status",
+          "stage",
+          "completed"
+        ],
+        "answer_delta_count": 3,
+        "evidence_count": 5,
+        "image_count": 0,
+        "task_statuses": [
+          "completed"
+        ],
+        "trace_id": "trace_9613439650734a228111d41d9b6cb776"
+      }
+    },
+    {
+      "name": "history_direct_without_retrieval",
+      "passed": true,
+      "evidence": {
+        "case_id": "history_recall",
+        "route": "chat_direct",
+        "interaction_mode": "conversation",
+        "status_code": 200,
+        "accepted_ms": 5.686247022822499,
+        "first_delta_ms": 1501.6595900524408,
+        "total_ms": 1552.722169086337,
+        "event_names": [
+          "accepted",
+          "stage",
+          "stage",
+          "task_status",
+          "stage",
+          "task_status",
+          "answer_delta",
+          "task_status",
+          "stage",
+          "completed"
+        ],
+        "answer_delta_count": 1,
+        "evidence_count": 0,
+        "image_count": 0,
+        "task_statuses": [
+          "completed"
+        ],
+        "trace_id": null
+      }
+    },
+    {
+      "name": "missing_information_clarifies_without_retrieval",
+      "passed": true,
+      "evidence": {
+        "case_id": "clarify",
+        "route": "clarify",
+        "interaction_mode": "task",
+        "status_code": 200,
+        "accepted_ms": 4.432981018908322,
+        "first_delta_ms": 8353.339469991624,
+        "total_ms": 8690.559890936129,
+        "event_names": [
+          "accepted",
+          "stage",
+          "stage",
+          "task_status",
+          "task_status",
+          "task_status",
+          "stage",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "stage",
+          "completed"
+        ],
+        "answer_delta_count": 3,
+        "evidence_count": 0,
+        "image_count": 0,
+        "task_statuses": [
+          "clarify",
+          "clarify",
+          "clarify"
+        ],
+        "trace_id": null
+      }
+    },
+    {
+      "name": "clarification_resumes_original_task",
+      "passed": true,
+      "evidence": {
+        "case_id": "clarify_resume",
+        "route": "tool_only",
+        "interaction_mode": "clarification_answer",
+        "status_code": 200,
+        "accepted_ms": 5.477249971590936,
+        "first_delta_ms": 11374.495379975997,
+        "total_ms": 14535.527672967874,
+        "event_names": [
+          "accepted",
+          "task_status",
+          "task_status",
+          "task_status",
+          "task_status",
+          "task_status",
+          "task_status",
+          "evidence",
+          "stage",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "stage",
+          "task_status",
+          "task_status",
+          "task_status",
+          "stage",
+          "completed"
+        ],
+        "answer_delta_count": 7,
+        "evidence_count": 3,
+        "image_count": 0,
+        "task_statuses": [
+          "completed",
+          "completed",
+          "completed"
+        ],
+        "trace_id": null
+      }
+    },
+    {
+      "name": "authorized_image_auto_preview_contract",
+      "passed": true,
+      "evidence": {
+        "case_id": "image_retrieval",
+        "route": "internal_rag",
+        "interaction_mode": "task",
+        "status_code": 200,
+        "accepted_ms": 4.793170024640858,
+        "first_delta_ms": 4077.023213962093,
+        "total_ms": 5557.761217001826,
+        "event_names": [
+          "accepted",
+          "stage",
+          "stage",
+          "task_status",
+          "task_status",
+          "stage",
+          "stage",
+          "evidence",
+          "stage",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "stage",
+          "task_status",
+          "stage",
+          "completed"
+        ],
+        "answer_delta_count": 5,
+        "evidence_count": 5,
+        "image_count": 1,
+        "task_statuses": [
+          "completed"
+        ],
+        "trace_id": "trace_818d7495cc8a498a8965242fbbb201d8",
+        "asset_access_status": 200
+      }
+    },
+    {
+      "name": "controlled_multi_task_does_not_lose_or_execute_unsafe_work",
+      "passed": true,
+      "evidence": {
+        "case_id": "partial_success",
+        "route": "tool_only",
+        "interaction_mode": "task",
+        "status_code": 200,
+        "accepted_ms": 5.569107946939766,
+        "first_delta_ms": 9274.119134992361,
+        "total_ms": 10044.742322992533,
+        "event_names": [
+          "accepted",
+          "stage",
+          "stage",
+          "task_status",
+          "task_status",
+          "task_status",
+          "task_status",
+          "evidence",
+          "stage",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "stage",
+          "task_status",
+          "task_status",
+          "task_status",
+          "stage",
+          "completed"
+        ],
+        "answer_delta_count": 5,
+        "evidence_count": 2,
+        "image_count": 0,
+        "task_statuses": [
+          "completed",
+          "refused",
+          "deferred"
+        ],
+        "trace_id": null
+      }
+    },
+    {
+      "name": "governed_public_corpus_stays_internal",
+      "passed": true,
+      "evidence": {
+        "case_id": "governed_public_corpus",
+        "route": "internal_rag",
+        "interaction_mode": "task",
+        "status_code": 200,
+        "accepted_ms": 5.291496054269373,
+        "first_delta_ms": 10508.599687018432,
+        "total_ms": 12383.179367054254,
+        "event_names": [
+          "accepted",
+          "stage",
+          "stage",
+          "task_status",
+          "task_status",
+          "stage",
+          "stage",
+          "evidence",
+          "stage",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "stage",
+          "task_status",
+          "stage",
+          "completed"
+        ],
+        "answer_delta_count": 5,
+        "evidence_count": 5,
+        "image_count": 0,
+        "task_statuses": [
+          "completed"
+        ],
+        "trace_id": "trace_e71b354e2e214d899e2829f230232d53",
+        "trace_routes": [
+          "dense",
+          "sparse",
+          "rrf",
+          "reranker"
+        ]
+      }
+    },
+    {
+      "name": "sse_contract_capability",
+      "passed": true,
+      "evidence": {
+        "accepted_ms": 10.040621971711516,
+        "first_delta_ms": 8954.785814043134,
+        "total_ms": 9060.280881007202,
+        "event_names": [
+          "accepted",
+          "stage",
+          "stage",
+          "task_status",
+          "stage",
+          "task_status",
+          "answer_delta",
+          "task_status",
+          "stage",
+          "completed"
+        ],
+        "answer_delta_count": 1
+      }
+    },
+    {
+      "name": "sse_contract_current_sop",
+      "passed": true,
+      "evidence": {
+        "accepted_ms": 5.225959001109004,
+        "first_delta_ms": 9328.228878905065,
+        "total_ms": 10962.19634800218,
+        "event_names": [
+          "accepted",
+          "stage",
+          "stage",
+          "task_status",
+          "task_status",
+          "stage",
+          "stage",
+          "evidence",
+          "stage",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "stage",
+          "task_status",
+          "stage",
+          "completed"
+        ],
+        "answer_delta_count": 5
+      }
+    },
+    {
+      "name": "sse_contract_reuse_evidence",
+      "passed": true,
+      "evidence": {
+        "accepted_ms": 5.424798000603914,
+        "first_delta_ms": 2448.523164028302,
+        "total_ms": 2466.5890510659665,
+        "event_names": [
+          "accepted",
+          "stage",
+          "stage",
+          "task_status",
+          "task_status",
+          "stage",
+          "evidence",
+          "stage",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "stage",
+          "task_status",
+          "stage",
+          "completed"
+        ],
+        "answer_delta_count": 3
+      }
+    },
+    {
+      "name": "sse_contract_history_recall",
+      "passed": true,
+      "evidence": {
+        "accepted_ms": 5.686247022822499,
+        "first_delta_ms": 1501.6595900524408,
+        "total_ms": 1552.722169086337,
+        "event_names": [
+          "accepted",
+          "stage",
+          "stage",
+          "task_status",
+          "stage",
+          "task_status",
+          "answer_delta",
+          "task_status",
+          "stage",
+          "completed"
+        ],
+        "answer_delta_count": 1
+      }
+    },
+    {
+      "name": "sse_contract_clarify",
+      "passed": true,
+      "evidence": {
+        "accepted_ms": 4.432981018908322,
+        "first_delta_ms": 8353.339469991624,
+        "total_ms": 8690.559890936129,
+        "event_names": [
+          "accepted",
+          "stage",
+          "stage",
+          "task_status",
+          "task_status",
+          "task_status",
+          "stage",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "stage",
+          "completed"
+        ],
+        "answer_delta_count": 3
+      }
+    },
+    {
+      "name": "sse_contract_clarify_resume",
+      "passed": true,
+      "evidence": {
+        "accepted_ms": 5.477249971590936,
+        "first_delta_ms": 11374.495379975997,
+        "total_ms": 14535.527672967874,
+        "event_names": [
+          "accepted",
+          "task_status",
+          "task_status",
+          "task_status",
+          "task_status",
+          "task_status",
+          "task_status",
+          "evidence",
+          "stage",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "stage",
+          "task_status",
+          "task_status",
+          "task_status",
+          "stage",
+          "completed"
+        ],
+        "answer_delta_count": 7
+      }
+    },
+    {
+      "name": "sse_contract_image_retrieval",
+      "passed": true,
+      "evidence": {
+        "accepted_ms": 4.793170024640858,
+        "first_delta_ms": 4077.023213962093,
+        "total_ms": 5557.761217001826,
+        "event_names": [
+          "accepted",
+          "stage",
+          "stage",
+          "task_status",
+          "task_status",
+          "stage",
+          "stage",
+          "evidence",
+          "stage",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "stage",
+          "task_status",
+          "stage",
+          "completed"
+        ],
+        "answer_delta_count": 5
+      }
+    },
+    {
+      "name": "sse_contract_partial_success",
+      "passed": true,
+      "evidence": {
+        "accepted_ms": 5.569107946939766,
+        "first_delta_ms": 9274.119134992361,
+        "total_ms": 10044.742322992533,
+        "event_names": [
+          "accepted",
+          "stage",
+          "stage",
+          "task_status",
+          "task_status",
+          "task_status",
+          "task_status",
+          "evidence",
+          "stage",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "stage",
+          "task_status",
+          "task_status",
+          "task_status",
+          "stage",
+          "completed"
+        ],
+        "answer_delta_count": 5
+      }
+    },
+    {
+      "name": "sse_contract_governed_public_corpus",
+      "passed": true,
+      "evidence": {
+        "accepted_ms": 5.291496054269373,
+        "first_delta_ms": 10508.599687018432,
+        "total_ms": 12383.179367054254,
+        "event_names": [
+          "accepted",
+          "stage",
+          "stage",
+          "task_status",
+          "task_status",
+          "stage",
+          "stage",
+          "evidence",
+          "stage",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "answer_delta",
+          "stage",
+          "task_status",
+          "stage",
+          "completed"
+        ],
+        "answer_delta_count": 5
+      }
+    },
+    {
+      "name": "operator_surfaces_have_persisted_data",
+      "passed": true,
+      "evidence": {
+        "ingestion_jobs": {
+          "status": 200,
+          "count": 45
+        },
+        "knowledge_documents": {
+          "status": 200,
+          "count": 10
+        },
+        "evaluation_runs": {
+          "status": 200,
+          "count": 17
+        }
+      }
+    },
+    {
+      "name": "temporary_acceptance_threads_cleaned",
+      "passed": true,
+      "evidence": {
+        "thread_count": 5
+      }
+    }
+  ],
+  "passed": true,
+  "failed_checks": []
+}

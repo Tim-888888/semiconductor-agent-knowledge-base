@@ -1,0 +1,98 @@
+{
+  "schema": "semikb-t949-browser-acceptance-v1",
+  "captured_at": "2026-08-23T17:34:00+08:00",
+  "base_url": "http://112.74.99.143/",
+  "method": "public workbench actual clicks in the in-app browser; Playwright CLI used only to persist screenshots after the in-app capture API failed",
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 900,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "horizontal_overflow": false
+    }
+  ],
+  "checks": [
+    {
+      "name": "natural_chat_uses_bubble_without_retrieval_card",
+      "passed": true,
+      "evidence": "chat_direct returned a natural capability answer and no structured investigation card"
+    },
+    {
+      "name": "controlled_rag_uses_structured_card",
+      "passed": true,
+      "evidence": "internal_rag returned cited facts, unknowns, next action, task result, structured card and authorized evidence"
+    },
+    {
+      "name": "evidence_followup_reuses_ledger",
+      "passed": true,
+      "evidence": "the foreline pressure follow-up used reuse_evidence and named the prior authorized chunks"
+    },
+    {
+      "name": "history_recall_is_precise",
+      "passed": true,
+      "evidence": "chat_direct repeated the preceding non-meta user question instead of the current history question"
+    },
+    {
+      "name": "clarification_resumes_original_work",
+      "passed": true,
+      "evidence": "missing product, tool/chamber and time range were requested; the next turn completed three read-only tasks"
+    },
+    {
+      "name": "first_authorized_image_is_opened_automatically",
+      "passed": true,
+      "evidence": {
+        "image_id": "IMG-FA-ETCH-03-2026-004",
+        "natural_width": 320,
+        "natural_height": 320
+      }
+    },
+    {
+      "name": "controlled_multi_task_has_explicit_terminal_states",
+      "passed": true,
+      "evidence": [
+        "completed",
+        "refused",
+        "deferred"
+      ]
+    },
+    {
+      "name": "truncated_dataset_profile_is_not_presented_as_full_total",
+      "passed": true,
+      "evidence": "the retest preserved observed/truncated qualifiers and stated that the full sample count is unknown"
+    },
+    {
+      "name": "operator_pages_have_real_records",
+      "passed": true,
+      "evidence": {
+        "retrieval_trace_page": true,
+        "ingestion_task_center": true,
+        "offline_evaluation_page": true
+      }
+    },
+    {
+      "name": "clean_console",
+      "passed": true,
+      "evidence": {
+        "errors": 0,
+        "warnings": 0
+      }
+    },
+    {
+      "name": "temporary_browser_threads_cleaned",
+      "passed": true,
+      "evidence": {
+        "thread_count": 6
+      }
+    }
+  ],
+  "screenshots": [
+    "desktop-image-preview.png",
+    "desktop-offline-evaluation.png",
+    "mobile-workbench-390x844.png"
+  ],
+  "passed": true
+}

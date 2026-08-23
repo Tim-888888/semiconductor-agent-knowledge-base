@@ -1,0 +1,123 @@
+{
+  "schema": "semikb-t948-offline-verification-v1",
+  "verified_at": "2026-08-23T10:14:19.696870+00:00",
+  "source_commit": "1d1d1b604b926709c865cea54465faa58e93cd3b",
+  "checksums_passed": true,
+  "checksum_results": {
+    "images.tar": {
+      "expected": "42ec100007c5770f70dc87ecf499661e2f5280848f2333ec7a237c9e62bad5c4",
+      "actual": "42ec100007c5770f70dc87ecf499661e2f5280848f2333ec7a237c9e62bad5c4",
+      "matched": true
+    },
+    "source.tar.gz": {
+      "expected": "01e7e2ab25d61dcf5b1c7ad2d59fa1bc82e2f874f604da9279992ad7a7bc623a",
+      "actual": "01e7e2ab25d61dcf5b1c7ad2d59fa1bc82e2f874f604da9279992ad7a7bc623a",
+      "matched": true
+    },
+    "manifest.json": {
+      "expected": "272883a5cc168932aee2fd91216307233cd87ff046aa717374ae1d57a152f2fe",
+      "actual": "272883a5cc168932aee2fd91216307233cd87ff046aa717374ae1d57a152f2fe",
+      "matched": true
+    },
+    "README.txt": {
+      "expected": "4a86ceadcf3673a99206be705fa594ce19b1dd6c5c0e982a432b0a42ff3087d9",
+      "actual": "4a86ceadcf3673a99206be705fa594ce19b1dd6c5c0e982a432b0a42ff3087d9",
+      "matched": true
+    }
+  },
+  "docker_verified": true,
+  "docker_passed": true,
+  "docker_results": [
+    {
+      "service": "etcd",
+      "runtime_tag": "quay.io/coreos/etcd:v3.5.18",
+      "offline_alias": "semikb-offline/etcd:1d1d1b604b92",
+      "expected_image_id": "sha256:b9e6889272c9e672fa749795344385882b2696b0f302c6430a427a4377044a7a",
+      "runtime_image_id": "sha256:b9e6889272c9e672fa749795344385882b2696b0f302c6430a427a4377044a7a",
+      "alias_image_id": "sha256:b9e6889272c9e672fa749795344385882b2696b0f302c6430a427a4377044a7a",
+      "matched": true
+    },
+    {
+      "service": "milvus-minio",
+      "runtime_tag": "minio/minio:RELEASE.2023-03-20T20-16-18Z",
+      "offline_alias": "semikb-offline/milvus-minio:1d1d1b604b92",
+      "expected_image_id": "sha256:400c20c8aac03024d00a34603f5445dd4679b97712e062727190a8462c6a34b5",
+      "runtime_image_id": "sha256:400c20c8aac03024d00a34603f5445dd4679b97712e062727190a8462c6a34b5",
+      "alias_image_id": "sha256:400c20c8aac03024d00a34603f5445dd4679b97712e062727190a8462c6a34b5",
+      "matched": true
+    },
+    {
+      "service": "milvus",
+      "runtime_tag": "milvusdb/milvus:v2.5.5",
+      "offline_alias": "semikb-offline/milvus:1d1d1b604b92",
+      "expected_image_id": "sha256:f483514c173ed0715d886d76d3b9a680e29fa928eb9412f9c873d0cff6aca695",
+      "runtime_image_id": "sha256:f483514c173ed0715d886d76d3b9a680e29fa928eb9412f9c873d0cff6aca695",
+      "alias_image_id": "sha256:f483514c173ed0715d886d76d3b9a680e29fa928eb9412f9c873d0cff6aca695",
+      "matched": true
+    },
+    {
+      "service": "mongodb",
+      "runtime_tag": "mongo:8.2.6",
+      "offline_alias": "semikb-offline/mongodb:1d1d1b604b92",
+      "expected_image_id": "sha256:df9e92717f46eb666ce4d53f67d49b4550f64e95298a670f3df168ee29f64f15",
+      "runtime_image_id": "sha256:df9e92717f46eb666ce4d53f67d49b4550f64e95298a670f3df168ee29f64f15",
+      "alias_image_id": "sha256:df9e92717f46eb666ce4d53f67d49b4550f64e95298a670f3df168ee29f64f15",
+      "matched": true
+    },
+    {
+      "service": "minio",
+      "runtime_tag": "quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z",
+      "offline_alias": "semikb-offline/minio:1d1d1b604b92",
+      "expected_image_id": "sha256:6aed1b6949018d1659310e66dc076711c9a9efeffa578b337ac3d1b82e0e9153",
+      "runtime_image_id": "sha256:6aed1b6949018d1659310e66dc076711c9a9efeffa578b337ac3d1b82e0e9153",
+      "alias_image_id": "sha256:6aed1b6949018d1659310e66dc076711c9a9efeffa578b337ac3d1b82e0e9153",
+      "matched": true
+    },
+    {
+      "service": "redis",
+      "runtime_tag": "redis:7.4.10-alpine",
+      "offline_alias": "semikb-offline/redis:1d1d1b604b92",
+      "expected_image_id": "sha256:2a51817f79255c8b69f86a974459c2e0359aff81417d80158f2b9e541e6f4b33",
+      "runtime_image_id": "sha256:2a51817f79255c8b69f86a974459c2e0359aff81417d80158f2b9e541e6f4b33",
+      "alias_image_id": "sha256:2a51817f79255c8b69f86a974459c2e0359aff81417d80158f2b9e541e6f4b33",
+      "matched": true
+    },
+    {
+      "service": "milvus-init",
+      "runtime_tag": "semikb-milvus-init:latest",
+      "offline_alias": "semikb-offline/milvus-init:1d1d1b604b92",
+      "expected_image_id": "sha256:6afcf8be4f1f32aa32e26b14836b1add576f3172e17da37e56c852cf8c9e03f6",
+      "runtime_image_id": "sha256:6afcf8be4f1f32aa32e26b14836b1add576f3172e17da37e56c852cf8c9e03f6",
+      "alias_image_id": "sha256:6afcf8be4f1f32aa32e26b14836b1add576f3172e17da37e56c852cf8c9e03f6",
+      "matched": true
+    },
+    {
+      "service": "api",
+      "runtime_tag": "semikb-api:latest",
+      "offline_alias": "semikb-offline/api:1d1d1b604b92",
+      "expected_image_id": "sha256:cbd5a1cdb2583607a4a0f7f66c7bc5005511038858a8c1ad05d53122d6dd9759",
+      "runtime_image_id": "sha256:cbd5a1cdb2583607a4a0f7f66c7bc5005511038858a8c1ad05d53122d6dd9759",
+      "alias_image_id": "sha256:cbd5a1cdb2583607a4a0f7f66c7bc5005511038858a8c1ad05d53122d6dd9759",
+      "matched": true
+    },
+    {
+      "service": "worker",
+      "runtime_tag": "semikb-worker:latest",
+      "offline_alias": "semikb-offline/worker:1d1d1b604b92",
+      "expected_image_id": "sha256:5f57f313299f6b595b229ad63affadb48ce45b59adf4f6082b0fed0e2535b42f",
+      "runtime_image_id": "sha256:5f57f313299f6b595b229ad63affadb48ce45b59adf4f6082b0fed0e2535b42f",
+      "alias_image_id": "sha256:5f57f313299f6b595b229ad63affadb48ce45b59adf4f6082b0fed0e2535b42f",
+      "matched": true
+    },
+    {
+      "service": "web",
+      "runtime_tag": "semikb-web:latest",
+      "offline_alias": "semikb-offline/web:1d1d1b604b92",
+      "expected_image_id": "sha256:3cac53f802f7678007a851bc1be2041c2b26c1ce31ac0237bda517b3e2a14e29",
+      "runtime_image_id": "sha256:3cac53f802f7678007a851bc1be2041c2b26c1ce31ac0237bda517b3e2a14e29",
+      "alias_image_id": "sha256:3cac53f802f7678007a851bc1be2041c2b26c1ce31ac0237bda517b3e2a14e29",
+      "matched": true
+    }
+  ],
+  "passed": true
+}
