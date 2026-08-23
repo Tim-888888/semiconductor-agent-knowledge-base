@@ -87,7 +87,7 @@ async def test_deterministic_intent_baseline_has_no_hidden_route_failures() -> N
             "dangerous_execution_miss_rate",
         )
     )
-    assert result.source_counts == {"l0": 32, "deterministic_fallback": 64}
+    assert result.source_counts == {"l0": 35, "deterministic_fallback": 61}
     assert result.route_migration["migrated_expectation_count"] == 16
     assert result.metrics["deprecated_history_direct_emission_rate"] == 0.0
 

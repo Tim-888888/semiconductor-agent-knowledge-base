@@ -981,6 +981,53 @@ class ConversationUnderstandingService:
         previous_answer = self._last_message_id(context, "assistant")
 
         if is_evidence_followup(content) and self._has_valid_evidence(context):
+            prior_request = self._last_substantive_user_message_content(context)
+            if prior_request:
+                prior = self._heuristic(
+                    prior_request,
+                    context,
+                    clarification_pending=False,
+                )
+                reusable_tasks = [
+                    item
+                    for item in prior.task_items
+                    if item.execution_policy is TaskExecutionDecision.EXECUTE
+                    and item.primary_intent
+                    in {
+                        PrimaryIntent.KNOWLEDGE_QUERY,
+                        PrimaryIntent.DATA_QUERY,
+                        PrimaryIntent.INVESTIGATION,
+                    }
+                ]
+                if reusable_tasks:
+                    valid_context = self._valid_context_slots(context)
+                    inherited = {
+                        name: item["value"] for name, item in valid_context.items()
+                    }
+                    operations = [
+                        SlotOperation(
+                            operation=SlotOperationKind.INHERIT,
+                            slot_name=name,
+                            value=item["value"],
+                            source_message_id=item["source_message_id"],
+                        )
+                        for name, item in valid_context.items()
+                    ]
+                    return prior.model_copy(
+                        update={
+                            "classifier_source": "l0",
+                            "interaction_mode": InteractionMode.TASK,
+                            "primary_intent": reusable_tasks[0].primary_intent,
+                            "task_items": reusable_tasks,
+                            "slot_operations": operations,
+                            "explicit_slots": {},
+                            "inherited_slots": inherited,
+                            "context_message_ids": [],
+                            "standalone_query": content,
+                            "suggested_route": AgentRoute.REUSE_EVIDENCE,
+                            "confidence": 0.99,
+                        }
+                    )
             return self._direct_understanding(
                 InteractionMode.TASK,
                 PrimaryIntent.KNOWLEDGE_QUERY,
@@ -1625,6 +1672,17 @@ class ConversationUnderstandingService:
             if cls._is_history_recall_request(str(item.get("content", ""))):
                 continue
             return str(item["message_id"])
+        return None
+
+    @classmethod
+    def _last_substantive_user_message_content(cls, context: dict[str, Any]) -> str | None:
+        for item in reversed(context.get("recent_messages", [])):
+            if not isinstance(item, dict) or item.get("role") != "user":
+                continue
+            content = str(item.get("content", "")).strip()
+            if not content or cls._is_history_recall_request(content):
+                continue
+            return content
         return None
 
     @staticmethod

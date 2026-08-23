@@ -885,6 +885,93 @@ async def test_l0_evidence_followup_requires_valid_thread_evidence(
 
 
 @pytest.mark.asyncio
+async def test_l0_evidence_followup_preserves_prior_task_shape_and_valid_slots() -> None:
+    service = ConversationUnderstandingService(
+        Settings(_env_file=None, demo_mode=False),
+        ForbiddenLLM(),
+    )
+    context = {
+        "recent_messages": [
+            {
+                "message_id": "msg_prev_q",
+                "role": "user",
+                "content": "ETCH-03 当前 SOP 怎么要求？",
+            },
+            {
+                "message_id": "msg_prev_a",
+                "role": "assistant",
+                "content": "现行 SOP 要求先核对清腔完成与 leak check。",
+            },
+        ],
+        "active_context": {
+            "slots": {
+                "product": {
+                    "value": "P-ALPHA",
+                    "source_message_id": "msg_prev_q",
+                    "valid": True,
+                },
+                "tool_id": {
+                    "value": "ETCH-03",
+                    "source_message_id": "msg_prev_q",
+                    "valid": True,
+                },
+            },
+            "evidence_refs": [
+                {
+                    "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+                    "trace_id": "trace_1",
+                    "valid": True,
+                }
+            ],
+        },
+    }
+
+    result = await service.understand("根据刚才证据再解释一下", context)
+    task = result.understanding.task_items[0]
+
+    assert result.understanding.classifier_source == "l0"
+    assert result.understanding.suggested_route is AgentRoute.REUSE_EVIDENCE
+    assert task.primary_intent is PrimaryIntent.KNOWLEDGE_QUERY
+    assert task.target_type is IntentTarget.SOP
+    assert task.action is IntentTaskAction.LOOKUP
+    assert result.understanding.inherited_slots == {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+    }
+    assert result.understanding.context_message_ids == []
+
+
+@pytest.mark.asyncio
+async def test_l0_evidence_followup_does_not_reuse_invalid_evidence() -> None:
+    service = ConversationUnderstandingService(
+        Settings(_env_file=None, demo_mode=True),
+        ForbiddenLLM(),
+    )
+    context = {
+        "recent_messages": [
+            {
+                "message_id": "msg_prev_q",
+                "role": "user",
+                "content": "ETCH-03 当前 SOP 怎么要求？",
+            }
+        ],
+        "active_context": {
+            "evidence_refs": [
+                {
+                    "evidence_id": "chunk:SOP-ETCH-03-R2-002",
+                    "valid": False,
+                }
+            ]
+        },
+    }
+
+    result = await service.understand("根据刚才证据再解释一下", context)
+
+    assert result.understanding.classifier_source == "deterministic_fallback"
+    assert result.understanding.suggested_route is not AgentRoute.REUSE_EVIDENCE
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "utterance",
     [
