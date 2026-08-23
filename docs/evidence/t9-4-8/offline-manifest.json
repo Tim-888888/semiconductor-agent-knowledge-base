@@ -1,0 +1,135 @@
+{
+  "schema": "semikb-t948-offline-bundle-v1",
+  "created_at": "2026-08-23T06:48:56.068678+00:00",
+  "source_commit": "0f4b57806fc584867229edbe116d0e5b4bdc8e0f",
+  "compose_sha256": "2e96c6472671d2ff25f1094e8c98a4e05a5ab750ed2a4c6897691ac05f8b0a8c",
+  "images": [
+    {
+      "service": "etcd",
+      "runtime_tag": "quay.io/coreos/etcd:v3.5.18",
+      "offline_alias": "semikb-offline/etcd:0f4b57806fc5",
+      "image_id": "sha256:b9e6889272c9e672fa749795344385882b2696b0f302c6430a427a4377044a7a",
+      "repo_digests": [
+        "quay.io/coreos/etcd@sha256:d0a641d5fbcc89678c931a61b7de7b8a1cf097149f135c9c73bc81d076a1494b"
+      ],
+      "os": "linux",
+      "architecture": "amd64",
+      "size_bytes": 59011332
+    },
+    {
+      "service": "milvus-minio",
+      "runtime_tag": "minio/minio:RELEASE.2023-03-20T20-16-18Z",
+      "offline_alias": "semikb-offline/milvus-minio:0f4b57806fc5",
+      "image_id": "sha256:400c20c8aac03024d00a34603f5445dd4679b97712e062727190a8462c6a34b5",
+      "repo_digests": [
+        "minio/minio@sha256:6d770d7f255cda1f18d841ffc4365cb7e0d237f6af6a15fcdb587480cd7c3b93"
+      ],
+      "os": "linux",
+      "architecture": "amd64",
+      "size_bytes": 252270941
+    },
+    {
+      "service": "milvus",
+      "runtime_tag": "milvusdb/milvus:v2.5.5",
+      "offline_alias": "semikb-offline/milvus:0f4b57806fc5",
+      "image_id": "sha256:f483514c173ed0715d886d76d3b9a680e29fa928eb9412f9c873d0cff6aca695",
+      "repo_digests": [
+        "milvusdb/milvus@sha256:1542866476d9f184cad2ea834d0d460a7cfd4bc9f83ef5df411fab08aeb218b4"
+      ],
+      "os": "linux",
+      "architecture": "amd64",
+      "size_bytes": 1730126313
+    },
+    {
+      "service": "mongodb",
+      "runtime_tag": "mongo:8.2.6",
+      "offline_alias": "semikb-offline/mongodb:0f4b57806fc5",
+      "image_id": "sha256:df9e92717f46eb666ce4d53f67d49b4550f64e95298a670f3df168ee29f64f15",
+      "repo_digests": [
+        "mongo@sha256:9690b268c50317b2988a7f84f514a2cdcf4de6836e12c295b48f3a203731fce1"
+      ],
+      "os": "linux",
+      "architecture": "amd64",
+      "size_bytes": 950051869
+    },
+    {
+      "service": "minio",
+      "runtime_tag": "quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z",
+      "offline_alias": "semikb-offline/minio:0f4b57806fc5",
+      "image_id": "sha256:6aed1b6949018d1659310e66dc076711c9a9efeffa578b337ac3d1b82e0e9153",
+      "repo_digests": [
+        "quay.io/minio/minio@sha256:1dce27c494a16bae114774f1cec295493f3613142713130c2d22dd5696be6ad3"
+      ],
+      "os": "linux",
+      "architecture": "amd64",
+      "size_bytes": 178690068
+    },
+    {
+      "service": "redis",
+      "runtime_tag": "redis:7.4.10-alpine",
+      "offline_alias": "semikb-offline/redis:0f4b57806fc5",
+      "image_id": "sha256:2a51817f79255c8b69f86a974459c2e0359aff81417d80158f2b9e541e6f4b33",
+      "repo_digests": [
+        "public.ecr.aws/docker/library/redis@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2",
+        "redis@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2"
+      ],
+      "os": "linux",
+      "architecture": "amd64",
+      "size_bytes": 39080381
+    },
+    {
+      "service": "milvus-init",
+      "runtime_tag": "semikb-milvus-init:latest",
+      "offline_alias": "semikb-offline/milvus-init:0f4b57806fc5",
+      "image_id": "sha256:6afcf8be4f1f32aa32e26b14836b1add576f3172e17da37e56c852cf8c9e03f6",
+      "repo_digests": [],
+      "os": "linux",
+      "architecture": "amd64",
+      "size_bytes": 521551375
+    },
+    {
+      "service": "api",
+      "runtime_tag": "semikb-api:latest",
+      "offline_alias": "semikb-offline/api:0f4b57806fc5",
+      "image_id": "sha256:6d02c1e2afdad1c356c29ac3779633012ca71e0324e0c6d7e6fd846ed0dc28af",
+      "repo_digests": [],
+      "os": "linux",
+      "architecture": "amd64",
+      "size_bytes": 521551375
+    },
+    {
+      "service": "worker",
+      "runtime_tag": "semikb-worker:latest",
+      "offline_alias": "semikb-offline/worker:0f4b57806fc5",
+      "image_id": "sha256:3d7defc1018cf14de5b2e3db95fa4ac1eba6a1d3e9ac0106f29a05199b39d03a",
+      "repo_digests": [],
+      "os": "linux",
+      "architecture": "amd64",
+      "size_bytes": 521551375
+    },
+    {
+      "service": "web",
+      "runtime_tag": "semikb-web:latest",
+      "offline_alias": "semikb-offline/web:0f4b57806fc5",
+      "image_id": "sha256:3cac53f802f7678007a851bc1be2041c2b26c1ce31ac0237bda517b3e2a14e29",
+      "repo_digests": [],
+      "os": "linux",
+      "architecture": "amd64",
+      "size_bytes": 48487174
+    }
+  ],
+  "artifacts": {
+    "images.tar": {
+      "bytes": 3813758976,
+      "sha256": "a63a3334417737ccd6c8549a038fc10ace18f1ac22c690c9ff253a439e6b645f"
+    },
+    "source.tar.gz": {
+      "bytes": 5156133,
+      "sha256": "22bd9e4e32ee15792ff3f2042d6882cb358f3d78ce3d8e4713f946ccb4a99bcd"
+    },
+    "README.txt": {
+      "bytes": 501,
+      "sha256": "4a86ceadcf3673a99206be705fa594ce19b1dd6c5c0e982a432b0a42ff3087d9"
+    }
+  }
+}

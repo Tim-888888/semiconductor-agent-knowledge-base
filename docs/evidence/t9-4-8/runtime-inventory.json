@@ -1,0 +1,162 @@
+{
+  "schema": "semikb-t948-runtime-inventory-v1",
+  "containers": [
+    {
+      "name": "semikb-api-1",
+      "container_id": "b59066646516de47166a42fb38882c9aa7fb7972164137e09e436dc5bae01f65",
+      "image_id": "sha256:6d02c1e2afdad1c356c29ac3779633012ca71e0324e0c6d7e6fd846ed0dc28af",
+      "status": "running",
+      "health": "healthy",
+      "configured_user": "10001:10001",
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "privileged": false,
+      "published_ports": {
+        "8000/tcp": null
+      }
+    },
+    {
+      "name": "semikb-worker-1",
+      "container_id": "4ec3329b3f8bd02ed8bf9aa882e974a4846db60c30e0d65866bc3fb7dd745cfd",
+      "image_id": "sha256:3d7defc1018cf14de5b2e3db95fa4ac1eba6a1d3e9ac0106f29a05199b39d03a",
+      "status": "running",
+      "health": null,
+      "configured_user": "10001:10001",
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "privileged": false,
+      "published_ports": {
+        "8000/tcp": null
+      }
+    },
+    {
+      "name": "semikb-web-1",
+      "container_id": "88beea21b8b65dd3dc63d77a8a9a0dafb8febc036e68fa88ee774a5a4553a165",
+      "image_id": "sha256:3cac53f802f7678007a851bc1be2041c2b26c1ce31ac0237bda517b3e2a14e29",
+      "status": "running",
+      "health": "healthy",
+      "configured_user": "101:101",
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "privileged": false,
+      "published_ports": {
+        "80/tcp": null,
+        "8080/tcp": [
+          {
+            "HostIp": "0.0.0.0",
+            "HostPort": "80"
+          },
+          {
+            "HostIp": "::",
+            "HostPort": "80"
+          }
+        ]
+      }
+    },
+    {
+      "name": "semikb-etcd-1",
+      "container_id": "9deab8ba18050f4f92bf9c18abe351093cb20e1ad849eca3d075b82e5a7837f6",
+      "image_id": "sha256:b9e6889272c9e672fa749795344385882b2696b0f302c6430a427a4377044a7a",
+      "status": "running",
+      "health": "healthy",
+      "configured_user": "0",
+      "read_only": false,
+      "cap_drop": [],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "privileged": false,
+      "published_ports": {}
+    },
+    {
+      "name": "semikb-milvus-1",
+      "container_id": "2f6827ca640e81452a9f368996b3d35b09797df7cda5315d92e26fdd2ab91afe",
+      "image_id": "sha256:f483514c173ed0715d886d76d3b9a680e29fa928eb9412f9c873d0cff6aca695",
+      "status": "running",
+      "health": "healthy",
+      "configured_user": "",
+      "read_only": false,
+      "cap_drop": [],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "privileged": false,
+      "published_ports": {}
+    },
+    {
+      "name": "semikb-milvus-minio-1",
+      "container_id": "6c9133e777d257b103dfa97ced473e27bab93ad15ccf9e27d05330d60146cf96",
+      "image_id": "sha256:400c20c8aac03024d00a34603f5445dd4679b97712e062727190a8462c6a34b5",
+      "status": "running",
+      "health": "healthy",
+      "configured_user": "",
+      "read_only": false,
+      "cap_drop": [],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "privileged": false,
+      "published_ports": {}
+    },
+    {
+      "name": "semikb-minio-1",
+      "container_id": "54dab754141ecb1f3398bed22fc6df12fee23bab0b815f900234053a7139e590",
+      "image_id": "sha256:6aed1b6949018d1659310e66dc076711c9a9efeffa578b337ac3d1b82e0e9153",
+      "status": "running",
+      "health": "healthy",
+      "configured_user": "",
+      "read_only": false,
+      "cap_drop": [],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "privileged": false,
+      "published_ports": {}
+    },
+    {
+      "name": "semikb-mongodb-1",
+      "container_id": "e6bd110ad3202d8448b470f4e7085192377c757d7fd65c7975be748eb8f94770",
+      "image_id": "sha256:df9e92717f46eb666ce4d53f67d49b4550f64e95298a670f3df168ee29f64f15",
+      "status": "running",
+      "health": "healthy",
+      "configured_user": "",
+      "read_only": false,
+      "cap_drop": [],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "privileged": false,
+      "published_ports": {}
+    },
+    {
+      "name": "semikb-redis-1",
+      "container_id": "ada0a643b6a62ba4d263337a80b580e1d70abb2127b03ba3a1e5004d1dae8fdd",
+      "image_id": "sha256:2a51817f79255c8b69f86a974459c2e0359aff81417d80158f2b9e541e6f4b33",
+      "status": "running",
+      "health": "healthy",
+      "configured_user": "",
+      "read_only": false,
+      "cap_drop": [],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "privileged": false,
+      "published_ports": {}
+    }
+  ]
+}

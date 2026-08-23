@@ -1,0 +1,106 @@
+{
+  "status": "ok",
+  "demo_mode": false,
+  "services": [
+    {
+      "name": "mongodb",
+      "configured": true,
+      "reachable": null,
+      "detail": "configuration present"
+    },
+    {
+      "name": "milvus",
+      "configured": true,
+      "reachable": null,
+      "detail": "configuration present"
+    },
+    {
+      "name": "minio",
+      "configured": true,
+      "reachable": null,
+      "detail": "configuration present"
+    },
+    {
+      "name": "redis",
+      "configured": true,
+      "reachable": null,
+      "detail": "configuration present"
+    },
+    {
+      "name": "mineru",
+      "configured": true,
+      "reachable": null,
+      "detail": "configuration present"
+    },
+    {
+      "name": "llm_primary",
+      "configured": true,
+      "reachable": null,
+      "detail": "configuration present"
+    },
+    {
+      "name": "llm_fallback",
+      "configured": true,
+      "reachable": null,
+      "detail": "configuration present"
+    },
+    {
+      "name": "reranker",
+      "configured": true,
+      "reachable": null,
+      "detail": "configuration present"
+    },
+    {
+      "name": "embedding",
+      "configured": true,
+      "reachable": null,
+      "detail": "configuration present"
+    },
+    {
+      "name": "aliyun_web_mcp",
+      "configured": true,
+      "reachable": null,
+      "detail": "configuration present"
+    }
+  ],
+  "milvus_schema": {
+    "collection": "semikb_chunks_v4",
+    "alias": "semikb_chunks_active",
+    "primary_key": {
+      "name": "chunk_id",
+      "type": "VARCHAR",
+      "max_length": 160
+    },
+    "vector_fields": [
+      {
+        "name": "dense_vector",
+        "type": "FLOAT_VECTOR",
+        "dimension": 1024,
+        "metric": "IP"
+      },
+      {
+        "name": "sparse_vector",
+        "type": "SPARSE_FLOAT_VECTOR",
+        "metric": "IP"
+      }
+    ],
+    "filter_fields": [
+      "document_id",
+      "revision",
+      "chunk_type",
+      "approval_status",
+      "effective_at",
+      "expires_at",
+      "lifecycle",
+      "fab",
+      "product",
+      "process_layer",
+      "tool_id",
+      "chamber",
+      "recipe_id",
+      "recipe_version",
+      "access_scope_key",
+      "index_version"
+    ]
+  }
+}

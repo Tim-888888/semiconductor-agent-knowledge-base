@@ -1,0 +1,4 @@
+->  celery@4ec3329b3f8b: OK
+        pong
+
+1 node online.

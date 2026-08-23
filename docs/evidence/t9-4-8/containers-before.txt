@@ -1,0 +1,9 @@
+semikb-api-1 b7e5b83c9fdc
+semikb-etcd-1 9deab8ba1805
+semikb-milvus-1 2f6827ca640e
+semikb-milvus-minio-1 6c9133e777d2
+semikb-minio-1 54dab754141e
+semikb-mongodb-1 e6bd110ad320
+semikb-redis-1 ada0a643b6a6
+semikb-web-1 a189d900a6c9
+semikb-worker-1 b2eb5c6607dd

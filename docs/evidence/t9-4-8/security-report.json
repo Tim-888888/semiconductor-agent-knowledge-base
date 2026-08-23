@@ -1,0 +1,144 @@
+{
+  "schema": "semikb-t948-security-v1",
+  "captured_at": "2026-08-23T06:51:33.706810+00:00",
+  "base_url": "http://127.0.0.1",
+  "checks": [
+    {
+      "name": "public_listener_allowlist",
+      "passed": true,
+      "evidence": [
+        22,
+        80
+      ]
+    },
+    {
+      "name": "data_ports_not_public",
+      "passed": true,
+      "evidence": [
+        22,
+        80
+      ]
+    },
+    {
+      "name": "application_container_hardening",
+      "passed": true,
+      "evidence": {
+        "api": {
+          "present": true,
+          "configured_user": "10001:10001",
+          "non_root": true,
+          "read_only": true,
+          "cap_drop_all": true,
+          "no_new_privileges": true,
+          "privileged": false
+        },
+        "worker": {
+          "present": true,
+          "configured_user": "10001:10001",
+          "non_root": true,
+          "read_only": true,
+          "cap_drop_all": true,
+          "no_new_privileges": true,
+          "privileged": false
+        },
+        "web": {
+          "present": true,
+          "configured_user": "101:101",
+          "non_root": true,
+          "read_only": true,
+          "cap_drop_all": true,
+          "no_new_privileges": true,
+          "privileged": false
+        }
+      }
+    },
+    {
+      "name": "environment_file_mode",
+      "passed": true,
+      "evidence": "600"
+    },
+    {
+      "name": "demo_access_key_and_server_owned_scope",
+      "passed": true,
+      "evidence": {
+        "missing_status": 401,
+        "wrong_status": 401,
+        "correct_status": 200,
+        "issued_sub": "demo_engineer",
+        "issued_roles": [
+          "engineer",
+          "knowledge_admin"
+        ],
+        "issued_scope_keys": [
+          "demo_engineering"
+        ]
+      }
+    },
+    {
+      "name": "invalid_and_expired_jwt_rejected",
+      "passed": true,
+      "evidence": {
+        "invalid_status": 401,
+        "expired_status": 401
+      }
+    },
+    {
+      "name": "knowledge_admin_rbac",
+      "passed": true,
+      "evidence": 403
+    },
+    {
+      "name": "cross_user_thread_isolation",
+      "passed": true,
+      "evidence": {
+        "thread_list_status": 200,
+        "cross_user_status": 404
+      }
+    },
+    {
+      "name": "production_demo_seed_closed",
+      "passed": true,
+      "evidence": {
+        "anonymous_status": 401,
+        "authorized_status": 404
+      }
+    },
+    {
+      "name": "authorized_asset_link_and_expiry",
+      "passed": true,
+      "evidence": {
+        "image_found": true,
+        "remaining_seconds": 299,
+        "signed_path": "/objects/semikb-derived/documents/CASE-FA-2026-004/R1/assets/IMG-FA-ETCH-03-2026-004/original.png",
+        "signed_status": 200,
+        "unauthorized_status": 403,
+        "expired_status": 403
+      }
+    },
+    {
+      "name": "secrets_absent_from_public_surfaces",
+      "passed": true,
+      "evidence": []
+    },
+    {
+      "name": "demo_access_rate_limit",
+      "passed": true,
+      "evidence": [
+        401,
+        401,
+        401,
+        401,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429
+      ]
+    }
+  ],
+  "passed": true,
+  "failed_checks": []
+}
