@@ -446,7 +446,7 @@ function App() {
       setThreads((current) => [response.thread, ...current.filter((item) => item.thread_id !== response.thread.thread_id)]);
       setAgentResult(response);
       if (response.trace_id) await refreshTraces(response.trace_id);
-      setNotice(response.clarification_required ? "线程已暂停，等待补充信息" : "调查结果已写入线程");
+      setNotice(response.clarification_required ? "" : "调查结果已写入线程");
       setStreamState(null);
     } catch (caught) {
       const stopped = streamStopRequestedRef.current
@@ -776,7 +776,7 @@ function App() {
       <div className="sidebar-status"><span className="status-dot" /><span>FAB-01 · scoped access</span></div>
     </aside>
 
-    <main className="main-area">
+    <main className={`main-area ${view === "workbench" ? "main-area-workbench" : ""}`}>
       <header className="topbar">
         <div><p className="eyebrow">FAB-01 / P-ALPHA / ETCH</p><h1>{viewTitle(view)}</h1></div>
         <div className="topbar-right"><Activity size={16} /><span>Evidence-first</span></div>

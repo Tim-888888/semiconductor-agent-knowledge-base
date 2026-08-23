@@ -9,6 +9,8 @@ import {
   Image as ImageIcon,
   ListChecks,
   LoaderCircle,
+  Maximize2,
+  Minimize2,
   Plus,
   RotateCcw,
   SearchCheck,
@@ -66,6 +68,7 @@ export function Workbench({
     ?? [];
   const activeTraceId = result?.trace_id ?? latestAssistantPresentation?.trace_id;
   const [selectedEvidenceId, setSelectedEvidenceId] = useState<string>("");
+  const [queryExpanded, setQueryExpanded] = useState(false);
   const selectedEvidence = ledger.find((item) => item.evidence_id === selectedEvidenceId) ?? ledger[0];
   const messageListRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -139,14 +142,27 @@ export function Workbench({
         />}
       </div>
 
-      <form className="query-box" onSubmit={onSubmit}>
+      <form className={`query-box ${queryExpanded ? "query-box-expanded" : ""}`} onSubmit={onSubmit}>
         <textarea
+          id="question-input"
           data-testid="question-input"
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
           placeholder={thread?.status === "waiting_for_clarification" ? "补充当前信息，或直接输入一个新问题" : "输入半导体制造或检测问题"}
           rows={3}
         />
+        <button
+          type="button"
+          className="composer-size-toggle"
+          data-testid="question-size-toggle"
+          title={queryExpanded ? "收起输入框" : "展开输入框"}
+          aria-label={queryExpanded ? "收起输入框" : "展开输入框"}
+          aria-controls="question-input"
+          aria-pressed={queryExpanded}
+          onClick={() => setQueryExpanded((current) => !current)}
+        >
+          {queryExpanded ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
+        </button>
         <button type="submit" className="icon-command" title="发送问题" disabled={loading || !query.trim()}>
           <ArrowUp size={19} />
         </button>
