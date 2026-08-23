@@ -8,8 +8,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from scripts.verify_t947_restore import compare_snapshots
-
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -21,6 +19,26 @@ def parse_args() -> argparse.Namespace:
 
 def load(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def invariant_payload(snapshot: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "mongodb": snapshot.get("mongodb", {}),
+        "milvus": snapshot.get("milvus", {}),
+        "minio": snapshot.get("minio", {}),
+        "redis": snapshot.get("redis", {}),
+    }
+
+
+def compare_snapshots(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
+    expected = invariant_payload(before)
+    actual = invariant_payload(after)
+    differences = {
+        section: {"expected": expected[section], "actual": actual.get(section)}
+        for section in expected
+        if expected[section] != actual.get(section)
+    }
+    return {"matched": not differences, "differences": differences}
 
 
 def summarize(evidence_dir: Path, baseline_path: Path) -> dict[str, Any]:

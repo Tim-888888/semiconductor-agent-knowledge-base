@@ -95,6 +95,14 @@ def test_t949_shell_entrypoint_is_guarded_and_non_destructive() -> None:
     assert "docker volume rm" not in script
 
 
+def test_t949_summary_has_no_project_runtime_dependency() -> None:
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "scripts/summarize_t949_acceptance.py").read_text(encoding="utf-8")
+
+    assert "verify_t947_restore import" not in source
+    assert "from semikb" not in source
+
+
 def test_stream_message_accepts_completed_event_without_trailing_blank_line() -> None:
     class FakeResponse:
         status_code = 200
