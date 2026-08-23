@@ -132,11 +132,12 @@ h4 { margin: 0; font-size: 13px; }
 .citation { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 5px 8px; border: 1px solid #b9cbd7; border-radius: 3px; background: #f0f6fa; color: #315e7e; font-size: 11px; text-align: left; overflow-wrap: anywhere; }
 .empty-conversation { padding: 16px; border: 1px dashed #c5ccc7; color: var(--muted); font-size: 13px; }
 .query-box { position: relative; padding: 14px 20px 18px; border-top: 1px solid var(--line); background: #fff; }
-.query-box textarea { display: block; width: 100%; height: 74px; resize: none; padding: 11px 48px 11px 11px; border: 1px solid #bdc7c0; border-radius: 4px; color: var(--ink); background: #fff; line-height: 1.45; }
+.query-box textarea { display: block; width: 100%; height: 74px; resize: none; padding: 11px 86px 11px 11px; border: 1px solid #bdc7c0; border-radius: 4px; color: var(--ink); background: #fff; line-height: 1.45; }
 .query-box-expanded textarea { height: clamp(180px, 36dvh, 360px); }
-.composer-size-toggle { position: absolute; top: 24px; right: 30px; width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 1px solid #cbd2cd; border-radius: 4px; background: #fff; color: #607169; }
+.composer-actions { position: absolute; right: 30px; bottom: 28px; display: flex; align-items: center; gap: 6px; }
+.composer-size-toggle { width: 32px; height: 32px; display: grid; place-items: center; padding: 0; border: 1px solid #cbd2cd; border-radius: 4px; background: #fff; color: #607169; }
 .composer-size-toggle:hover { border-color: #8ba398; color: var(--green); background: #f4f8f5; }
-.icon-command { position: absolute; right: 30px; bottom: 28px; width: 32px; height: 32px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; background: var(--green); color: #fff; }
+.icon-command { width: 32px; height: 32px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; background: var(--green); color: #fff; }
 .structured-answer { max-width: 920px; border-top: 2px solid var(--green); background: #fff; padding: 16px 18px; box-shadow: 0 1px 0 #d9ddd8; }
 .message-body > .structured-answer { margin-top: 12px; }
 .structured-heading { display: flex; justify-content: space-between; gap: 15px; align-items: flex-start; margin-bottom: 13px; }
@@ -394,8 +395,7 @@ td small { margin-top: 4px; color: #87918c; font-size: 9px; overflow-wrap: anywh
   .thread-controls select { width: 136px; }
   .message-list { min-height: 360px; padding: 14px; }
   .query-box { padding: 12px; }
-  .composer-size-toggle { top: 22px; right: 22px; }
-  .icon-command { right: 22px; bottom: 22px; }
+  .composer-actions { right: 22px; bottom: 22px; }
   .evidence-panel { padding: 14px; }
   .trace-shell { display: block; }
   .trace-index { border-right: 0; border-bottom: 1px solid var(--line); }

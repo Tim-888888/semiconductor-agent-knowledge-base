@@ -151,21 +151,30 @@ export function Workbench({
           placeholder={thread?.status === "waiting_for_clarification" ? "补充当前信息，或直接输入一个新问题" : "输入半导体制造或检测问题"}
           rows={3}
         />
-        <button
-          type="button"
-          className="composer-size-toggle"
-          data-testid="question-size-toggle"
-          title={queryExpanded ? "收起输入框" : "展开输入框"}
-          aria-label={queryExpanded ? "收起输入框" : "展开输入框"}
-          aria-controls="question-input"
-          aria-pressed={queryExpanded}
-          onClick={() => setQueryExpanded((current) => !current)}
-        >
-          {queryExpanded ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
-        </button>
-        <button type="submit" className="icon-command" title="发送问题" disabled={loading || !query.trim()}>
-          <ArrowUp size={19} />
-        </button>
+        <div className="composer-actions">
+          <button
+            type="button"
+            className="composer-size-toggle"
+            data-testid="question-size-toggle"
+            title={queryExpanded ? "收起输入框" : "展开输入框"}
+            aria-label={queryExpanded ? "收起输入框" : "展开输入框"}
+            aria-controls="question-input"
+            aria-pressed={queryExpanded}
+            onClick={() => setQueryExpanded((current) => !current)}
+          >
+            {queryExpanded ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
+          </button>
+          <button
+            type="submit"
+            className="icon-command"
+            data-testid="question-submit"
+            title="发送问题"
+            aria-label="发送问题"
+            disabled={loading || !query.trim()}
+          >
+            <ArrowUp size={19} />
+          </button>
+        </div>
       </form>
     </div>
 
