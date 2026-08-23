@@ -102,7 +102,9 @@ def test_production_python_image_uses_hashed_dependency_lock() -> None:
 
 def test_deployment_scripts_keep_restore_and_stage_guards() -> None:
     deploy = (ROOT / "scripts/deployment/deploy.sh").read_text(encoding="utf-8")
+    backup = (ROOT / "scripts/deployment/backup_cold.sh").read_text(encoding="utf-8")
     restore = (ROOT / "scripts/deployment/restore_cold.sh").read_text(encoding="utf-8")
+    cleanup = (ROOT / "scripts/deployment/cleanup_t947_restore.sh").read_text(encoding="utf-8")
     preflight = (ROOT / "scripts/deployment/host_preflight.sh").read_text(encoding="utf-8")
 
     assert "host_preflight.sh" in deploy
@@ -116,11 +118,31 @@ def test_deployment_scripts_keep_restore_and_stage_guards() -> None:
     assert "-f docker-compose.yml -f docker-compose.prod.yml" not in deploy
     assert "--confirm-empty-target" in restore
     assert "--env" in restore
+    assert "--target-data-root" in restore
+    assert "--restore-env" in restore
+    assert "--project-name" in restore
+    assert "restore-t947-independent" in restore
     assert "Refusing restore because target is not empty" in restore
+    assert 'install -m 0600 "$env_backup" .env' not in restore
+    assert "docker compose --env-file" not in restore
+    assert "docker compose down" not in restore
+    assert "T947_BACKUP_CONFIRM" in backup
+    assert 'stop web api worker' in backup
+    assert 'stop mongodb redis milvus etcd minio milvus-minio' in backup
+    assert "T947_CLEANUP_CONFIRM" in cleanup
+    assert 'label=com.docker.compose.project=$project_name' in cleanup
+    assert 'target_data_root" != "$live_data_root' in cleanup
     assert "Security-group rules must still be verified" in preflight
-    assert "docker system prune" not in "\n".join((deploy, restore, preflight))
-    assert "source .env" not in "\n".join((deploy, restore, preflight))
+    assert "docker system prune" not in "\n".join((deploy, backup, restore, cleanup, preflight))
+    assert "source .env" not in "\n".join((deploy, backup, restore, cleanup, preflight))
     assert 'source "$env_backup"' not in restore
+
+
+def test_production_compose_can_bind_an_independent_restore_environment() -> None:
+    compose = (ROOT / "docker-compose.prod.yml").read_text(encoding="utf-8")
+
+    assert compose.count("env_file: ${SEMIKB_APP_ENV_FILE:-.env}") == 2
+    assert 'ports:\n      - "80:80"' in compose
 
 
 def test_t946_runtime_scripts_are_bounded_and_restart_requires_double_confirmation() -> None:

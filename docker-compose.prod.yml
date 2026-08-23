@@ -199,7 +199,7 @@ services:
     <<: *runtime-hardening
     build:
       context: .
-    env_file: .env
+    env_file: ${SEMIKB_APP_ENV_FILE:-.env}
     environment: &application-environment
       APP_ENV: production
       DEMO_MODE: "false"
@@ -248,7 +248,7 @@ services:
     <<: *runtime-hardening
     build:
       context: .
-    env_file: .env
+    env_file: ${SEMIKB_APP_ENV_FILE:-.env}
     environment: *application-environment
     command: celery -A semikb.workers.celery_app:celery_app worker --loglevel=INFO --concurrency=1
     networks:
