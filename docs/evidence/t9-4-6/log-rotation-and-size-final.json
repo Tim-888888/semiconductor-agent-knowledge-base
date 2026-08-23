@@ -1,0 +1,123 @@
+{
+  "schema": "semikb-t946-log-state-v1",
+  "services": [
+    {
+      "service": "web",
+      "container_id": "88e87dd33fbc1887961ab31e6be72023bb46017b086b9a706df64daee46abd42",
+      "driver": "json-file",
+      "options": {
+        "max-file": "3",
+        "max-size": "20m"
+      },
+      "current_log_bytes": 278525,
+      "restart_count": 0,
+      "oom_killed": false,
+      "status": "running"
+    },
+    {
+      "service": "api",
+      "container_id": "fbf73efa870821dded32a6d978e70c73c7ea3c05c22331876a56b789f3ae7a9a",
+      "driver": "json-file",
+      "options": {
+        "max-file": "3",
+        "max-size": "20m"
+      },
+      "current_log_bytes": 414083,
+      "restart_count": 0,
+      "oom_killed": false,
+      "status": "running"
+    },
+    {
+      "service": "worker",
+      "container_id": "2d253029a4ce5425f49bdd9b2f21801526709320e7953725ce2206c331fd2c41",
+      "driver": "json-file",
+      "options": {
+        "max-file": "3",
+        "max-size": "20m"
+      },
+      "current_log_bytes": 43024,
+      "restart_count": 0,
+      "oom_killed": false,
+      "status": "running"
+    },
+    {
+      "service": "redis",
+      "container_id": "ada0a643b6a62ba4d263337a80b580e1d70abb2127b03ba3a1e5004d1dae8fdd",
+      "driver": "json-file",
+      "options": {
+        "max-file": "3",
+        "max-size": "20m"
+      },
+      "current_log_bytes": 192453,
+      "restart_count": 0,
+      "oom_killed": false,
+      "status": "running"
+    },
+    {
+      "service": "minio",
+      "container_id": "54dab754141ecb1f3398bed22fc6df12fee23bab0b815f900234053a7139e590",
+      "driver": "json-file",
+      "options": {
+        "max-file": "3",
+        "max-size": "20m"
+      },
+      "current_log_bytes": 3513,
+      "restart_count": 0,
+      "oom_killed": false,
+      "status": "running"
+    },
+    {
+      "service": "mongodb",
+      "container_id": "e6bd110ad3202d8448b470f4e7085192377c757d7fd65c7975be748eb8f94770",
+      "driver": "json-file",
+      "options": {
+        "max-file": "3",
+        "max-size": "20m"
+      },
+      "current_log_bytes": 5308090,
+      "restart_count": 0,
+      "oom_killed": false,
+      "status": "running"
+    },
+    {
+      "service": "milvus",
+      "container_id": "2f6827ca640e81452a9f368996b3d35b09797df7cda5315d92e26fdd2ab91afe",
+      "driver": "json-file",
+      "options": {
+        "max-file": "3",
+        "max-size": "20m"
+      },
+      "current_log_bytes": 10731348,
+      "restart_count": 0,
+      "oom_killed": false,
+      "status": "running"
+    },
+    {
+      "service": "etcd",
+      "container_id": "9deab8ba18050f4f92bf9c18abe351093cb20e1ad849eca3d075b82e5a7837f6",
+      "driver": "json-file",
+      "options": {
+        "max-file": "3",
+        "max-size": "20m"
+      },
+      "current_log_bytes": 4524205,
+      "restart_count": 0,
+      "oom_killed": false,
+      "status": "running"
+    },
+    {
+      "service": "milvus-minio",
+      "container_id": "6c9133e777d257b103dfa97ced473e27bab93ad15ccf9e27d05330d60146cf96",
+      "driver": "json-file",
+      "options": {
+        "max-file": "3",
+        "max-size": "20m"
+      },
+      "current_log_bytes": 5022,
+      "restart_count": 0,
+      "oom_killed": false,
+      "status": "running"
+    }
+  ],
+  "passed": true
+}

@@ -1,0 +1,26 @@
+{
+  "schema": "semikb-t946-browser-acceptance-v1",
+  "url": "http://112.74.99.143/",
+  "desktop": {
+    "sse_live_state_observed": true,
+    "completed": true,
+    "refresh_text_equal": true,
+    "article_length_before": 755,
+    "article_length_after": 755,
+    "screenshot": "browser-desktop-completed.png"
+  },
+  "mobile": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "completed_answer_visible": true,
+    "navigation_visible": true,
+    "composer_visible": true,
+    "screenshot": "browser-mobile-390x844.png"
+  },
+  "console": {
+    "error_or_warning_count": 0
+  },
+  "passed": true
+}

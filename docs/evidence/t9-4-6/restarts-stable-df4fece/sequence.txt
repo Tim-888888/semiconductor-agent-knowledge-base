@@ -1,0 +1,9 @@
+restarting web
+restarting api
+restarting worker
+restarting redis
+restarting minio
+restarting mongodb
+restarting milvus
+restarting etcd
+restarting milvus-minio

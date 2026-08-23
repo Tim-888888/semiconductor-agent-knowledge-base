@@ -1,0 +1,31 @@
+{
+  "schema": "semikb-t946-state-v1",
+  "captured_at": "2026-08-22T17:37:43.752279+00:00",
+  "mongodb_counts": {
+    "document_catalog": 44,
+    "chunk_catalog": 154,
+    "image_assets": 15,
+    "table_assets": 19,
+    "ingestion_jobs": 45,
+    "ingestion_job_events": 331,
+    "evaluation_runs": 17,
+    "retrieval_traces": 289,
+    "agent_threads": 109,
+    "agent_message_requests": 221,
+    "checkpoints": 2186,
+    "checkpoint_writes": 17622
+  },
+  "milvus": {
+    "active_collection": "semikb_chunks_v4",
+    "alias_collection": "semikb_chunks_v4",
+    "row_count": 148
+  },
+  "minio_object_counts": {
+    "semikb-raw": 56,
+    "semikb-derived": 91
+  },
+  "redis": {
+    "ping": true,
+    "celery_queue_depth": 0
+  }
+}

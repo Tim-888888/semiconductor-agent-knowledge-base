@@ -1,0 +1,1 @@
+["celery","-A","semikb.workers.celery_app:celery_app","worker","--loglevel=INFO","--concurrency=1"]

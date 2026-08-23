@@ -1,0 +1,50 @@
+{
+  "verification": "T9-4.6-bounded-capacity-v1",
+  "generated_at": "2026-08-22T17:51:27.856681+00:00",
+  "base_url": "http://web",
+  "levels": [
+    1
+  ],
+  "waves": 1,
+  "max_concurrency": 3,
+  "worker_concurrency_expected": 1,
+  "summary": {
+    "request_count": 1,
+    "completed_count": 1,
+    "error_rate": 0.0,
+    "timeout_count": 0,
+    "http_5xx_count": 0,
+    "accepted_p50_ms": 19.251676043495536,
+    "accepted_p95_ms": 19.251676043495536,
+    "first_delta_p50_ms": 14520.933291991241,
+    "first_delta_p95_ms": 14520.933291991241,
+    "end_to_end_p50_ms": 14628.687329939567,
+    "end_to_end_p95_ms": 14628.687329939567,
+    "retrieval_p50_ms": 2677.31,
+    "retrieval_p95_ms": 2677.31,
+    "observed_provider_attempts": 5
+  },
+  "probes": [
+    {
+      "label": "sop",
+      "level": 1,
+      "wave": 1,
+      "request_id": "req_t946_l1_w1_0_1787421073211",
+      "thread_id": "thread_4c4ae1a40227408198bc2b64ef66d3f5",
+      "status_code": 200,
+      "accepted_ms": 19.251676043495536,
+      "first_delta_ms": 14520.933291991241,
+      "total_ms": 14628.687329939567,
+      "route": "internal_rag",
+      "trace_id": "trace_0f8c68d315f14efd91ef872060fc9684",
+      "retrieval_ms": 2677.31,
+      "provider_attempts": 5,
+      "event_count": 17,
+      "answer_delta_count": 4,
+      "error_code": null
+    }
+  ],
+  "background": null,
+  "disconnect_recovery": null,
+  "passed": true
+}

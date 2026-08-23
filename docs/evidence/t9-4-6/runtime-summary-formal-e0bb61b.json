@@ -1,0 +1,83 @@
+{
+  "schema": "semikb-t946-runtime-summary-v1",
+  "host": {
+    "sample_count": 31,
+    "min_available_memory_bytes": 5432467456,
+    "min_root_available_bytes": 68049162240,
+    "root_available_delta_bytes": -1474560,
+    "max_load_1m": 0.57,
+    "swap_configured": false
+  },
+  "containers": {
+    "semikb-api-1": {
+      "sample_count": 31,
+      "max_cpu_percent": 33.4,
+      "max_memory_bytes": 189792256,
+      "max_memory_percent": 28.29,
+      "max_pids": 37
+    },
+    "semikb-api-run-66560deb8056": {
+      "sample_count": 23,
+      "max_cpu_percent": 26.62,
+      "max_memory_bytes": 26623344,
+      "max_memory_percent": 3.97,
+      "max_pids": 5
+    },
+    "semikb-etcd-1": {
+      "sample_count": 31,
+      "max_cpu_percent": 0.34,
+      "max_memory_bytes": 23540531,
+      "max_memory_percent": 8.77,
+      "max_pids": 12
+    },
+    "semikb-milvus-1": {
+      "sample_count": 31,
+      "max_cpu_percent": 3.97,
+      "max_memory_bytes": 165465292,
+      "max_memory_percent": 6.16,
+      "max_pids": 29
+    },
+    "semikb-milvus-minio-1": {
+      "sample_count": 31,
+      "max_cpu_percent": 2.29,
+      "max_memory_bytes": 100443095,
+      "max_memory_percent": 24.95,
+      "max_pids": 24
+    },
+    "semikb-minio-1": {
+      "sample_count": 31,
+      "max_cpu_percent": 1.88,
+      "max_memory_bytes": 95672074,
+      "max_memory_percent": 23.76,
+      "max_pids": 12
+    },
+    "semikb-mongodb-1": {
+      "sample_count": 31,
+      "max_cpu_percent": 49.72,
+      "max_memory_bytes": 376438784,
+      "max_memory_percent": 46.74,
+      "max_pids": 85
+    },
+    "semikb-redis-1": {
+      "sample_count": 31,
+      "max_cpu_percent": 2.42,
+      "max_memory_bytes": 3850371,
+      "max_memory_percent": 2.87,
+      "max_pids": 7
+    },
+    "semikb-web-1": {
+      "sample_count": 31,
+      "max_cpu_percent": 0.21,
+      "max_memory_bytes": 4099932,
+      "max_memory_percent": 6.11,
+      "max_pids": 6
+    },
+    "semikb-worker-1": {
+      "sample_count": 31,
+      "max_cpu_percent": 8.01,
+      "max_memory_bytes": 197551718,
+      "max_memory_percent": 21.03,
+      "max_pids": 18
+    }
+  }
+}
