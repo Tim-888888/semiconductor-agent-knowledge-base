@@ -1,0 +1,4 @@
+services:
+  web:
+    volumes:
+      - ${SEMIKB_CERTBOT_ROOT:-/opt/semiconductor-agent-knowledge-base-certbot}/www:/var/www/certbot:ro

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 from datetime import UTC, datetime
@@ -31,6 +32,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--env", type=Path, default=Path(".env"))
     parser.add_argument("--compose-file", type=Path, default=Path("docker-compose.prod.yml"))
     parser.add_argument("--source-ref", default="HEAD")
+    parser.add_argument(
+        "--source-archive",
+        type=Path,
+        help="Use an already verified source.tar.gz instead of reading the local Git repository.",
+    )
+    parser.add_argument(
+        "--source-commit",
+        help="Full 40-character Git commit recorded for --source-archive.",
+    )
     parser.add_argument("--apply", action="store_true")
     return parser.parse_args()
 
@@ -57,6 +67,13 @@ def resolve_source_ref(root: Path, source_ref: str) -> str:
             cwd=root,
         )
     ).strip()
+
+
+def validate_source_commit(source_commit: str) -> str:
+    normalized = source_commit.strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{40}", normalized):
+        raise SystemExit("--source-commit must be a full 40-character Git commit.")
+    return normalized
 
 
 def compose_config(root: Path, env_path: Path, compose_path: Path) -> dict[str, Any]:
@@ -116,7 +133,16 @@ def main() -> None:
     env_path = args.env.resolve()
     compose_path = args.compose_file.resolve()
     output = args.output_dir.resolve()
-    source_ref = resolve_source_ref(root, args.source_ref)
+    if bool(args.source_archive) != bool(args.source_commit):
+        raise SystemExit("--source-archive and --source-commit must be provided together.")
+    source_archive_input: Path | None = None
+    if args.source_archive:
+        source_archive_input = args.source_archive.resolve()
+        if not source_archive_input.is_file():
+            raise SystemExit(f"Source archive does not exist: {source_archive_input}")
+        source_ref = validate_source_commit(args.source_commit)
+    else:
+        source_ref = resolve_source_ref(root, args.source_ref)
     if output.exists() and any(output.iterdir()):
         raise SystemExit(f"Refusing to overwrite non-empty output directory: {output}")
     output.mkdir(parents=True, exist_ok=True)
@@ -147,10 +173,13 @@ def main() -> None:
     subprocess.check_call(["docker", "save", "-o", str(images_archive), *image_tags], cwd=root)
 
     source_archive = output / "source.tar.gz"
-    subprocess.check_call(
-        ["git", "archive", "--format=tar.gz", "-o", str(source_archive), source_ref],
-        cwd=root,
-    )
+    if source_archive_input:
+        shutil.copy2(source_archive_input, source_archive)
+    else:
+        subprocess.check_call(
+            ["git", "archive", "--format=tar.gz", "-o", str(source_archive), source_ref],
+            cwd=root,
+        )
     compose_sha = sha256_file(compose_path)
     manifest = {
         "schema": "semikb-t948-offline-bundle-v1",

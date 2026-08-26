@@ -1,0 +1,76 @@
+{
+  "schema": "semikb-hk-migration-browser-acceptance-v1",
+  "captured_at": "2026-08-26T19:32:00+08:00",
+  "base_url": "http://semiatlas.cn/",
+  "method": "Public in-app browser with actual login, clicks, SSE observation and responsive viewport overrides",
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 900,
+      "document_scroll_width": 1440,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "document_scroll_width": 390,
+      "horizontal_overflow": false
+    }
+  ],
+  "checks": [
+    {
+      "name": "restored_threads_are_visible",
+      "passed": true,
+      "evidence": "The thread selector loaded migrated historical threads before creating the acceptance thread."
+    },
+    {
+      "name": "direct_chat_streams_before_persistence",
+      "passed": true,
+      "evidence": "The browser first showed SEMIKB LIVE and the routing stage, then persisted a chat_direct bubble."
+    },
+    {
+      "name": "controlled_rag_uses_structured_card",
+      "passed": true,
+      "evidence": "The wafer-image query used internal_rag and rendered a structured investigation with governed citations."
+    },
+    {
+      "name": "first_authorized_image_opens_automatically",
+      "passed": true,
+      "evidence": {
+        "image_id": "IMG-FA-ETCH-03-2026-004",
+        "natural_width": 320,
+        "natural_height": 320,
+        "visible": true
+      }
+    },
+    {
+      "name": "operator_pages_load_migrated_records",
+      "passed": true,
+      "evidence": {
+        "retrieval_trace_page": true,
+        "ingestion_task_center": true,
+        "offline_evaluation_page": true
+      }
+    },
+    {
+      "name": "mobile_composer_controls_do_not_overlap",
+      "passed": true,
+      "evidence": {
+        "expand_button": {"x": 282.67, "width": 32.0, "right": 314.67},
+        "send_button": {"x": 320.67, "width": 32.0, "right": 352.67}
+      }
+    },
+    {
+      "name": "clean_console",
+      "passed": true,
+      "evidence": {"errors": 0, "warnings": 0}
+    }
+  ],
+  "screenshots": [
+    "desktop-workbench-image.png",
+    "desktop-offline-evaluation.png",
+    "mobile-workbench-390x844.png",
+    "mobile-offline-evaluation-390x844.png"
+  ],
+  "passed": true
+}

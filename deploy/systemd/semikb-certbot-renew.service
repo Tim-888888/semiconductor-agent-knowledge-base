@@ -1,0 +1,9 @@
+[Unit]
+Description=Renew SemiAtlas TLS certificates
+Requires=docker.service
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/semiconductor-agent-knowledge-base
+ExecStart=/opt/semiconductor-agent-knowledge-base/scripts/deployment/renew_https.sh

@@ -9,6 +9,7 @@ from scripts.build_t948_offline_bundle import (
     resolve_source_ref,
     runtime_image_tag,
     sha256_file,
+    validate_source_commit,
 )
 from scripts.verify_t948_offline_bundle import checksum_entries
 
@@ -76,6 +77,23 @@ def test_t948_source_ref_is_verified_as_a_commit_before_export(monkeypatch) -> N
     assert calls == [
         (("git", "rev-parse", "--verify", "release-candidate^{commit}"), root)
     ]
+
+
+def test_t948_prebuilt_source_archive_requires_a_full_commit() -> None:
+    commit = "A" * 40
+
+    assert validate_source_commit(commit) == commit.lower()
+
+
+def test_t948_prebuilt_source_archive_mode_is_credential_free() -> None:
+    source = (Path(__file__).resolve().parents[1] / "scripts/build_t948_offline_bundle.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert '"--source-archive"' in source
+    assert '"--source-commit"' in source
+    assert "shutil.copy2(source_archive_input, source_archive)" in source
+    assert "DEMO_ACCESS_KEY" not in source
 
 
 def test_t948_bundle_manifest_contract_contains_no_credentials(tmp_path: Path) -> None:

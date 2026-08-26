@@ -235,3 +235,47 @@ def test_nginx_disables_buffering_for_agent_sse() -> None:
     assert "proxy_cache off;" in nginx
     assert "gzip off;" in nginx
     assert 'add_header X-Accel-Buffering "no" always;' in nginx
+
+
+def test_https_overlay_keeps_acme_and_tls_at_the_web_boundary() -> None:
+    acme_compose = (ROOT / "docker-compose.acme.yml").read_text(encoding="utf-8")
+    https_compose = (ROOT / "docker-compose.https.yml").read_text(encoding="utf-8")
+    http_nginx = (ROOT / "web/nginx.conf").read_text(encoding="utf-8")
+    https_nginx = (ROOT / "web/nginx.https.conf").read_text(encoding="utf-8")
+
+    assert "web:" in acme_compose
+    assert "/var/www/certbot:ro" in acme_compose
+    assert '"443:8443"' in https_compose
+    assert "/etc/letsencrypt:ro" in https_compose
+    assert 'group_add:\n      - "0"' in https_compose
+    assert "ports:" not in acme_compose
+    assert "acme-challenge" in http_nginx
+    assert "listen 8080;" in https_nginx
+    assert "listen 8443 ssl;" in https_nginx
+    assert "server_name semiatlas.cn www.semiatlas.cn;" in https_nginx
+    assert https_nginx.count("return 301 https://semiatlas.cn$request_uri;") == 2
+    assert "ssl_protocols TLSv1.2 TLSv1.3;" in https_nginx
+    assert "Strict-Transport-Security" in https_nginx
+    assert "messages/stream$" in https_nginx
+    assert "proxy_buffering off;" in https_nginx
+
+
+def test_https_scripts_pin_certbot_and_install_renewal_timer() -> None:
+    enable = (ROOT / "scripts/deployment/enable_https.sh").read_text(encoding="utf-8")
+    renew = (ROOT / "scripts/deployment/renew_https.sh").read_text(encoding="utf-8")
+    service = (ROOT / "deploy/systemd/semikb-certbot-renew.service").read_text(encoding="utf-8")
+    timer = (ROOT / "deploy/systemd/semikb-certbot-renew.timer").read_text(encoding="utf-8")
+
+    assert "certbot/certbot:v5.6.0" in enable
+    assert "--webroot-path /var/www/certbot" in enable
+    assert "--register-unsafely-without-email" in enable
+    assert "find \"$certbot_root/conf/archive\"" in enable
+    assert "chmod 0640" in enable
+    assert "systemctl enable --now semikb-certbot-renew.timer" in enable
+    assert "certbot/certbot:v5.6.0" in renew
+    assert " renew --webroot " in renew
+    assert "kill --signal HUP web" in renew
+    assert "source .env" not in enable
+    assert "source .env" not in renew
+    assert "WorkingDirectory=/opt/semiconductor-agent-knowledge-base" in service
+    assert "Persistent=true" in timer
