@@ -61,6 +61,12 @@ systemd timer。HTTP challenge 路径在目标主机可读取，但 Let’s Encr
 当前状态属于 DNS/CA 外部依赖阻塞，不是 Nginx 80 端口或应用服务故障。恢复重试必须留出间隔，不能
 高频请求 CA。证书成功前，对外入口保持 `http://semiatlas.cn/`，迁移不得标记为完整 Go-Live。
 
+2026-08-26 23:08（DNS 修改已超过 6 小时）执行了一次新的受控重试。ACME Webroot 自检、Web 重建和
+Certbot 启动均成功，但 Let’s Encrypt 二次验证仍报告：查询 `semiatlas.cn` 的 CAA 记录超时。公网权威
+DNS、Google Resolver 以及多个 DNSPod Anycast 地址对 CAA 的 UDP/TCP 查询均能返回权威 NODATA，说明
+故障仍集中在 CA 二次验证视角。下一步优先在 DNSPod 增加显式 `letsencrypt.org` CAA 授权，或改用受控
+证书签发路径；不继续高频重试 Let’s Encrypt。
+
 ## 6. 保留与清理
 
 - 深圳 ECS 未释放，数据容器保持可回滚状态；旧应用当前停写。
@@ -69,5 +75,20 @@ systemd timer。HTTP challenge 路径在目标主机可读取，但 Let’s Encr
   SHA-256 为 `9b862d9222f8e9ecd075d9e01e05f90ec47700f2b2a0ab9d3e645b5b32c79dfd`。
   包已复制到深圳回滚机 `/opt/semiconductor-agent-knowledge-base-offline/hk-ef2d31c/`，深圳端独立
   `sha256sum -c SHA256SUMS` 四项全部通过。
+- 2026-08-26 23:12 已把同一离线包下载到本机
+  `data/runtime/hk-migration-20260826/offline-bundle/`；五个文件共 3,813,715,689 bytes，
+  `images.tar`、`source.tar.gz`、`manifest.json` 和 `README.txt` 均按包内 `SHA256SUMS` 再次通过。
 - 迁移临时 SSH 公钥只用于本次跨机传输，全部操作结束后从两台服务器和本机删除。
 - 香港云盘随抢占实例释放且无自动快照；重建必须依赖实例外离线包、冷备和固定 EIP。
+
+## 7. 24 小时观察
+
+- 观察服务：`semikb-hk-observation.service`，已启用并处于 `active`。
+- 开始时间：`2026-08-26T23:13:50+08:00`；计划完成时间不早于
+  `2026-08-27T23:13:50+08:00`。
+- 采样频率：每 300 秒；服务启用后可在主机重启时自动继续，并根据首次开始时间计算剩余观察时长。
+- 采样内容：容器状态/健康/重启次数、容器 CPU/内存、主机内存/磁盘/负载、监听端口、本机 Health 和
+  域名 Host Health。
+- 首次样本：本机 Health 和域名 Host Health 退出码均为 0，采样服务本身为 `active`。
+- 证据目录：
+  `/opt/semiconductor-agent-knowledge-base-backups/hk-migration/observation-24h-current/`。
