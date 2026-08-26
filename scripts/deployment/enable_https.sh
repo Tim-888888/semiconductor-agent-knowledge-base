@@ -38,7 +38,7 @@ acme_compose=("${compose[@]}" -f docker-compose.acme.yml)
 https_compose=("${compose[@]}" -f docker-compose.https.yml)
 
 "${acme_compose[@]}" config --quiet
-"${acme_compose[@]}" up -d --force-recreate web
+"${acme_compose[@]}" up -d --no-deps --force-recreate web
 
 probe="semikb-acme-$(date +%s)"
 printf '%s\n' "$probe" >"$certbot_root/www/.well-known/acme-challenge/$probe"
@@ -71,7 +71,7 @@ docker run --rm \
 
 find "$certbot_root/conf/archive" -type f -name 'privkey*.pem' -exec chmod 0640 {} +
 "${https_compose[@]}" config --quiet
-"${https_compose[@]}" up -d --force-recreate web
+"${https_compose[@]}" up -d --no-deps --force-recreate web
 curl --fail --silent --show-error --max-time 15 \
   --resolve "$primary_domain:443:127.0.0.1" "https://$primary_domain/healthz" >/dev/null
 

@@ -272,6 +272,7 @@ def test_https_scripts_pin_certbot_and_install_renewal_timer() -> None:
     assert "find \"$certbot_root/conf/archive\"" in enable
     assert "chmod 0640" in enable
     assert "systemctl enable --now semikb-certbot-renew.timer" in enable
+    assert enable.count("up -d --no-deps --force-recreate web") == 2
     assert "certbot/certbot:v5.6.0" in renew
     assert " renew --webroot " in renew
     assert "kill --signal HUP web" in renew
