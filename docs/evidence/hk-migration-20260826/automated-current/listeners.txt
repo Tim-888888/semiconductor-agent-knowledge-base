@@ -1,0 +1,8 @@
+Netid State  Recv-Q Send-Q Local Address:Port  Peer Address:PortProcess
+udp   UNCONN 0      0          127.0.0.1:323        0.0.0.0:*    users:(("chronyd",pid=739,fd=5))
+udp   UNCONN 0      0              [::1]:323           [::]:*    users:(("chronyd",pid=739,fd=6))
+tcp   LISTEN 0      32768        0.0.0.0:80         0.0.0.0:*    users:(("docker-proxy",pid=202179,fd=7))
+tcp   LISTEN 0      128          0.0.0.0:22         0.0.0.0:*    users:(("sshd",pid=1342,fd=3))
+tcp   LISTEN 0      32768      127.0.0.1:34099      0.0.0.0:*    users:(("containerd",pid=4389,fd=9))
+tcp   LISTEN 0      32768           [::]:80            [::]:*    users:(("docker-proxy",pid=202185,fd=7))
+tcp   LISTEN 0      128             [::]:22            [::]:*    users:(("sshd",pid=1342,fd=4))

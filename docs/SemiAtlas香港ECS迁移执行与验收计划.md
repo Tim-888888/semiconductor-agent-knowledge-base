@@ -381,13 +381,19 @@ TLS 和完整验收，本次首次迁移建议预留 60 至 90 分钟操作窗�
 | --- | --- | --- |
 | M0 基线与停写 | 已完成 | 源端无运行中入库/评估任务，Redis 队列为 0；深圳 Web/API/Worker 已停止，数据容器保留 |
 | M1 目标预检 | 已完成 | 香港 4 vCPU/8 GiB/80 GiB、Docker 28.3.3、Compose 2.26.1，生产端口和路径检查通过 |
-| M2/M3 制品与运行时 | 已完成 | 固定源码 `3ec44aa` 加迁移 HTTPS 覆盖层构建应用镜像，所有基础镜像离线加载成功 |
+| M2/M3 制品与运行时 | 已完成 | 固定源码 `ef2d31c` 构建迁移版应用镜像，所有基础镜像离线加载成功 |
 | M4 冷备 | 已完成 | 归档 248,876,503 bytes，SHA-256 `5a288faae16abc6185e20ef53810eb98a05689c65eaa345eeae726fb2327b9fc` |
 | M5 独立恢复 | 已完成 | MongoDB、Milvus、MinIO、Redis 内容级比较无差异，检索烟雾通过 |
 | M6 生产提升 | 已完成 | 9 个服务健康；Milvus v4 为 149 行，MinIO raw/derived 为 56/91 个对象 |
 | M7 HTTPS | 阻塞 | Nginx HTTP-01 challenge 路径正常；Let’s Encrypt 二次验证多次报告 `.cn` DNS 查询超时，未生成证书 |
-| M8 HTTP 公网验收 | 部分完成 | 9 场景、SSE、图片、Trace、任务中心、评估页、桌面/移动点击通过；HTTPS 项待补 |
+| M8 HTTP 公网验收 | 已完成 | 9 场景、SSE、图片、Trace、任务中心、评估页、桌面/移动点击通过；HTTPS 单列为 M7 阻塞项 |
 | M9 观察与退役 | 未开始 | 深圳 ECS 保留且未释放；香港完成 HTTPS 后开始至少 24 小时观察 |
 
 实例外恢复材料已保存在本机 `data/runtime/hk-migration-20260826/external-backup/`，归档、同期环境副本、
 Manifest 和 SHA-256 均已核对。同期环境副本含真实凭据，目录受 `.gitignore` 保护，不得上传 GitHub。
+
+最终离线应用包固定源码 `ef2d31ce3b7e660f65ad166a9c7218dc70694ef6`，包含 10 个生产服务镜像；
+`images.tar` 为 3,807,525,888 bytes，SHA-256 为
+`9b862d9222f8e9ecd075d9e01e05f90ec47700f2b2a0ab9d3e645b5b32c79dfd`。该包已复制到深圳回滚机的
+`/opt/semiconductor-agent-knowledge-base-offline/hk-ef2d31c/`，并在深圳端重新执行
+`sha256sum -c SHA256SUMS`，四个文件全部通过。

@@ -1,0 +1,36 @@
+{
+  "schema": "semikb-t949-final-acceptance-v1",
+  "captured_at": "2026-08-26T12:49:54.200020+00:00",
+  "checks": [
+    {
+      "name": "final_demo",
+      "passed": true
+    },
+    {
+      "name": "security",
+      "passed": true
+    },
+    {
+      "name": "offline_bundle",
+      "passed": true
+    },
+    {
+      "name": "storage_invariants",
+      "passed": true
+    },
+    {
+      "name": "worker",
+      "passed": true
+    },
+    {
+      "name": "health",
+      "passed": true
+    }
+  ],
+  "storage_comparison": {
+    "matched": true,
+    "differences": {}
+  },
+  "passed": true,
+  "failed_checks": []
+}

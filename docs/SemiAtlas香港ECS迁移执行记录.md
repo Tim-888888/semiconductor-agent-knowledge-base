@@ -32,6 +32,8 @@
    - Redis 队列为 0，当前检索烟雾通过。
 5. 生产 Project `semikb` 的 API、Worker、Web、MongoDB、Milvus、Milvus MinIO、MinIO、Redis、etcd
    均启动成功并保持健康。
+6. 最终运行源码固定为 `ef2d31ce3b7e660f65ad166a9c7218dc70694ef6`；部署时只重建 API、Worker、
+   Web，六个数据容器 ID 保持不变。HTTPS/ACME 切换也使用 `--no-deps` 强制重建 Web，不联动重启数据服务。
 
 ## 4. 公网业务验收
 
@@ -46,6 +48,9 @@
 4. 桌面 1440 x 900 与移动 390 x 844 均无横向溢出；移动输入器按钮不重叠；Console 0 error/warning。
 5. 服务器自动验收的 9 场景全部通过，运行前后 MongoDB、Milvus、MinIO、Redis 指纹一致，Worker 和
    健康检查通过。
+6. 最终提交自动化总门禁再次执行，`final_demo`、`security`、`offline_bundle`、`storage_invariants`、
+   `worker`、`health` 六类结果全部通过；脱敏证据位于
+   `docs/evidence/hk-migration-20260826/automated-current/`。
 
 ## 5. HTTPS 当前状态
 
@@ -60,5 +65,9 @@ systemd timer。HTTP challenge 路径在目标主机可读取，但 Let’s Encr
 
 - 深圳 ECS 未释放，数据容器保持可回滚状态；旧应用当前停写。
 - 冷备和同期环境副本已复制到香港实例外；真实凭据不进入 Git 或验收报告。
+- 固定提交 `ef2d31c` 的最终离线包包含 10 个生产服务镜像，`images.tar` 为 3,807,525,888 bytes，
+  SHA-256 为 `9b862d9222f8e9ecd075d9e01e05f90ec47700f2b2a0ab9d3e645b5b32c79dfd`。
+  包已复制到深圳回滚机 `/opt/semiconductor-agent-knowledge-base-offline/hk-ef2d31c/`，深圳端独立
+  `sha256sum -c SHA256SUMS` 四项全部通过。
 - 迁移临时 SSH 公钥只用于本次跨机传输，全部操作结束后从两台服务器和本机删除。
 - 香港云盘随抢占实例释放且无自动快照；重建必须依赖实例外离线包、冷备和固定 EIP。
