@@ -1,0 +1,86 @@
+{
+  "completed_at": "2026-08-27T23:17:03+08:00",
+  "containers": {
+    "semikb-api-1": {
+      "max_cpu_percent": 27.98,
+      "max_memory_bytes": 199648870,
+      "max_memory_percent": 29.74
+    },
+    "semikb-etcd-1": {
+      "max_cpu_percent": 3.7,
+      "max_memory_bytes": 26476544,
+      "max_memory_percent": 9.86
+    },
+    "semikb-milvus-1": {
+      "max_cpu_percent": 18.36,
+      "max_memory_bytes": 188324249,
+      "max_memory_percent": 7.02
+    },
+    "semikb-milvus-minio-1": {
+      "max_cpu_percent": 2.82,
+      "max_memory_bytes": 100956897,
+      "max_memory_percent": 25.07
+    },
+    "semikb-minio-1": {
+      "max_cpu_percent": 3.51,
+      "max_memory_bytes": 103462993,
+      "max_memory_percent": 25.7
+    },
+    "semikb-mongodb-1": {
+      "max_cpu_percent": 51.74,
+      "max_memory_bytes": 360290713,
+      "max_memory_percent": 44.74
+    },
+    "semikb-redis-1": {
+      "max_cpu_percent": 2.83,
+      "max_memory_bytes": 4256169,
+      "max_memory_percent": 3.17
+    },
+    "semikb-web-1": {
+      "max_cpu_percent": 2.1,
+      "max_memory_bytes": 4673503,
+      "max_memory_percent": 6.96
+    },
+    "semikb-worker-1": {
+      "max_cpu_percent": 0.21,
+      "max_memory_bytes": 166513868,
+      "max_memory_percent": 17.72
+    }
+  },
+  "domain_health_failures": 0,
+  "elapsed_seconds": 86589,
+  "first_sample": "20260826T151350Z",
+  "host": {
+    "max_disk_used_percent": 28,
+    "max_load_15m": 0.24,
+    "max_load_1m": 0.83,
+    "max_load_5m": 0.38,
+    "max_used_memory_bytes": 2232422400,
+    "min_available_memory_bytes": 5586501632
+  },
+  "interval_seconds_expected": 300,
+  "last_sample": "20260827T151659Z",
+  "listener_sets": {
+    "22,34099,80": 286
+  },
+  "local_health_failures": 0,
+  "max_restart_count": {
+    "semikb-api-1": 0,
+    "semikb-etcd-1": 0,
+    "semikb-milvus-1": 0,
+    "semikb-milvus-init-1": 0,
+    "semikb-milvus-minio-1": 0,
+    "semikb-minio-1": 0,
+    "semikb-mongodb-1": 0,
+    "semikb-redis-1": 0,
+    "semikb-web-1": 0,
+    "semikb-worker-1": 0
+  },
+  "oom_killed_events": 0,
+  "sample_count": 286,
+  "samples_with_443": 0,
+  "schema": "semikb-hk-observation-24h-sanitized-v1",
+  "started_at": "2026-08-26T23:13:50+08:00",
+  "unexpected_container_states": 0,
+  "unhealthy_container_states": 0
+}

@@ -1,0 +1,126 @@
+{
+  "containers": [
+    {
+      "exit_code": 0,
+      "health": "healthy",
+      "image": "semikb-api",
+      "name": "semikb-api-1",
+      "oom_killed": false,
+      "restart_count": 0,
+      "running": true,
+      "status": "running"
+    },
+    {
+      "exit_code": 0,
+      "health": "healthy",
+      "image": "quay.io/coreos/etcd:v3.5.18",
+      "name": "semikb-etcd-1",
+      "oom_killed": false,
+      "restart_count": 0,
+      "running": true,
+      "status": "running"
+    },
+    {
+      "exit_code": 0,
+      "health": "healthy",
+      "image": "milvusdb/milvus:v2.5.5",
+      "name": "semikb-milvus-1",
+      "oom_killed": false,
+      "restart_count": 0,
+      "running": true,
+      "status": "running"
+    },
+    {
+      "exit_code": 0,
+      "health": null,
+      "image": "semikb-milvus-init",
+      "name": "semikb-milvus-init-1",
+      "oom_killed": false,
+      "restart_count": 0,
+      "running": false,
+      "status": "exited"
+    },
+    {
+      "exit_code": 0,
+      "health": "healthy",
+      "image": "minio/minio:RELEASE.2023-03-20T20-16-18Z",
+      "name": "semikb-milvus-minio-1",
+      "oom_killed": false,
+      "restart_count": 0,
+      "running": true,
+      "status": "running"
+    },
+    {
+      "exit_code": 0,
+      "health": "healthy",
+      "image": "quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z",
+      "name": "semikb-minio-1",
+      "oom_killed": false,
+      "restart_count": 0,
+      "running": true,
+      "status": "running"
+    },
+    {
+      "exit_code": 0,
+      "health": "healthy",
+      "image": "mongo:8.2.6",
+      "name": "semikb-mongodb-1",
+      "oom_killed": false,
+      "restart_count": 0,
+      "running": true,
+      "status": "running"
+    },
+    {
+      "exit_code": 0,
+      "health": "healthy",
+      "image": "redis:7.4.10-alpine",
+      "name": "semikb-redis-1",
+      "oom_killed": false,
+      "restart_count": 0,
+      "running": true,
+      "status": "running"
+    },
+    {
+      "exit_code": 0,
+      "health": "healthy",
+      "image": "semikb-web",
+      "name": "semikb-web-1",
+      "oom_killed": false,
+      "restart_count": 0,
+      "running": true,
+      "status": "running"
+    },
+    {
+      "exit_code": 0,
+      "health": null,
+      "image": "semikb-worker",
+      "name": "semikb-worker-1",
+      "oom_killed": false,
+      "restart_count": 0,
+      "running": true,
+      "status": "running"
+    }
+  ],
+  "disk": [
+    "Filesystem       1B-blocks        Used   Available Use% Mounted on",
+    "/dev/vda3      84151820288 21740634112 58757505024  28% /"
+  ],
+  "domain_health_exit": 0,
+  "listeners": [
+    "LISTEN 0      32768    0.0.0.0:80    0.0.0.0:*",
+    "LISTEN 0      128      0.0.0.0:22    0.0.0.0:*",
+    "LISTEN 0      32768  127.0.0.1:34099 0.0.0.0:*",
+    "LISTEN 0      32768       [::]:80       [::]:*",
+    "LISTEN 0      128         [::]:22       [::]:*"
+  ],
+  "loadavg": "0.21 0.17 0.16 1/516 1985841",
+  "local_health_exit": 0,
+  "memory": [
+    "               total        used        free      shared  buff/cache   available",
+    "Mem:      7818924032  2088837120   631459840    32043008  5723254784  5730086912",
+    "Swap:              0           0           0"
+  ],
+  "sample": "20260827T151659Z",
+  "schema": "semikb-hk-observation-latest-sanitized-v1",
+  "timestamp": "2026-08-27T23:16:59+08:00"
+}

@@ -83,12 +83,24 @@ DNS、Google Resolver 以及多个 DNSPod Anycast 地址对 CAA 的 UDP/TCP 查�
 
 ## 7. 24 小时观察
 
-- 观察服务：`semikb-hk-observation.service`，已启用并处于 `active`。
-- 开始时间：`2026-08-26T23:13:50+08:00`；计划完成时间不早于
-  `2026-08-27T23:13:50+08:00`。
-- 采样频率：每 300 秒；服务启用后可在主机重启时自动继续，并根据首次开始时间计算剩余观察时长。
+- 观察服务：`semikb-hk-observation.service`，已正常完成并以 `0/SUCCESS` 退出；未保持无意义常驻。
+- 开始时间：`2026-08-26T23:13:50+08:00`；完成时间：`2026-08-27T23:17:03+08:00`；
+  实际覆盖 86,589 秒。
+- 采样频率：每 300 秒，共取得 286 个样本；首个样本为 `20260826T151350Z`，末个样本为
+  `20260827T151659Z`。
 - 采样内容：容器状态/健康/重启次数、容器 CPU/内存、主机内存/磁盘/负载、监听端口、本机 Health 和
   域名 Host Health。
-- 首次样本：本机 Health 和域名 Host Health 退出码均为 0，采样服务本身为 `active`。
-- 证据目录：
-  `/opt/semiconductor-agent-knowledge-base-backups/hk-migration/observation-24h-current/`。
+- 稳定性结果：本机 HTTP Health 和域名 HTTP Health 失败均为 0；异常容器状态、不健康状态、OOM
+  事件均为 0；所有服务最大重启次数均为 0。最终 9 个长运行服务仍在运行，8 个带 Healthcheck 的
+  服务均为 `healthy`，一次性 `milvus-init` 任务保持 `exited(0)`。
+- 资源结果：根盘使用率峰值 28%；主机最低可用内存 5,586,501,632 bytes，内存使用峰值
+  2,232,422,400 bytes；1/5/15 分钟负载峰值分别为 0.83/0.38/0.24。单容器 CPU 峰值最高为
+  MongoDB 51.74%，单容器内存峰值最高为 MongoDB 360,290,713 bytes，均未触发资源或健康异常。
+- 端口结果：286 个样本均只出现公网 `22/80` 和本机回环 `34099`；443 在全部样本中均未监听，与
+  HTTPS 证书尚未签发的已知状态一致，不把它误判为 HTTP 迁移不稳定。
+- 远端原始证据保留在
+  `/opt/semiconductor-agent-knowledge-base-backups/hk-migration/observation-24h-current/`；脱敏汇总位于
+  `docs/evidence/hk-migration-20260826/observation-24h/`，归档 SHA-256 为
+  `b5f266eaace3874b0709e5449ee0fd9507acd8b127543780ad9ecb5e48410727`。
+- 结论：**香港 ECS 的 24 小时 HTTP 稳定性门禁通过**。HTTPS 仍因外部 DNS/CA 校验阻塞而保持
+  No-Go，迁移仍不得描述为完整 HTTPS Go-Live；深圳 ECS 未执行释放或变更。

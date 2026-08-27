@@ -2,9 +2,9 @@
 
 ## 1. 当前结论
 
-截至 2026-08-26，SemiAtlas 的应用、MongoDB、Milvus、MinIO、Redis 和历史会话已迁移到香港 ECS，
-HTTP 公网业务和桌面/移动浏览器验收通过。HTTPS 因 Let’s Encrypt 二次 DNS 校验超时尚未签发证书，
-因此结论为 **迁移完成、HTTP 可用、HTTPS Go-Live 待完成**，不是完整生产上线。
+截至 2026-08-27，SemiAtlas 的应用、MongoDB、Milvus、MinIO、Redis 和历史会话已迁移到香港 ECS，
+HTTP 公网业务、桌面/移动浏览器和 24 小时稳定性观察均通过。HTTPS 因 Let’s Encrypt 二次 DNS 校验
+超时尚未签发证书，因此结论为 **迁移完成、HTTP 稳定可用、HTTPS Go-Live 待完成**，不是完整生产上线。
 
 ## 2. 验收结果
 
@@ -22,7 +22,7 @@ HTTP 公网业务和桌面/移动浏览器验收通过。HTTPS 因 Let’s Encry
 | 桌面/移动 | 通过 | 1440 x 900、390 x 844 无横向溢出，Console 干净 |
 | HTTPS | 未通过 | CA 二次 DNS 校验超时，未签发证书，443 未发布 |
 | 本机离线副本 | 通过 | 3.81 GB 离线包四项 SHA-256 全部匹配 |
-| 24 小时观察 | 进行中 | 2026-08-26 23:13:50 开始，每 5 分钟采样 |
+| 24 小时观察 | 通过 | 覆盖 86,589 秒、286 个样本，Health/重启/OOM/容器状态门禁全部通过 |
 
 ## 3. 数据冻结值
 
@@ -46,13 +46,25 @@ HTTP 公网业务和桌面/移动浏览器验收通过。HTTPS 因 Let’s Encry
 - `docs/evidence/hk-migration-20260826/automated-current/final-demo.json`
 - `docs/evidence/hk-migration-20260826/automated-current/security.json`
 - `docs/evidence/hk-migration-20260826/automated-current/offline.json`
+- `docs/evidence/hk-migration-20260826/observation-24h/README.md`
+- `docs/evidence/hk-migration-20260826/observation-24h/semikb-observation-24h-sanitized/summary.json`
 
-## 5. 待完成项
+## 5. 24 小时稳定性结论
+
+- 观察窗口：`2026-08-26T23:13:50+08:00` 至 `2026-08-27T23:17:03+08:00`，共 86,589 秒、
+  286 个五分钟样本。
+- 容器：本机/域名 HTTP Health 失败 0 次，异常状态 0 次，不健康状态 0 次，OOM 0 次，所有容器
+  最大重启次数均为 0。
+- 主机：根盘使用峰值 28%，最低可用内存 5,586,501,632 bytes，内存使用峰值
+  2,232,422,400 bytes，1/5/15 分钟负载峰值为 0.83/0.38/0.24。
+- 端口：全部样本均保持公网 `22/80` 与回环 `34099`；443 未监听，和 HTTPS 尚未完成一致。
+- 结论：24 小时 HTTP 稳定性门禁为 **Go**；HTTPS 门禁仍为 **No-Go**，两者不得合并表述。
+
+## 6. 待完成项
 
 1. 等 DNS 委派和递归解析稳定后，重新执行受控 Certbot HTTP-01 签发。
 2. 验证 apex/`www` 双域名 SAN、HTTP 到 HTTPS、`www` 到主域名、TLS 1.2/1.3、HSTS 和 SSE。
-3. 等待观察服务覆盖完整 24 小时，汇总容器重启、资源、端口和健康样本，形成最终 Go/No-Go。
-4. 深圳 ECS 仍由用户自行决定何时释放。
+3. 深圳 ECS 仍由用户自行决定何时释放；本次验收未对其执行释放或变更。
 
 最终离线包已固定到源码 `ef2d31ce3b7e660f65ad166a9c7218dc70694ef6`，包含 10 个生产服务镜像；
 `images.tar` 为 3,807,525,888 bytes，SHA-256 为
@@ -60,7 +72,7 @@ HTTP 公网业务和桌面/移动浏览器验收通过。HTTPS 因 Let’s Encry
 独立通过 `SHA256SUMS` 全量校验。迁移临时 SSH 凭据已按精确标签从两台服务器和本机清理。
 
 本机第三副本位于 `data/runtime/hk-migration-20260826/offline-bundle/`，五个文件共
-3,813,715,689 bytes，四项内容 Hash 再次通过。当前观察服务已启动；但完整 24 小时尚未经过，因此本项
-仍不能标为通过。
+3,813,715,689 bytes，四项内容 Hash 再次通过。24 小时观察已经完成并通过，脱敏归档 SHA-256 为
+`b5f266eaace3874b0709e5449ee0fd9507acd8b127543780ad9ecb5e48410727`。
 
-只要第 1~3 项尚未全部完成，本报告不得改写为“全部 Go”。
+只要 HTTPS 的第 1~2 项尚未全部完成，本报告不得改写为“全部 Go”或“完整生产上线”。
