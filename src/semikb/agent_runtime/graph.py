@@ -26,6 +26,7 @@ from semikb.agent_runtime.direct_reply import (
     DirectReplyKind,
     DirectReplyRequest,
 )
+from semikb.agent_runtime.evidence_sufficiency import EvidenceSufficiencyService
 from semikb.agent_runtime.llm_gateway import OpenAICompatibleLLMGateway
 from semikb.agent_runtime.memory import MemoryService
 from semikb.agent_runtime.routing import RoutePolicy
@@ -53,6 +54,8 @@ from semikb.contracts.models import (
     ClarificationTurnRelation,
     ConversationUnderstanding,
     EvidenceLedgerEntry,
+    EvidenceSufficiencyAssessment,
+    EvidenceSufficiencyStatus,
     IntentTaskItem,
     InteractionMode,
     RetrievalConstraints,
@@ -98,6 +101,8 @@ class CaseState(TypedDict, total=False):
     clarification_transition_audit: dict[str, Any]
     retrieval_query: str
     retrieval_routes: list[str]
+    initial_route_decision: str
+    evidence_sufficiency: dict[str, Any]
     candidate_ids: list[str]
     reranked_evidence: list[dict[str, Any]]
     image_evidence: list[str]
@@ -118,6 +123,7 @@ CLARIFICATION_PROMPTS = {
     "product": "受影响的 Product 是什么？",
     "time_range": "异常从何时开始，或需要查询哪个时间范围？",
     "tool_or_chamber": "涉及哪个 Tool 或 Chamber？若未知，请提供已知 FDC 报警或 Lot 范围。",
+    "affected_object": "涉及哪个产品、设备、腔体、Lot 或 Case？请提供任意一个已知对象。",
     "history_reference": "当前线程没有可引用的上一轮内容，请明确需要处理的文本或问题。",
     INTENT_TARGET_KEY: "请明确希望查询受控知识、查看制造数据，还是处理上一轮内容。",
     "request_goal": "请明确希望查询知识、查看制造数据，还是处理上一轮内容。",
@@ -149,6 +155,7 @@ class ConversationGraph:
         self.understanding = ConversationUnderstandingService(settings, self.llm)
         self.route_policy = RoutePolicy()
         self.direct_reply = DirectReplyGenerator(settings, self.llm)
+        self.evidence_sufficiency = EvidenceSufficiencyService(settings, self.llm)
         self.task_execution = TaskExecutionCoordinator()
 
         workflow = StateGraph(CaseState)
@@ -167,6 +174,8 @@ class ConversationGraph:
         workflow.add_node("refuse_request", self._refuse_request)
         workflow.add_node("execute_combination_prelude", self._execute_combination_prelude)
         workflow.add_node("retrieve_evidence", self._retrieve_evidence)
+        workflow.add_node("assess_evidence", self._assess_evidence)
+        workflow.add_node("search_external", self._search_external)
         workflow.add_node("build_evidence_ledger", self._build_evidence_ledger)
         workflow.add_node("generate_answer", self._generate_answer)
         workflow.add_node("verify_answer", self._verify_answer)
@@ -210,7 +219,16 @@ class ConversationGraph:
         workflow.add_edge("direct_answer", "finalize_task_results")
         workflow.add_edge("refuse_request", "finalize_task_results")
         workflow.add_edge("execute_combination_prelude", "retrieve_evidence")
-        workflow.add_edge("retrieve_evidence", "build_evidence_ledger")
+        workflow.add_edge("retrieve_evidence", "assess_evidence")
+        workflow.add_conditional_edges(
+            "assess_evidence",
+            self._route_after_evidence_assessment,
+            {
+                "web": "search_external",
+                "continue": "build_evidence_ledger",
+            },
+        )
+        workflow.add_edge("search_external", "build_evidence_ledger")
         workflow.add_edge("build_evidence_ledger", "generate_answer")
         workflow.add_edge("generate_answer", "verify_answer")
         workflow.add_edge("verify_answer", "finalize_task_results")
@@ -259,6 +277,8 @@ class ConversationGraph:
             "clarification_transition_audit": {},
             "retrieval_query": state["request"],
             "retrieval_routes": [],
+            "initial_route_decision": "",
+            "evidence_sufficiency": {},
             "candidate_ids": [],
             "reranked_evidence": [],
             "image_evidence": [],
@@ -1132,6 +1152,7 @@ class ConversationGraph:
         actor_scope = ActorScope.model_validate(state["user_scope"])
         constraints = self._retrieval_constraints(state.get("constraints", {}))
         route = AgentRoute(str(state["route_decision"]))
+        initial_route = route
         self._emit_running_tasks(
             state,
             routes={
@@ -1181,35 +1202,9 @@ class ConversationGraph:
                 thread_id=state["thread_id"],
                 constraints=constraints,
             )
-        web_task = None
-        if route is AgentRoute.RAG_AND_WEB:
-            self._emit_stream(
-                "stage",
-                stage="searching_external",
-                message="内部证据不足，正在查询受控外部来源",
-            )
-            web_task = asyncio.create_task(self.web_search.search(state["retrieval_query"]))
-
         if retrieval_task is not None:
             evidence, trace = await retrieval_task
-        external: list[dict[str, Any]] = []
-        if web_task is not None:
-            try:
-                external = await web_task
-            except Exception:
-                external = [
-                    {
-                        "source_type": "external_unavailable",
-                        "content": "web_provider_unavailable",
-                        "url": "",
-                    }
-                ]
         if trace is not None:
-            trace.external_evidence = external
-            trace.provider_attempts.extend(getattr(self.web_search, "last_attempts", ()))
-            if any(item.get("source_type") == "external_unavailable" for item in external):
-                trace.warnings.append("web_search_unavailable:internal_evidence_only")
-            self.retrieval.save_trace(trace)
             self._emit_stream(
                 "stage",
                 stage="reranking_evidence",
@@ -1217,11 +1212,17 @@ class ConversationGraph:
             )
         live_data = []
         if route in {AgentRoute.TOOL_ONLY, AgentRoute.RAG_AND_TOOL}:
-            live_data = self.toolbox.query_for_case(
+            live_data = self.toolbox.query_for_plan(
                 state["request"],
                 state.get("constraints", {}),
+                [
+                    IntentTaskItem.model_validate(item)
+                    for item in state.get("task_items", [])
+                ],
+                actor_scope,
             )
         return {
+            "initial_route_decision": initial_route.value,
             "route_decision": route.value,
             "retrieval_skipped_reason": (
                 "validated_previous_evidence_reused"
@@ -1234,9 +1235,106 @@ class ConversationGraph:
             "candidate_ids": [candidate.chunk_id for candidate in trace.candidates] if trace else [],
             "reranked_evidence": [chunk.model_dump(mode="json") for chunk in evidence],
             "image_evidence": trace.image_asset_ids if trace else [],
-            "external_evidence": external,
+            "external_evidence": [],
             "live_data_refs": live_data,
             "trace_id": trace.trace_id if trace else None,
+        }
+
+    async def _assess_evidence(self, state: CaseState) -> CaseState:
+        route = AgentRoute(str(state["route_decision"]))
+        initial_route = AgentRoute(
+            str(state.get("initial_route_decision") or state["route_decision"])
+        )
+        understanding = ConversationUnderstanding.model_validate(state["understanding"])
+        evidence = [
+            Chunk.model_validate(item) for item in state.get("reranked_evidence", [])
+        ]
+        trace = (
+            self.retrieval.get_trace(
+                str(state["trace_id"]),
+                ActorScope.model_validate(state["user_scope"]),
+            )
+            if state.get("trace_id")
+            else None
+        )
+        if not self.settings.evidence_sufficiency_enabled or route is AgentRoute.TOOL_ONLY:
+            assessment = EvidenceSufficiencyAssessment(
+                status=(
+                    EvidenceSufficiencyStatus.SUFFICIENT
+                    if evidence or route is AgentRoute.TOOL_ONLY
+                    else EvidenceSufficiencyStatus.INSUFFICIENT
+                ),
+                reason_codes=["evidence_sufficiency_gate_disabled"],
+                selected_count=len(evidence),
+                judge_source="disabled",
+            )
+        else:
+            self._emit_stream(
+                "stage",
+                stage="assessing_evidence",
+                message="正在评估证据覆盖范围与可回答性",
+            )
+            assessment = await self.evidence_sufficiency.assess(
+                query=state["retrieval_query"],
+                understanding=understanding,
+                evidence=evidence,
+                trace=trace,
+                initial_route=initial_route,
+            )
+        if trace is not None:
+            trace.evidence_sufficiency = assessment.model_dump(mode="json")
+            if "evidence_sufficiency" not in trace.routes:
+                trace.routes.append("evidence_sufficiency")
+            self.retrieval.save_trace(trace)
+        metadata = dict(state.get("model_metadata", {}))
+        metadata["evidence_sufficiency"] = assessment.model_dump(mode="json")
+        return {
+            "evidence_sufficiency": assessment.model_dump(mode="json"),
+            "model_metadata": metadata,
+        }
+
+    @staticmethod
+    def _route_after_evidence_assessment(state: CaseState) -> str:
+        assessment = EvidenceSufficiencyAssessment.model_validate(
+            state.get("evidence_sufficiency", {})
+        )
+        return "web" if assessment.web_fallback_allowed else "continue"
+
+    async def _search_external(self, state: CaseState) -> CaseState:
+        self._emit_stream(
+            "stage",
+            stage="searching_external",
+            message="内部证据不足，正在查询受控外部来源",
+        )
+        try:
+            external = await self.web_search.search(state["retrieval_query"])
+        except Exception:
+            external = [
+                {
+                    "source_type": "external_unavailable",
+                    "content": "web_provider_unavailable",
+                    "url": "",
+                }
+            ]
+        trace = (
+            self.retrieval.get_trace(
+                str(state["trace_id"]),
+                ActorScope.model_validate(state["user_scope"]),
+            )
+            if state.get("trace_id")
+            else None
+        )
+        if trace is not None:
+            trace.external_evidence = external
+            trace.provider_attempts.extend(getattr(self.web_search, "last_attempts", ()))
+            if "web_fallback" not in trace.routes:
+                trace.routes.append("web_fallback")
+            if any(item.get("source_type") == "external_unavailable" for item in external):
+                trace.warnings.append("web_search_unavailable")
+            self.retrieval.save_trace(trace)
+        return {
+            "route_decision": AgentRoute.RAG_AND_WEB.value,
+            "external_evidence": external,
         }
 
     @staticmethod
@@ -1477,9 +1575,10 @@ class ConversationGraph:
     def _deterministic_answer(ledger: list[EvidenceLedgerEntry]) -> AgentAnswer:
         controlled = [item for item in ledger if item.source_type == "internal_controlled"]
         simulated = [item for item in ledger if item.source_type == "simulated_live_data"]
+        external = [item for item in ledger if item.source_type == "external"]
         facts = [
             AnswerClaim(text=item.content[:360], citation_ids=[item.evidence_id])
-            for item in [*controlled[:2], *simulated[:2]]
+            for item in [*controlled[:2], *simulated[:2], *external[:2]]
         ]
         hypotheses: list[AnswerClaim] = []
         if controlled and simulated:
@@ -1493,7 +1592,11 @@ class ConversationGraph:
             facts=facts,
             hypotheses=hypotheses,
             unknowns=["真实 Fab 数据尚未接入，本次制造数据来自明确标记的模拟工具。"] if simulated else [],
-            next_actions=["按引用的现行 SOP 核对前置条件，并复核对应时间范围内的 FDC 与 Recipe 变更。"],
+            next_actions=(
+                ["按引用的现行 SOP 核对前置条件，并复核对应时间范围内的 FDC 与 Recipe 变更。"]
+                if controlled or simulated
+                else ["外部资料仅用于公开通用知识，请以原始来源和适用范围为准。"]
+            ),
             confidence="medium" if controlled else "low",
         )
 
@@ -1514,6 +1617,21 @@ class ConversationGraph:
         }
         source_by_id = {item.evidence_id: item.source_type for item in ledger}
         has_internal = any(item.source_type == "internal_controlled" for item in ledger)
+        raw_understanding = state.get("understanding")
+        if raw_understanding:
+            understanding = ConversationUnderstanding.model_validate(raw_understanding)
+            internal_scope = (
+                understanding.semantic_frame.knowledge_scope.value
+                == "internal_controlled"
+                or any(
+                    item.target_type.value in {"sop", "recipe"}
+                    for item in understanding.task_items
+                )
+            )
+        else:
+            # Legacy verifier callers did not carry the understanding payload.
+            # Existing governed evidence keeps the conservative authority rule.
+            internal_scope = has_internal
         answer = AgentAnswer.model_validate(state.get("answer", {}))
         warnings: list[str] = []
 
@@ -1527,7 +1645,11 @@ class ConversationGraph:
             if not citations:
                 warnings.append("fact_removed_without_valid_citation")
                 continue
-            if has_internal and all(source_by_id[citation] == "external" for citation in citations):
+            if (
+                has_internal
+                and internal_scope
+                and all(source_by_id[citation] == "external" for citation in citations)
+            ):
                 warnings.append("external_only_fact_removed_when_internal_evidence_exists")
                 continue
             verified_facts.append(AnswerClaim(text=claim.text, citation_ids=citations))
@@ -1631,6 +1753,7 @@ class ConversationGraph:
                 "task_decisions": state.get("route_plan", {}).get("task_decisions", []),
                 "task_results": state.get("task_results", []),
                 "retrieval_skipped_reason": state.get("retrieval_skipped_reason"),
+                "evidence_sufficiency": state.get("evidence_sufficiency", {}),
                 "invalidated_context_refs": state.get("invalidated_context_refs", []),
                 "cancel_scope": state.get("cancel_scope"),
                 "clarification_transition": state.get("clarification_transition_audit", {}),

@@ -32,8 +32,9 @@ ROUTE_GENERATION_CONTRACTS: dict[AgentRoute, str] = {
         "Keep document requirements separate from observed or simulated tool facts."
     ),
     AgentRoute.RAG_AND_WEB: (
-        "Use internal controlled documents as the authority. External evidence is supplementary and "
-        "must never override an applicable internal requirement."
+        "Use internal controlled documents as the authority when applicable. For public general "
+        "knowledge with no sufficient internal evidence, verified external evidence may be the sole "
+        "source. External evidence must never override an internal requirement."
     ),
 }
 
@@ -70,6 +71,7 @@ MISSING_FIELD_LABELS: dict[str, str] = {
     "product": "产品",
     "time_range": "时间范围",
     "tool_or_chamber": "设备或腔体",
+    "affected_object": "受影响对象",
     "history_reference": "需要处理的历史内容",
     "intent_target": "希望执行的任务类型",
     "request_goal": "希望执行的任务类型",
@@ -202,6 +204,8 @@ class TaskExecutionCoordinator:
             return AgentRoute.CHAT_DIRECT
         if planned is AgentRoute.REUSE_EVIDENCE and actual is AgentRoute.INTERNAL_RAG:
             return actual
+        if planned is AgentRoute.INTERNAL_RAG and actual is AgentRoute.RAG_AND_WEB:
+            return actual
         return planned or actual
 
     def _validate_executed_task(
@@ -255,7 +259,7 @@ class TaskExecutionCoordinator:
         elif route is AgentRoute.RAG_AND_TOOL:
             valid = valid and bool(internal_ids) and bool(tool_ids)
         elif route is AgentRoute.RAG_AND_WEB:
-            valid = valid and bool(internal_ids)
+            valid = valid and bool(internal_ids or external_ids)
             if not external_ids:
                 warnings.append(
                     "external_evidence_unavailable"

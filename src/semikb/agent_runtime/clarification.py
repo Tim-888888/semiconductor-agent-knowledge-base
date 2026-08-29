@@ -409,6 +409,11 @@ def resolved_pending_keys(
     for key in frame.pending_keys:
         if key == "tool_or_chamber" and (values.get("tool_id") or values.get("chamber")):
             resolved.append(key)
+        elif key == "affected_object" and any(
+            values.get(name)
+            for name in ("product", "tool_id", "chamber", "lot_id", "case_id")
+        ):
+            resolved.append(key)
         elif key == "history_reference" and understanding.context_message_ids:
             resolved.append(key)
         elif key == INTENT_TARGET_KEY and (
@@ -486,6 +491,15 @@ def _resolved_value(
 ) -> str:
     if key == "tool_or_chamber":
         return values.get("tool_id") or values.get("chamber") or "provided"
+    if key == "affected_object":
+        return next(
+            (
+                values[name]
+                for name in ("product", "tool_id", "chamber", "lot_id", "case_id")
+                if values.get(name)
+            ),
+            "provided",
+        )
     if key == "history_reference":
         return understanding.context_message_ids[0] if understanding.context_message_ids else "provided"
     if key == INTENT_TARGET_KEY:

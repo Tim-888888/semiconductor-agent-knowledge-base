@@ -147,8 +147,8 @@ async def test_partial_answer_resolves_only_matching_pending_items(seeded_servic
 
     assert second["clarification_required"] is True
     assert second["clarification_round"] == 2
-    assert second["missing_fields"] == ["time_range", "tool_or_chamber"]
-    assert [item.key for item in second_frame.resolved_items] == ["product"]
+    assert second["missing_fields"] == ["time_range"]
+    assert [item.key for item in second_frame.resolved_items] == ["affected_object"]
     assert second_frame.signature != first_frame.signature
 
 
@@ -163,7 +163,7 @@ async def test_two_round_answers_accumulate_verified_slots(seeded_services) -> N
         "最近24小时，ETCH-03 Chamber B。",
     )
 
-    assert partial["missing_fields"] == ["time_range", "tool_or_chamber"]
+    assert partial["missing_fields"] == ["time_range"]
     assert completed["clarification_required"] is False
     assert completed["route_decision"] is AgentRoute.RAG_AND_TOOL
     assert completed["trace_id"]

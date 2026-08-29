@@ -1,0 +1,31 @@
+{
+  "schema": "semikb-t9411-browser-acceptance-v1",
+  "captured_at": "2026-08-28",
+  "site": "http://semiatlas.cn/",
+  "desktop": {
+    "viewport": "1440x900",
+    "knowledge_question_completed_without_manufacturing_slot_clarification": true,
+    "unbounded_yield_requested_only_time_range": true,
+    "clarification_resume_completed_tool_only": true,
+    "internal_sop_label": "内部知识检索",
+    "internal_sop_showed_controlled_web": false,
+    "trace_showed_evidence_sufficiency_route": true,
+    "trace_showed_web_fallback_route": true
+  },
+  "mobile": {
+    "viewport": "390x844",
+    "document_scroll_width": 390,
+    "body_scroll_width": 390,
+    "horizontal_overflow": false,
+    "composer_visible": true
+  },
+  "refresh_restore": {
+    "question_restored": true,
+    "clarification_restored": true,
+    "tool_result_restored": true
+  },
+  "console": {
+    "errors": 0,
+    "warnings": 0
+  }
+}

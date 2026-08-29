@@ -17,6 +17,7 @@ from semikb.agent_runtime.intent_experiments import (
 )
 from semikb.agent_runtime.llm_gateway import LLMProviderError, OpenAICompatibleLLMGateway
 from semikb.agent_runtime.routing import is_evidence_followup
+from semikb.agent_runtime.semantic_grounding import derive_grounded_semantics
 from semikb.config import Settings
 from semikb.contracts.models import (
     AffectSignals,
@@ -24,14 +25,18 @@ from semikb.contracts.models import (
     CancelScope,
     ClarificationTurnRelation,
     ConversationUnderstanding,
+    GroupingDimension,
     IntentTarget,
     IntentTaskAction,
     IntentTaskItem,
     InteractionMode,
     PrimaryIntent,
+    SemanticFrame,
     SlotOperation,
     SlotOperationKind,
     TaskExecutionDecision,
+    TaskGroundingSpan,
+    TaskShape,
 )
 
 SLOT_NAMES = {
@@ -207,6 +212,9 @@ SEMICONDUCTOR_SCOPE_TERMS = (
     "报警",
     "告警",
     "工艺",
+    "封装",
+    "光刻",
+    "刻蚀",
     "机台",
     "腔体",
     "制造数据",
@@ -234,6 +242,9 @@ class _RawTask(BaseModel):
     primary_intent: PrimaryIntent
     target_type: IntentTarget
     action: IntentTaskAction
+    task_shape: TaskShape
+    group_by: list[GroupingDimension] = Field(max_length=3)
+    supporting_spans: list[TaskGroundingSpan] = Field(min_length=1, max_length=3)
     depends_on: list[str] = Field(max_length=2)
     execution_policy: TaskExecutionDecision
 
@@ -259,6 +270,7 @@ class _RawUnderstanding(BaseModel):
     interaction_mode: InteractionMode
     primary_intent: PrimaryIntent
     task_items: list[_RawTask] = Field(max_length=3)
+    semantic_frame: SemanticFrame
     affect: _RawAffect
     slot_operations: list[_RawSlotOperation] = Field(max_length=12)
     explicit_slots: list[_RawSlotValue] = Field(max_length=12)
@@ -383,9 +395,9 @@ class ConversationUnderstandingService:
             completion = await self.llm.complete(
                 messages,
                 response_schema=_RawUnderstanding.model_json_schema(),
-                schema_name="semikb_conversation_understanding_v1",
+                schema_name="semikb_conversation_understanding_v2",
                 temperature=0,
-                max_output_tokens=1000,
+                max_output_tokens=1600,
             )
             metadata["understanding_calls"] = 1
             input_tokens = self._input_tokens(completion.usage)
@@ -413,7 +425,10 @@ class ConversationUnderstandingService:
                 output_from_provider=output_tokens is not None,
             )
             invalid_content = completion.content
-            raw = _RawUnderstanding.model_validate_json(completion.content)
+            raw, legacy_shape_upgraded = self._parse_raw_understanding(
+                completion.content,
+                request,
+            )
             metadata.update(
                 {
                     "understanding_source": "llm",
@@ -421,6 +436,7 @@ class ConversationUnderstandingService:
                     "understanding_model": completion.reported_model,
                     "understanding_fallback_used": completion.fallback_used,
                     "understanding_repaired": False,
+                    "understanding_legacy_shape_upgraded": legacy_shape_upgraded,
                     "understanding_provider_attempts": [
                         attempt.model_dump(mode="json")
                         for attempt in completion.provider_attempts
@@ -440,9 +456,9 @@ class ConversationUnderstandingService:
                 repair = await self.llm.complete(
                     repair_messages,
                     response_schema=_RawUnderstanding.model_json_schema(),
-                    schema_name="semikb_conversation_understanding_v1",
+                    schema_name="semikb_conversation_understanding_v2",
                     temperature=0,
-                    max_output_tokens=1000,
+                    max_output_tokens=1600,
                 )
                 metadata["understanding_calls"] = 2
                 repair_input_tokens = self._input_tokens(repair.usage)
@@ -479,7 +495,10 @@ class ConversationUnderstandingService:
                         output_tokens is not None and repair_output_tokens is not None
                     ),
                 )
-                raw = _RawUnderstanding.model_validate_json(repair.content)
+                raw, legacy_shape_upgraded = self._parse_raw_understanding(
+                    repair.content,
+                    request,
+                )
                 metadata.update(
                     {
                         "understanding_source": "llm",
@@ -487,6 +506,7 @@ class ConversationUnderstandingService:
                         "understanding_model": repair.reported_model,
                         "understanding_fallback_used": repair.fallback_used,
                         "understanding_repaired": True,
+                        "understanding_legacy_shape_upgraded": legacy_shape_upgraded,
                         "understanding_provider_attempts": [
                             attempt.model_dump(mode="json")
                             for attempt in repair.provider_attempts
@@ -511,15 +531,74 @@ class ConversationUnderstandingService:
                 }
             )
             return UnderstandingResult(fallback, self._finish_metadata(metadata, started))
-        return UnderstandingResult(
-            self._normalize_raw(
-                raw,
-                request,
-                context,
-                clarification_pending=clarification_pending,
-            ),
-            self._finish_metadata(metadata, started),
+        normalized = self._normalize_raw(
+            raw,
+            request,
+            context,
+            clarification_pending=clarification_pending,
         )
+        metadata.update(
+            {
+                "understanding_schema_version": normalized.schema_version,
+                "semantic_grounding_enabled": self.settings.intent_semantic_grounding_enabled,
+                "semantic_grounding_overrode_primary": (
+                    normalized.primary_intent is not raw.primary_intent
+                ),
+                "semantic_task_shapes": [item.task_shape.value for item in normalized.task_items],
+                "semantic_group_by": [
+                    dimension.value
+                    for item in normalized.task_items
+                    for dimension in item.group_by
+                ],
+                "standalone_query_fallback_used": bool(
+                    raw.standalone_query.strip()
+                    and raw.standalone_query.strip() != request.strip()
+                    and normalized.standalone_query == request.strip()
+                ),
+            }
+        )
+        return UnderstandingResult(normalized, self._finish_metadata(metadata, started))
+
+    @staticmethod
+    def _parse_raw_understanding(
+        content: str,
+        request: str,
+    ) -> tuple[_RawUnderstanding, bool]:
+        try:
+            return _RawUnderstanding.model_validate_json(content), False
+        except ValidationError as original:
+            payload = json.loads(content)
+            if not isinstance(payload, dict):
+                raise original
+            task_items = payload.get("task_items")
+            if not isinstance(task_items, list):
+                raise original
+            upgraded = dict(payload)
+            upgraded.setdefault(
+                "semantic_frame",
+                {
+                    "temporal_scope": "unspecified",
+                    "expected_output": "unspecified",
+                    "knowledge_scope": "unspecified",
+                },
+            )
+            upgraded_tasks = []
+            for task in task_items:
+                if not isinstance(task, dict):
+                    raise original
+                item = dict(task)
+                item.setdefault("task_shape", "unspecified")
+                item.setdefault("group_by", [])
+                item.setdefault(
+                    "supporting_spans",
+                    [{"quote": request, "message_id": None}],
+                )
+                upgraded_tasks.append(item)
+            upgraded["task_items"] = upgraded_tasks
+            try:
+                return _RawUnderstanding.model_validate(upgraded), True
+            except ValidationError:
+                raise original
 
     def _prompt(
         self,
@@ -557,6 +636,11 @@ class ConversationUnderstandingService:
                         "classify clarification_relation as continue_current, cancel_current, "
                         "replace_with_new_request, side_conversation, or ambiguous. A complete standalone task can "
                         "replace the pending task without explicit switch words. Do not include reasoning or prose."
+                        " Classify the complete meaning, not isolated keywords. For every task return a task_shape, "
+                        "optional group_by dimensions, and one or more exact supporting_spans copied from the current "
+                        "request or an explicitly referenced context message. Product, Tool, Lot, or Chamber can be "
+                        "an output grouping dimension rather than an input filter. Also return temporal_scope, "
+                        "expected_output, and knowledge_scope in semantic_frame."
                     ),
                 },
                 {
@@ -576,7 +660,13 @@ class ConversationUnderstandingService:
             "is advisory; server policy makes the final decision. For each task, compare against every active "
             "intent card supplied by the server and use a legal task signature from the closest matching card. "
             "The complete active catalog is authoritative; do not invent another intent. Do not include "
-            "reasoning, card IDs, or prose in the response."
+            "reasoning, card IDs, or prose in the response. Classify the complete meaning, not isolated keywords. "
+            "For every task return a task_shape, optional group_by dimensions, and exact supporting_spans copied "
+            "from the current request or an explicitly referenced context message. Treat Product, Tool, Lot, or "
+            "Chamber as an output grouping dimension when the user asks for a ranking or list across entities; do "
+            "not mark that dimension as a missing input. Return temporal_scope, expected_output, and knowledge_scope "
+            "in semantic_frame. General public knowledge may use controlled Web fallback when internal evidence is "
+            "insufficient; current internal SOP, Recipe, or configuration may not."
         )
         if clarification_frame:
             system_content += (
@@ -779,8 +869,35 @@ class ConversationUnderstandingService:
         operations = self._normalize_operations(raw.slot_operations, explicit, valid_context)
         valid_message_ids = self._valid_context_message_ids(context)
         context_ids = [item for item in raw.context_message_ids if item in valid_message_ids]
-        primary = self._normalize_primary_intent(raw.primary_intent, request)
-        tasks = self._normalize_tasks(raw.task_items)
+        proposed_primary = self._normalize_primary_intent(raw.primary_intent, request)
+        tasks = self._normalize_tasks(raw.task_items, request, context)
+        grounded_turn = derive_grounded_semantics(
+            request,
+            proposed_primary,
+            raw.semantic_frame,
+            [item.target_type for item in tasks],
+        )
+        primary = (
+            grounded_turn.primary_intent
+            if self.settings.intent_semantic_grounding_enabled
+            else proposed_primary
+        )
+        if not tasks:
+            tasks = self._infer_tasks(request, primary)
+        if self.settings.intent_semantic_grounding_enabled:
+            tasks = self._apply_grounded_task_semantics(
+                tasks,
+                request,
+                context,
+                raw.semantic_frame,
+            )
+            if grounded_turn.strong_override:
+                tasks = self._collapse_tasks_for_strong_override(
+                    tasks,
+                    request,
+                    context,
+                    grounded_turn,
+                )
         history_recall_task = next(
             (
                 item
@@ -857,8 +974,14 @@ class ConversationUnderstandingService:
                 )
             ]
             context_ids = []
-        query = self._standalone_query(raw.standalone_query or request, request, inherited)
+        query = self._standalone_query(
+            raw.standalone_query or request,
+            request,
+            inherited,
+            context_ids=context_ids,
+        )
         return ConversationUnderstanding(
+            schema_version="semikb-understanding-v2",
             classifier_source="llm",
             interaction_mode=self._normalize_interaction_mode(
                 InteractionMode.CONVERSATION
@@ -870,6 +993,11 @@ class ConversationUnderstandingService:
             ),
             primary_intent=primary,
             task_items=tasks,
+            semantic_frame=(
+                grounded_turn.semantic_frame
+                if self.settings.intent_semantic_grounding_enabled
+                else raw.semantic_frame
+            ),
             affect=AffectSignals.model_validate(raw.affect.model_dump()),
             slot_operations=operations,
             explicit_slots=explicit,
@@ -1233,6 +1361,15 @@ class ConversationUnderstandingService:
             if generic_out_of_scope
             else self._infer_tasks(request, primary)
         )
+        grounded_turn = derive_grounded_semantics(
+            request,
+            primary,
+            SemanticFrame(),
+            [item.target_type for item in tasks],
+        )
+        if self.settings.intent_semantic_grounding_enabled and grounded_turn.strong_override:
+            primary = grounded_turn.primary_intent
+            tasks = self._infer_tasks(request, primary)
         suggested = self._suggest_route(primary, request, tasks)
         operations = [
             SlotOperation(operation=SlotOperationKind.SET, slot_name=name, value=value)
@@ -1264,10 +1401,12 @@ class ConversationUnderstandingService:
                 context_ids = list(dict.fromkeys([previous_answer, *context_ids]))[:8]
         confidence = 0.82 if tasks else 0.65
         return ConversationUnderstanding(
+            schema_version="semikb-understanding-v2",
             classifier_source="deterministic_fallback",
             interaction_mode=mode,
             primary_intent=primary,
             task_items=tasks,
+            semantic_frame=grounded_turn.semantic_frame,
             affect=self._affect(request),
             slot_operations=operations,
             explicit_slots=explicit,
@@ -1447,14 +1586,20 @@ class ConversationUnderstandingService:
             and any(term in lowered for term in ("查", "查询", "看"))
         )
         if data_requested:
-            if any(term in lowered for term in ("fdc", "报警", "alarm")):
+            if any(
+                term in lowered
+                for term in ("fdc", "报警", "alarm", "pressure", "压力")
+            ):
                 candidates.append((PrimaryIntent.DATA_QUERY, IntentTarget.FDC, IntentTaskAction.LOOKUP, TaskExecutionDecision.EXECUTE))
             elif "spc" in lowered or "趋势" in lowered:
                 candidates.append((PrimaryIntent.DATA_QUERY, IntentTarget.SPC, IntentTaskAction.LOOKUP, TaskExecutionDecision.EXECUTE))
-            elif any(term in lowered for term in ("lot", "wafer", "晶圆图", "良率")):
+            elif any(
+                term in lowered
+                for term in ("lot", "wafer", "晶圆", "晶圆图", "缺陷", "良率")
+            ):
                 candidates.append((PrimaryIntent.DATA_QUERY, IntentTarget.LOT, IntentTaskAction.LOOKUP, TaskExecutionDecision.EXECUTE))
 
-        if "sop" in lowered:
+        if "sop" in lowered or "作业指导书" in lowered:
             action = IntentTaskAction.COMPARE if any(term in lowered for term in ("对照", "比较")) else IntentTaskAction.LOOKUP
             candidates.append((PrimaryIntent.KNOWLEDGE_QUERY, IntentTarget.SOP, action, TaskExecutionDecision.EXECUTE))
         if "recipe" in lowered or "配方" in lowered:
@@ -1491,7 +1636,7 @@ class ConversationUnderstandingService:
             candidates.append((PrimaryIntent.CONTENT_TASK, IntentTarget.PREVIOUS_ANSWER, action, TaskExecutionDecision.EXECUTE))
 
         if not candidates:
-            target = IntentTarget.SOP if primary is PrimaryIntent.KNOWLEDGE_QUERY else IntentTarget.GENERAL
+            target = IntentTarget.GENERAL
             action = IntentTaskAction.LOOKUP if primary is not PrimaryIntent.CONVERSATION else IntentTaskAction.EXPLAIN
             candidates.append((primary, target, action, TaskExecutionDecision.EXECUTE))
 
@@ -1504,12 +1649,77 @@ class ConversationUnderstandingService:
             depends_on = []
             if intent is PrimaryIntent.INVESTIGATION and index > 1:
                 depends_on = [item.task_id for item in tasks if item.primary_intent in {PrimaryIntent.DATA_QUERY, PrimaryIntent.KNOWLEDGE_QUERY}][-2:]
+            semantics = derive_grounded_semantics(
+                request,
+                intent,
+                SemanticFrame(),
+                [target],
+            )
+            preserve_candidate_semantics = (
+                decision in {TaskExecutionDecision.REFUSE, TaskExecutionDecision.DEFER}
+                or intent
+                in {
+                    PrimaryIntent.ACTION_REQUEST,
+                    PrimaryIntent.CONTENT_TASK,
+                    PrimaryIntent.CONVERSATION,
+                }
+                or (
+                    intent is PrimaryIntent.KNOWLEDGE_QUERY
+                    and target in {IntentTarget.SOP, IntentTarget.RECIPE, IntentTarget.ALARM}
+                )
+            )
+            resolved_target = target
+            resolved_action = action
+            resolved_intent = semantics.primary_intent
+            resolved_shape = semantics.task_shape
+            resolved_group_by = semantics.group_by
+            if preserve_candidate_semantics:
+                resolved_intent = intent
+                resolved_shape = (
+                    TaskShape.CONCEPT_EXPLANATION
+                    if intent is PrimaryIntent.KNOWLEDGE_QUERY
+                    else TaskShape.DIRECT
+                    if intent in {PrimaryIntent.CONVERSATION, PrimaryIntent.CONTENT_TASK}
+                    else TaskShape.CONTROL
+                )
+                resolved_group_by = ()
+            elif (
+                intent is PrimaryIntent.DATA_QUERY
+                and semantics.primary_intent is PrimaryIntent.INVESTIGATION
+                and target
+                in {
+                    IntentTarget.FDC,
+                    IntentTarget.SPC,
+                    IntentTarget.WAFER_MAP,
+                    IntentTarget.LOT,
+                    IntentTarget.ALARM,
+                }
+            ):
+                resolved_intent = PrimaryIntent.DATA_QUERY
+                resolved_action = IntentTaskAction.LOOKUP
+                resolved_shape = TaskShape.ENTITY_LOOKUP
+            elif semantics.strong_override:
+                if semantics.primary_intent is PrimaryIntent.KNOWLEDGE_QUERY:
+                    resolved_target = (
+                        target
+                        if target in {IntentTarget.SOP, IntentTarget.RECIPE, IntentTarget.ALARM}
+                        else IntentTarget.GENERAL
+                    )
+                    resolved_action = IntentTaskAction.EXPLAIN
+                elif semantics.primary_intent is PrimaryIntent.DATA_QUERY:
+                    resolved_action = IntentTaskAction.LOOKUP
+                elif semantics.primary_intent is PrimaryIntent.INVESTIGATION:
+                    resolved_target = IntentTarget.CASE
+                    resolved_action = IntentTaskAction.DIAGNOSE
             tasks.append(
                 IntentTaskItem(
                     task_id=f"task_{index}",
-                    primary_intent=intent,
-                    target_type=target,
-                    action=action,
+                    primary_intent=resolved_intent,
+                    target_type=resolved_target,
+                    action=resolved_action,
+                    task_shape=resolved_shape,
+                    group_by=list(resolved_group_by),
+                    supporting_spans=[TaskGroundingSpan(quote=request)],
                     depends_on=depends_on,
                     execution_policy=decision,
                 )
@@ -1574,10 +1784,31 @@ class ConversationUnderstandingService:
         )
 
     @staticmethod
-    def _normalize_tasks(tasks: list[_RawTask]) -> list[IntentTaskItem]:
+    def _normalize_tasks(
+        tasks: list[_RawTask],
+        request: str,
+        context: dict[str, Any],
+    ) -> list[IntentTaskItem]:
         normalized: list[IntentTaskItem] = []
         valid_ids: set[str] = set()
+        context_messages = {
+            str(item.get("message_id", "")): str(item.get("content", ""))
+            for item in context.get("recent_messages", [])
+            if isinstance(item, dict) and item.get("message_id")
+        }
+        current_message_id = str(context.get("current_message_id", "")) or None
         for index, raw in enumerate(tasks[:3], start=1):
+            grounded_spans = []
+            for span in raw.supporting_spans:
+                source = request if not span.message_id else context_messages.get(span.message_id, "")
+                if ConversationUnderstandingService._quote_is_grounded(span.quote, source):
+                    grounded_spans.append(
+                        span.model_copy(
+                            update={"message_id": span.message_id or current_message_id}
+                        )
+                    )
+            if not grounded_spans:
+                continue
             task_id = f"task_{index}"
             depends = [item for item in raw.depends_on if item in valid_ids][-2:]
             normalized.append(
@@ -1586,12 +1817,184 @@ class ConversationUnderstandingService:
                     primary_intent=raw.primary_intent,
                     target_type=raw.target_type,
                     action=raw.action,
+                    task_shape=raw.task_shape,
+                    group_by=raw.group_by,
+                    supporting_spans=grounded_spans,
                     depends_on=depends,
                     execution_policy=raw.execution_policy,
                 )
             )
             valid_ids.add(task_id)
         return normalized
+
+    @classmethod
+    def _apply_grounded_task_semantics(
+        cls,
+        tasks: list[IntentTaskItem],
+        request: str,
+        context: dict[str, Any],
+        frame: SemanticFrame,
+    ) -> list[IntentTaskItem]:
+        current_message_id = str(context.get("current_message_id", "")) or None
+        grounded: list[IntentTaskItem] = []
+        seen: set[tuple[str, str, str, str, tuple[str, ...]]] = set()
+        task_id_map: dict[str, str] = {}
+        key_owner: dict[tuple[str, str, str, str, tuple[str, ...]], str] = {}
+        for task in tasks:
+            task_text = " ".join(span.quote for span in task.supporting_spans).strip() or request
+            preserve_task_semantics = (
+                task.execution_policy
+                in {TaskExecutionDecision.REFUSE, TaskExecutionDecision.DEFER}
+                or task.primary_intent
+                in {
+                    PrimaryIntent.ACTION_REQUEST,
+                    PrimaryIntent.CONTENT_TASK,
+                    PrimaryIntent.CONVERSATION,
+                }
+                or (
+                    task.primary_intent is PrimaryIntent.KNOWLEDGE_QUERY
+                    and task.target_type
+                    in {IntentTarget.SOP, IntentTarget.RECIPE, IntentTarget.ALARM}
+                )
+            )
+            semantics = derive_grounded_semantics(
+                task_text,
+                task.primary_intent,
+                frame,
+                [task.target_type],
+            )
+            intent = semantics.primary_intent
+            target = task.target_type
+            action = task.action
+            task_shape = semantics.task_shape
+            group_by = semantics.group_by
+            if preserve_task_semantics:
+                intent = task.primary_intent
+                task_shape = (
+                    task.task_shape
+                    if task.task_shape is not TaskShape.UNSPECIFIED
+                    else TaskShape.CONCEPT_EXPLANATION
+                    if intent is PrimaryIntent.KNOWLEDGE_QUERY
+                    else TaskShape.DIRECT
+                    if intent in {PrimaryIntent.CONVERSATION, PrimaryIntent.CONTENT_TASK}
+                    else TaskShape.CONTROL
+                )
+                group_by = tuple(task.group_by)
+            elif (
+                task.primary_intent is PrimaryIntent.DATA_QUERY
+                and semantics.primary_intent is PrimaryIntent.INVESTIGATION
+                and target
+                in {
+                    IntentTarget.FDC,
+                    IntentTarget.SPC,
+                    IntentTarget.WAFER_MAP,
+                    IntentTarget.LOT,
+                    IntentTarget.ALARM,
+                }
+            ):
+                intent = PrimaryIntent.DATA_QUERY
+                action = IntentTaskAction.LOOKUP
+                task_shape = TaskShape.ENTITY_LOOKUP
+            elif semantics.strong_override:
+                if intent is PrimaryIntent.KNOWLEDGE_QUERY:
+                    target = (
+                        target
+                        if target in {IntentTarget.SOP, IntentTarget.RECIPE, IntentTarget.ALARM}
+                        else IntentTarget.GENERAL
+                    )
+                    action = IntentTaskAction.EXPLAIN
+                elif intent is PrimaryIntent.DATA_QUERY:
+                    action = IntentTaskAction.LOOKUP
+                elif intent is PrimaryIntent.INVESTIGATION:
+                    target = IntentTarget.CASE
+                    action = IntentTaskAction.DIAGNOSE
+            spans = task.supporting_spans or [
+                TaskGroundingSpan(quote=request, message_id=current_message_id)
+            ]
+            key = (
+                intent.value,
+                target.value,
+                action.value,
+                task_shape.value,
+                tuple(item.value for item in group_by),
+            )
+            if key in seen:
+                task_id_map[task.task_id] = key_owner[key]
+                continue
+            seen.add(key)
+            new_task_id = f"task_{len(grounded) + 1}"
+            key_owner[key] = new_task_id
+            task_id_map[task.task_id] = new_task_id
+            grounded.append(
+                task.model_copy(
+                    update={
+                        "task_id": new_task_id,
+                        "primary_intent": intent,
+                        "target_type": target,
+                        "action": action,
+                        "task_shape": task_shape,
+                        "group_by": list(group_by),
+                        "supporting_spans": spans,
+                        "depends_on": [
+                            task_id_map[item]
+                            for item in task.depends_on
+                            if item in task_id_map
+                        ][-2:],
+                    }
+                )
+            )
+        return grounded
+
+    @staticmethod
+    def _collapse_tasks_for_strong_override(
+        tasks: list[IntentTaskItem],
+        request: str,
+        context: dict[str, Any],
+        semantics,
+    ) -> list[IntentTaskItem]:
+        current_message_id = str(context.get("current_message_id", "")) or None
+        target = IntentTarget.GENERAL
+        action = IntentTaskAction.EXPLAIN
+        if semantics.primary_intent is PrimaryIntent.DATA_QUERY:
+            action = IntentTaskAction.LOOKUP
+            target = next(
+                (
+                    item.target_type
+                    for item in tasks
+                    if item.target_type
+                    in {
+                        IntentTarget.FDC,
+                        IntentTarget.SPC,
+                        IntentTarget.LOT,
+                        IntentTarget.WAFER_MAP,
+                        IntentTarget.ALARM,
+                    }
+                ),
+                IntentTarget.GENERAL,
+            )
+        elif semantics.primary_intent is PrimaryIntent.INVESTIGATION:
+            target = IntentTarget.CASE
+            action = IntentTaskAction.DIAGNOSE
+        return [
+            IntentTaskItem(
+                task_id="task_1",
+                primary_intent=semantics.primary_intent,
+                target_type=target,
+                action=action,
+                task_shape=semantics.task_shape,
+                group_by=list(semantics.group_by),
+                supporting_spans=[
+                    TaskGroundingSpan(quote=request, message_id=current_message_id)
+                ],
+                execution_policy=TaskExecutionDecision.EXECUTE,
+            )
+        ]
+
+    @staticmethod
+    def _quote_is_grounded(quote: str, source: str) -> bool:
+        normalized_quote = re.sub(r"\s+", "", quote).casefold()
+        normalized_source = re.sub(r"\s+", "", source).casefold()
+        return bool(normalized_quote and normalized_quote in normalized_source)
 
     @staticmethod
     def _normalize_operations(
@@ -1715,8 +2118,24 @@ class ConversationUnderstandingService:
         return True
 
     @staticmethod
-    def _standalone_query(candidate: str, request: str, inherited: dict[str, str]) -> str:
-        value = candidate.strip() or request.strip()
+    def _standalone_query(
+        candidate: str,
+        request: str,
+        inherited: dict[str, str],
+        *,
+        context_ids: list[str] | None = None,
+    ) -> str:
+        request_value = request.strip()
+        has_reference = any(term in request.lower() for term in REFERENCE_TERMS)
+        if not has_reference or not context_ids:
+            return request_value[:8000]
+        value = candidate.strip() or request_value
+        forbidden = ("semikb-intent", "intent-catalog", "system_prompt", "schema_version")
+        if any(term in value.casefold() for term in forbidden):
+            value = request_value
+        grounded_values = [item for item in inherited.values() if item]
+        if grounded_values and not all(item.casefold() in value.casefold() for item in grounded_values):
+            value = request_value
         if inherited and any(term in request.lower() for term in REFERENCE_TERMS):
             suffix = " ".join(f"{name}={slot}" for name, slot in sorted(inherited.items()))
             if suffix and suffix.lower() not in value.lower():

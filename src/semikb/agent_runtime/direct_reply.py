@@ -58,6 +58,7 @@ class DirectReplyAssembler:
         "product": ("product", "产品"),
         "time_range": ("时间", "何时", "多久", "范围"),
         "tool_or_chamber": ("tool", "chamber", "机台", "设备", "腔体"),
+        "affected_object": ("产品", "设备", "腔体", "lot", "case", "对象"),
         "history_reference": ("上一", "历史", "原文", "内容", "文本"),
         "request_goal": ("希望", "目标", "查询", "处理", "需要"),
     }

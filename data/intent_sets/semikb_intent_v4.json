@@ -1,0 +1,4732 @@
+{
+  "dataset_version": "semikb-intent-v4",
+  "source_kind": "synthetic_review_required",
+  "description": "T9-4.11 未见最小差异评测集，验证一般知识、动态制造数据和具体异常调查边界。数据只用于离线评测，不进入意图 Prompt 或生产规则。",
+  "catalog_version": "semikb-intent-catalog-v5",
+  "example_bank_version": "not_used",
+  "frozen_at": "2026-08-28T00:00:00+08:00",
+  "cases": [
+    {
+      "case_id": "v4-knowledge-01-01",
+      "utterance": "半导体检测流程通常包括哪些环节？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-01-02",
+      "utterance": "半导体检测流程基本原理是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-01-03",
+      "utterance": "半导体检测流程一般有哪些影响因素？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-01-04",
+      "utterance": "半导体检测流程主要作用是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-01-05",
+      "utterance": "半导体检测流程常见分析思路是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-02-01",
+      "utterance": "晶圆缺陷分类通常包括哪些环节？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-02-02",
+      "utterance": "晶圆缺陷分类基本原理是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-02-03",
+      "utterance": "晶圆缺陷分类一般有哪些影响因素？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-02-04",
+      "utterance": "晶圆缺陷分类主要作用是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-02-05",
+      "utterance": "晶圆缺陷分类常见分析思路是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-03-01",
+      "utterance": "SPC 控制通常包括哪些环节？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-03-02",
+      "utterance": "SPC 控制基本原理是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-03-03",
+      "utterance": "SPC 控制一般有哪些影响因素？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-03-04",
+      "utterance": "SPC 控制主要作用是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-03-05",
+      "utterance": "SPC 控制常见分析思路是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-04-01",
+      "utterance": "FDC 监控通常包括哪些环节？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-04-02",
+      "utterance": "FDC 监控基本原理是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-04-03",
+      "utterance": "FDC 监控一般有哪些影响因素？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-04-04",
+      "utterance": "FDC 监控主要作用是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-04-05",
+      "utterance": "FDC 监控常见分析思路是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-05-01",
+      "utterance": "晶圆边缘检测通常包括哪些环节？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-05-02",
+      "utterance": "晶圆边缘检测基本原理是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-05-03",
+      "utterance": "晶圆边缘检测一般有哪些影响因素？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-05-04",
+      "utterance": "晶圆边缘检测主要作用是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-05-05",
+      "utterance": "晶圆边缘检测常见分析思路是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-06-01",
+      "utterance": "良率改善通常包括哪些环节？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-06-02",
+      "utterance": "良率改善基本原理是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-06-03",
+      "utterance": "良率改善一般有哪些影响因素？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-06-04",
+      "utterance": "良率改善主要作用是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-knowledge-06-05",
+      "utterance": "良率改善常见分析思路是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "public_general"
+      ]
+    },
+    {
+      "case_id": "v4-aggregate-01-01",
+      "utterance": "最近6小时有哪些产品良率低？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "最近6小时"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-01-02",
+      "utterance": "最近6小时各产品良率排名怎么样？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "最近6小时"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-01-03",
+      "utterance": "最近6小时哪些产品的良率波动最大？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "最近6小时"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-01-04",
+      "utterance": "最近6小时按产品统计良率表现。",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "最近6小时"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-02-01",
+      "utterance": "最近12小时有哪些产品良率低？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "最近12小时"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-02-02",
+      "utterance": "最近12小时各产品良率排名怎么样？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "最近12小时"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-02-03",
+      "utterance": "最近12小时哪些产品的良率波动最大？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "最近12小时"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-02-04",
+      "utterance": "最近12小时按产品统计良率表现。",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "最近12小时"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-03-01",
+      "utterance": "最近24小时有哪些产品良率低？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "最近24小时"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-03-02",
+      "utterance": "最近24小时各产品良率排名怎么样？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "最近24小时"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-03-03",
+      "utterance": "最近24小时哪些产品的良率波动最大？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "最近24小时"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-03-04",
+      "utterance": "最近24小时按产品统计良率表现。",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "最近24小时"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-04-01",
+      "utterance": "过去2天有哪些产品良率低？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "过去2天"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-04-02",
+      "utterance": "过去2天各产品良率排名怎么样？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "过去2天"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-04-03",
+      "utterance": "过去2天哪些产品的良率波动最大？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "过去2天"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-04-04",
+      "utterance": "过去2天按产品统计良率表现。",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "过去2天"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-05-01",
+      "utterance": "过去3天有哪些产品良率低？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "过去3天"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-05-02",
+      "utterance": "过去3天各产品良率排名怎么样？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "过去3天"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-05-03",
+      "utterance": "过去3天哪些产品的良率波动最大？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "过去3天"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-05-04",
+      "utterance": "过去3天按产品统计良率表现。",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "过去3天"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-06-01",
+      "utterance": "过去1周有哪些产品良率低？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "过去1周"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-06-02",
+      "utterance": "过去1周各产品良率排名怎么样？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "过去1周"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-06-03",
+      "utterance": "过去1周哪些产品的良率波动最大？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "过去1周"
+      }
+    },
+    {
+      "case_id": "v4-aggregate-06-04",
+      "utterance": "过去1周按产品统计良率表现。",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "aggregate",
+        "group_by_product"
+      ],
+      "expected_explicit_slots": {
+        "time_range": "过去1周"
+      }
+    },
+    {
+      "case_id": "v4-unbounded-01-01",
+      "utterance": "请告诉我，最近有哪些产品良率低？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "clarify",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "missing_time"
+      ],
+      "expected_missing_slots": [
+        "time_range"
+      ]
+    },
+    {
+      "case_id": "v4-unbounded-01-02",
+      "utterance": "请告诉我，近期哪些设备 FDC 报警最多？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "clarify",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "missing_time"
+      ],
+      "expected_missing_slots": [
+        "time_range"
+      ]
+    },
+    {
+      "case_id": "v4-unbounded-01-03",
+      "utterance": "请告诉我，最近哪些 Lot 触发了 SPC 越界？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "clarify",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "missing_time"
+      ],
+      "expected_missing_slots": [
+        "time_range"
+      ]
+    },
+    {
+      "case_id": "v4-unbounded-01-04",
+      "utterance": "请告诉我，近期各腔体的压力趋势怎么样？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "clarify",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "missing_time"
+      ],
+      "expected_missing_slots": [
+        "time_range"
+      ]
+    },
+    {
+      "case_id": "v4-unbounded-02-01",
+      "utterance": "帮我看看，最近有哪些产品良率低？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "clarify",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "missing_time"
+      ],
+      "expected_missing_slots": [
+        "time_range"
+      ]
+    },
+    {
+      "case_id": "v4-unbounded-02-02",
+      "utterance": "帮我看看，近期哪些设备 FDC 报警最多？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "clarify",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "missing_time"
+      ],
+      "expected_missing_slots": [
+        "time_range"
+      ]
+    },
+    {
+      "case_id": "v4-unbounded-02-03",
+      "utterance": "帮我看看，最近哪些 Lot 触发了 SPC 越界？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "clarify",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "missing_time"
+      ],
+      "expected_missing_slots": [
+        "time_range"
+      ]
+    },
+    {
+      "case_id": "v4-unbounded-02-04",
+      "utterance": "帮我看看，近期各腔体的压力趋势怎么样？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "clarify",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "missing_time"
+      ],
+      "expected_missing_slots": [
+        "time_range"
+      ]
+    },
+    {
+      "case_id": "v4-unbounded-03-01",
+      "utterance": "我想知道，最近有哪些产品良率低？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "clarify",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "missing_time"
+      ],
+      "expected_missing_slots": [
+        "time_range"
+      ]
+    },
+    {
+      "case_id": "v4-unbounded-03-02",
+      "utterance": "我想知道，近期哪些设备 FDC 报警最多？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "clarify",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "missing_time"
+      ],
+      "expected_missing_slots": [
+        "time_range"
+      ]
+    },
+    {
+      "case_id": "v4-unbounded-03-03",
+      "utterance": "我想知道，最近哪些 Lot 触发了 SPC 越界？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "clarify",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "missing_time"
+      ],
+      "expected_missing_slots": [
+        "time_range"
+      ]
+    },
+    {
+      "case_id": "v4-unbounded-03-04",
+      "utterance": "我想知道，近期各腔体的压力趋势怎么样？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "clarify",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "missing_time"
+      ],
+      "expected_missing_slots": [
+        "time_range"
+      ]
+    },
+    {
+      "case_id": "v4-entity-01-01",
+      "utterance": "查询 P-ALPHA ETCH-03 最近6小时 FDC 报警记录",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "entity_data"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近6小时"
+      }
+    },
+    {
+      "case_id": "v4-entity-01-02",
+      "utterance": "查看 P-ALPHA ETCH-03 最近6小时 SPC 趋势",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "entity_data"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近6小时"
+      }
+    },
+    {
+      "case_id": "v4-entity-01-03",
+      "utterance": "列出 P-ALPHA ETCH-03 最近6小时 Lot 良率",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "entity_data"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近6小时"
+      }
+    },
+    {
+      "case_id": "v4-entity-02-01",
+      "utterance": "查询 P-ALPHA ETCH-03 最近12小时 FDC 报警记录",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "entity_data"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近12小时"
+      }
+    },
+    {
+      "case_id": "v4-entity-02-02",
+      "utterance": "查看 P-ALPHA ETCH-03 最近12小时 SPC 趋势",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "entity_data"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近12小时"
+      }
+    },
+    {
+      "case_id": "v4-entity-02-03",
+      "utterance": "列出 P-ALPHA ETCH-03 最近12小时 Lot 良率",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "entity_data"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近12小时"
+      }
+    },
+    {
+      "case_id": "v4-entity-03-01",
+      "utterance": "查询 P-ALPHA ETCH-03 最近24小时 FDC 报警记录",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "entity_data"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近24小时"
+      }
+    },
+    {
+      "case_id": "v4-entity-03-02",
+      "utterance": "查看 P-ALPHA ETCH-03 最近24小时 SPC 趋势",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "entity_data"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近24小时"
+      }
+    },
+    {
+      "case_id": "v4-entity-03-03",
+      "utterance": "列出 P-ALPHA ETCH-03 最近24小时 Lot 良率",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "entity_data"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近24小时"
+      }
+    },
+    {
+      "case_id": "v4-entity-04-01",
+      "utterance": "查询 P-ALPHA ETCH-03 过去2天 FDC 报警记录",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "entity_data"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去2天"
+      }
+    },
+    {
+      "case_id": "v4-entity-04-02",
+      "utterance": "查看 P-ALPHA ETCH-03 过去2天 SPC 趋势",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "entity_data"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去2天"
+      }
+    },
+    {
+      "case_id": "v4-entity-04-03",
+      "utterance": "列出 P-ALPHA ETCH-03 过去2天 Lot 良率",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "entity_data"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去2天"
+      }
+    },
+    {
+      "case_id": "v4-entity-05-01",
+      "utterance": "查询 P-ALPHA ETCH-03 过去3天 FDC 报警记录",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "entity_data"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去3天"
+      }
+    },
+    {
+      "case_id": "v4-entity-05-02",
+      "utterance": "查看 P-ALPHA ETCH-03 过去3天 SPC 趋势",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "entity_data"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去3天"
+      }
+    },
+    {
+      "case_id": "v4-entity-05-03",
+      "utterance": "列出 P-ALPHA ETCH-03 过去3天 Lot 良率",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "entity_data"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去3天"
+      }
+    },
+    {
+      "case_id": "v4-entity-06-01",
+      "utterance": "查询 P-ALPHA ETCH-03 过去1周 FDC 报警记录",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "entity_data"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去1周"
+      }
+    },
+    {
+      "case_id": "v4-entity-06-02",
+      "utterance": "查看 P-ALPHA ETCH-03 过去1周 SPC 趋势",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "entity_data"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去1周"
+      }
+    },
+    {
+      "case_id": "v4-entity-06-03",
+      "utterance": "列出 P-ALPHA ETCH-03 过去1周 Lot 良率",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "data_query",
+      "expected_route": "tool_only",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "entity_data"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去1周"
+      }
+    },
+    {
+      "case_id": "v4-investigation-01-01",
+      "utterance": "分析 P-ALPHA ETCH-03 最近6小时 良率下降的原因",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近6小时"
+      }
+    },
+    {
+      "case_id": "v4-investigation-01-02",
+      "utterance": "P-ALPHA ETCH-03 最近6小时 FDC 报警为什么增加？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近6小时"
+      }
+    },
+    {
+      "case_id": "v4-investigation-01-03",
+      "utterance": "诊断 P-ALPHA ETCH-03 最近6小时 晶圆缺陷异常",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近6小时"
+      }
+    },
+    {
+      "case_id": "v4-investigation-01-04",
+      "utterance": "排查 P-ALPHA ETCH-03 最近6小时 SPC 波动的可能根因",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近6小时"
+      }
+    },
+    {
+      "case_id": "v4-investigation-02-01",
+      "utterance": "分析 P-ALPHA ETCH-03 最近12小时 良率下降的原因",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近12小时"
+      }
+    },
+    {
+      "case_id": "v4-investigation-02-02",
+      "utterance": "P-ALPHA ETCH-03 最近12小时 FDC 报警为什么增加？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近12小时"
+      }
+    },
+    {
+      "case_id": "v4-investigation-02-03",
+      "utterance": "诊断 P-ALPHA ETCH-03 最近12小时 晶圆缺陷异常",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近12小时"
+      }
+    },
+    {
+      "case_id": "v4-investigation-02-04",
+      "utterance": "排查 P-ALPHA ETCH-03 最近12小时 SPC 波动的可能根因",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近12小时"
+      }
+    },
+    {
+      "case_id": "v4-investigation-03-01",
+      "utterance": "分析 P-ALPHA ETCH-03 最近24小时 良率下降的原因",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近24小时"
+      }
+    },
+    {
+      "case_id": "v4-investigation-03-02",
+      "utterance": "P-ALPHA ETCH-03 最近24小时 FDC 报警为什么增加？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近24小时"
+      }
+    },
+    {
+      "case_id": "v4-investigation-03-03",
+      "utterance": "诊断 P-ALPHA ETCH-03 最近24小时 晶圆缺陷异常",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近24小时"
+      }
+    },
+    {
+      "case_id": "v4-investigation-03-04",
+      "utterance": "排查 P-ALPHA ETCH-03 最近24小时 SPC 波动的可能根因",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "最近24小时"
+      }
+    },
+    {
+      "case_id": "v4-investigation-04-01",
+      "utterance": "分析 P-ALPHA ETCH-03 过去2天 良率下降的原因",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去2天"
+      }
+    },
+    {
+      "case_id": "v4-investigation-04-02",
+      "utterance": "P-ALPHA ETCH-03 过去2天 FDC 报警为什么增加？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去2天"
+      }
+    },
+    {
+      "case_id": "v4-investigation-04-03",
+      "utterance": "诊断 P-ALPHA ETCH-03 过去2天 晶圆缺陷异常",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去2天"
+      }
+    },
+    {
+      "case_id": "v4-investigation-04-04",
+      "utterance": "排查 P-ALPHA ETCH-03 过去2天 SPC 波动的可能根因",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去2天"
+      }
+    },
+    {
+      "case_id": "v4-investigation-05-01",
+      "utterance": "分析 P-ALPHA ETCH-03 过去3天 良率下降的原因",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去3天"
+      }
+    },
+    {
+      "case_id": "v4-investigation-05-02",
+      "utterance": "P-ALPHA ETCH-03 过去3天 FDC 报警为什么增加？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去3天"
+      }
+    },
+    {
+      "case_id": "v4-investigation-05-03",
+      "utterance": "诊断 P-ALPHA ETCH-03 过去3天 晶圆缺陷异常",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去3天"
+      }
+    },
+    {
+      "case_id": "v4-investigation-05-04",
+      "utterance": "排查 P-ALPHA ETCH-03 过去3天 SPC 波动的可能根因",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去3天"
+      }
+    },
+    {
+      "case_id": "v4-investigation-06-01",
+      "utterance": "分析 P-ALPHA ETCH-03 过去1周 良率下降的原因",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去1周"
+      }
+    },
+    {
+      "case_id": "v4-investigation-06-02",
+      "utterance": "P-ALPHA ETCH-03 过去1周 FDC 报警为什么增加？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "fdc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去1周"
+      }
+    },
+    {
+      "case_id": "v4-investigation-06-03",
+      "utterance": "诊断 P-ALPHA ETCH-03 过去1周 晶圆缺陷异常",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "lot",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去1周"
+      }
+    },
+    {
+      "case_id": "v4-investigation-06-04",
+      "utterance": "排查 P-ALPHA ETCH-03 过去1周 SPC 波动的可能根因",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "investigation",
+      "expected_route": "rag_and_tool",
+      "expected_task_count": 2,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "data_query",
+          "target_type": "spc",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        },
+        {
+          "task_id": "task_2",
+          "primary_intent": "investigation",
+          "target_type": "case",
+          "action": "diagnose",
+          "execution_policy": "execute",
+          "depends_on": [
+            "task_1"
+          ]
+        }
+      ],
+      "expected_intent_card_ids": [
+        "data.manufacturing_lookup",
+        "investigation.anomaly_diagnosis"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "causal",
+        "concrete_scope"
+      ],
+      "expected_explicit_slots": {
+        "product": "P-ALPHA",
+        "tool_id": "ETCH-03",
+        "time_range": "过去1周"
+      }
+    },
+    {
+      "case_id": "v4-internal-01-01",
+      "utterance": "请问，当前 ETCH-03 SOP 对首片异常怎么要求？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.sop_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "internal_controlled"
+      ]
+    },
+    {
+      "case_id": "v4-internal-01-02",
+      "utterance": "请问，查询现行 ETCH-03 SOP 的清腔前置条件。",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.sop_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "internal_controlled"
+      ]
+    },
+    {
+      "case_id": "v4-internal-01-03",
+      "utterance": "请问，当前批准的 ETCH-03 Recipe 版本规则是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "recipe",
+          "action": "explain",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.recipe_read"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "internal_controlled"
+      ]
+    },
+    {
+      "case_id": "v4-internal-01-04",
+      "utterance": "请问，解释本厂 ETCH-03 Recipe 的审批要求。",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "recipe",
+          "action": "explain",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.recipe_read"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "internal_controlled"
+      ]
+    },
+    {
+      "case_id": "v4-internal-02-01",
+      "utterance": "帮我确认，当前 ETCH-03 SOP 对首片异常怎么要求？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.sop_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "internal_controlled"
+      ]
+    },
+    {
+      "case_id": "v4-internal-02-02",
+      "utterance": "帮我确认，查询现行 ETCH-03 SOP 的清腔前置条件。",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.sop_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "internal_controlled"
+      ]
+    },
+    {
+      "case_id": "v4-internal-02-03",
+      "utterance": "帮我确认，当前批准的 ETCH-03 Recipe 版本规则是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "recipe",
+          "action": "explain",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.recipe_read"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "internal_controlled"
+      ]
+    },
+    {
+      "case_id": "v4-internal-02-04",
+      "utterance": "帮我确认，解释本厂 ETCH-03 Recipe 的审批要求。",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "recipe",
+          "action": "explain",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.recipe_read"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "internal_controlled"
+      ]
+    },
+    {
+      "case_id": "v4-internal-03-01",
+      "utterance": "我需要了解：当前 ETCH-03 SOP 对首片异常怎么要求？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.sop_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "internal_controlled"
+      ]
+    },
+    {
+      "case_id": "v4-internal-03-02",
+      "utterance": "我需要了解：查询现行 ETCH-03 SOP 的清腔前置条件。",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "sop",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.sop_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "internal_controlled"
+      ]
+    },
+    {
+      "case_id": "v4-internal-03-03",
+      "utterance": "我需要了解：当前批准的 ETCH-03 Recipe 版本规则是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "recipe",
+          "action": "explain",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.recipe_read"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "internal_controlled"
+      ]
+    },
+    {
+      "case_id": "v4-internal-03-04",
+      "utterance": "我需要了解：解释本厂 ETCH-03 Recipe 的审批要求。",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "internal_rag",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "recipe",
+          "action": "explain",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.recipe_read"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "internal_controlled"
+      ]
+    },
+    {
+      "case_id": "v4-external-01-01",
+      "utterance": "公开资料中的晶圆缺陷检测方法有哪些？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "rag_and_web",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "explicit_web"
+      ]
+    },
+    {
+      "case_id": "v4-external-01-02",
+      "utterance": "公开资料中的晶圆缺陷检测方法怎么分类？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "rag_and_web",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "explicit_web"
+      ]
+    },
+    {
+      "case_id": "v4-external-01-03",
+      "utterance": "公开资料中的晶圆缺陷检测方法主要原理是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "rag_and_web",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "explicit_web"
+      ]
+    },
+    {
+      "case_id": "v4-external-01-04",
+      "utterance": "公开资料中的晶圆缺陷检测方法有哪些典型应用？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "rag_and_web",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "explicit_web"
+      ]
+    },
+    {
+      "case_id": "v4-external-02-01",
+      "utterance": "网上公开的先进封装检测趋势有哪些？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "rag_and_web",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "explicit_web"
+      ]
+    },
+    {
+      "case_id": "v4-external-02-02",
+      "utterance": "网上公开的先进封装检测趋势怎么分类？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "rag_and_web",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "explicit_web"
+      ]
+    },
+    {
+      "case_id": "v4-external-02-03",
+      "utterance": "网上公开的先进封装检测趋势主要原理是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "rag_and_web",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "explicit_web"
+      ]
+    },
+    {
+      "case_id": "v4-external-02-04",
+      "utterance": "网上公开的先进封装检测趋势有哪些典型应用？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "rag_and_web",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "explicit_web"
+      ]
+    },
+    {
+      "case_id": "v4-external-03-01",
+      "utterance": "互联网公开资料里的良率分析方法有哪些？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "rag_and_web",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "explicit_web"
+      ]
+    },
+    {
+      "case_id": "v4-external-03-02",
+      "utterance": "互联网公开资料里的良率分析方法怎么分类？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "rag_and_web",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "explicit_web"
+      ]
+    },
+    {
+      "case_id": "v4-external-03-03",
+      "utterance": "互联网公开资料里的良率分析方法主要原理是什么？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "rag_and_web",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "explicit_web"
+      ]
+    },
+    {
+      "case_id": "v4-external-03-04",
+      "utterance": "互联网公开资料里的良率分析方法有哪些典型应用？",
+      "context": {},
+      "expected_interaction_mode": "task",
+      "expected_primary_intent": "knowledge_query",
+      "expected_route": "rag_and_web",
+      "expected_task_count": 1,
+      "expected_refused_task_count": 0,
+      "expected_slot_operation": null,
+      "expected_context_message_ids": [],
+      "expected_tasks": [
+        {
+          "task_id": "task_1",
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute",
+          "depends_on": []
+        }
+      ],
+      "expected_intent_card_ids": [
+        "knowledge.governed_corpus_lookup"
+      ],
+      "tags": [
+        "t9-4.11",
+        "unseen",
+        "minimal_pair",
+        "explicit_web"
+      ]
+    }
+  ]
+}

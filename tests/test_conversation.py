@@ -12,7 +12,7 @@ async def test_thread_clarifies_then_continues_with_evidence(seeded_services) ->
 
     first = await conversation.send_message(thread.thread_id, "最近蚀刻良率下降，帮我调查根因")
     assert first["clarification_required"] is True
-    assert {"product", "time_range", "tool_or_chamber"}.issubset(first["missing_fields"])
+    assert set(first["missing_fields"]) == {"time_range", "affected_object"}
 
     second = await conversation.send_message(
         thread.thread_id,

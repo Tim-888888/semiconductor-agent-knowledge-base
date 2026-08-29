@@ -624,6 +624,7 @@ class RetrievalTrace(BaseModel):
     final_evidence_ids: list[str] = Field(default_factory=list)
     image_asset_ids: list[str] = Field(default_factory=list)
     external_evidence: list[dict[str, Any]] = Field(default_factory=list)
+    evidence_sufficiency: dict[str, Any] = Field(default_factory=dict)
     component_versions: dict[str, str] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
     provider_attempts: list[ProviderAttemptAudit] = Field(default_factory=list)
@@ -769,6 +770,96 @@ class PrimaryIntent(StrEnum):
     CONTENT_TASK = "content_task"
 
 
+class SemanticTemporalScope(StrEnum):
+    UNSPECIFIED = "unspecified"
+    TIMELESS = "timeless"
+    RELATIVE = "relative"
+    EXPLICIT = "explicit"
+    CURRENT = "current"
+
+
+class ExpectedOutput(StrEnum):
+    UNSPECIFIED = "unspecified"
+    EXPLANATION = "explanation"
+    ENUMERATION = "enumeration"
+    RECORDS = "records"
+    RANKING = "ranking"
+    TREND = "trend"
+    DIAGNOSIS = "diagnosis"
+    ACTION = "action"
+    TRANSFORMATION = "transformation"
+    CONVERSATION = "conversation"
+
+
+class KnowledgeScope(StrEnum):
+    UNSPECIFIED = "unspecified"
+    PUBLIC_GENERAL = "public_general"
+    INTERNAL_CONTROLLED = "internal_controlled"
+    MIXED = "mixed"
+    NOT_APPLICABLE = "not_applicable"
+
+
+class EvidenceSufficiencyStatus(StrEnum):
+    SUFFICIENT = "sufficient"
+    PARTIAL = "partial"
+    INSUFFICIENT = "insufficient"
+
+
+class EvidenceSufficiencyAssessment(BaseModel):
+    schema_version: str = "semikb-evidence-sufficiency-v1"
+    status: EvidenceSufficiencyStatus
+    reason_codes: list[str] = Field(default_factory=list)
+    selected_count: int = Field(default=0, ge=0)
+    high_score_count: int = Field(default=0, ge=0)
+    query_term_coverage: float = Field(default=0.0, ge=0, le=1)
+    top_rerank_score: float | None = Field(default=None, ge=0)
+    supported_aspects: list[str] = Field(default_factory=list)
+    missing_aspects: list[str] = Field(default_factory=list)
+    knowledge_scope: KnowledgeScope = KnowledgeScope.UNSPECIFIED
+    web_fallback_allowed: bool = False
+    judge_source: str = "deterministic"
+    provider: str | None = None
+    model: str | None = None
+    warning_codes: list[str] = Field(default_factory=list)
+
+
+class TaskShape(StrEnum):
+    UNSPECIFIED = "unspecified"
+    DIRECT = "direct"
+    CONCEPT_EXPLANATION = "concept_explanation"
+    ENTITY_LOOKUP = "entity_lookup"
+    AGGREGATE_RANKING = "aggregate_ranking"
+    EVENT_LIST = "event_list"
+    TREND_ANALYSIS = "trend_analysis"
+    CAUSAL_INVESTIGATION = "causal_investigation"
+    CONTENT_TRANSFORM = "content_transform"
+    CONTROL = "control"
+
+
+class GroupingDimension(StrEnum):
+    PRODUCT = "product"
+    TOOL = "tool"
+    CHAMBER = "chamber"
+    LOT = "lot"
+    WAFER = "wafer"
+    ALARM = "alarm"
+
+
+class TaskGroundingSpan(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    quote: str = Field(min_length=1, max_length=1000)
+    message_id: str | None = Field(default=None, max_length=128)
+
+
+class SemanticFrame(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    temporal_scope: SemanticTemporalScope = SemanticTemporalScope.UNSPECIFIED
+    expected_output: ExpectedOutput = ExpectedOutput.UNSPECIFIED
+    knowledge_scope: KnowledgeScope = KnowledgeScope.UNSPECIFIED
+
+
 class IntentTarget(StrEnum):
     PREVIOUS_USER_MESSAGE = "previous_user_message"
     PREVIOUS_ANSWER = "previous_answer"
@@ -881,6 +972,9 @@ class IntentTaskItem(BaseModel):
     primary_intent: PrimaryIntent
     target_type: IntentTarget
     action: IntentTaskAction
+    task_shape: TaskShape = TaskShape.UNSPECIFIED
+    group_by: list[GroupingDimension] = Field(default_factory=list, max_length=3)
+    supporting_spans: list[TaskGroundingSpan] = Field(default_factory=list, max_length=3)
     depends_on: list[str] = Field(default_factory=list, max_length=2)
     execution_policy: TaskExecutionDecision = TaskExecutionDecision.EXECUTE
 
@@ -904,6 +998,7 @@ class ConversationUnderstanding(BaseModel):
     interaction_mode: InteractionMode
     primary_intent: PrimaryIntent
     task_items: list[IntentTaskItem] = Field(default_factory=list, max_length=3)
+    semantic_frame: SemanticFrame = Field(default_factory=SemanticFrame)
     affect: AffectSignals = Field(default_factory=AffectSignals)
     slot_operations: list[SlotOperation] = Field(default_factory=list, max_length=12)
     explicit_slots: dict[str, str] = Field(default_factory=dict)

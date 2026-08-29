@@ -17,6 +17,7 @@ CATALOG_PATH = ROOT / "data" / "intent_catalogs" / "semikb_intent_catalog_v1.jso
 CATALOG_V2_PATH = ROOT / "data" / "intent_catalogs" / "semikb_intent_catalog_v2.json"
 CATALOG_V3_PATH = ROOT / "data" / "intent_catalogs" / "semikb_intent_catalog_v3.json"
 CATALOG_V4_PATH = ROOT / "data" / "intent_catalogs" / "semikb_intent_catalog_v4.json"
+CATALOG_V5_PATH = ROOT / "data" / "intent_catalogs" / "semikb_intent_catalog_v5.json"
 EXAMPLE_BANK_PATH = ROOT / "data" / "intent_examples" / "intent_example_bank_v1.json"
 V3_PATH = ROOT / "data" / "intent_sets" / "semikb_intent_v3.json"
 
@@ -36,10 +37,20 @@ class CapturingUnderstandingLLM:
                     "primary_intent": "conversation",
                     "target_type": "general",
                     "action": "explain",
+                    "task_shape": "direct",
+                    "group_by": [],
+                    "supporting_spans": [
+                        {"quote": "你能协助我处理哪些工程任务？", "message_id": None}
+                    ],
                     "depends_on": [],
                     "execution_policy": "execute",
                 }
             ],
+            "semantic_frame": {
+                "temporal_scope": "timeless",
+                "expected_output": "conversation",
+                "knowledge_scope": "not_applicable",
+            },
             "affect": {
                 "sentiment": "neutral",
                 "urgency": "normal",
@@ -147,6 +158,20 @@ def test_catalog_v4_generalizes_governed_corpus_lookup_without_source_names() ->
     assert corpus_card.task_signatures[0].key == "knowledge_query:general:lookup:execute"
     serialized = json.dumps(corpus_card.model_dump(mode="json"), ensure_ascii=False).lower()
     assert "secom" not in serialized
+
+
+def test_catalog_v5_overlay_adds_conditional_slots_without_mutating_v4() -> None:
+    catalog_v4 = IntentCatalog.load(CATALOG_V4_PATH)
+    catalog_v5 = IntentCatalog.load(CATALOG_V5_PATH)
+    data_card = next(
+        card for card in catalog_v5.active_cards if card.card_id == "data.manufacturing_lookup"
+    )
+
+    assert catalog_v5.catalog_version == "semikb-intent-catalog-v5"
+    assert len(catalog_v5.cards) == len(catalog_v4.cards)
+    assert data_card.required_slots == []
+    assert data_card.conditional_required_slots["aggregate_ranking"] == ["time_range"]
+    assert IntentCatalog.load(CATALOG_V4_PATH).catalog_hash == catalog_v4.catalog_hash
 
 
 @pytest.mark.asyncio

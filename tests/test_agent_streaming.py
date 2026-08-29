@@ -458,7 +458,7 @@ async def test_production_graph_streams_multiple_verified_answer_units(seeded_se
     assert events[-1].data.result.model_metadata["answer_streamed"] is True
     ledger = store.get_message_request(thread.thread_id, scope.user_id, prepared.record.request_id)
     assert ledger is not None
-    assert ledger.understanding_audit.intent_catalog_version == "semikb-intent-catalog-v4"
+    assert ledger.understanding_audit.intent_catalog_version == "semikb-intent-catalog-v5"
     assert ledger.understanding_audit.intent_catalog_hash
     assert ledger.understanding_audit.active_intent_card_count == 15
     assert ledger.understanding_audit.intent_card_selection == "all_active"

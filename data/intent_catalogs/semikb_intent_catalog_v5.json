@@ -1,0 +1,107 @@
+{
+  "catalog_version": "semikb-intent-catalog-v5",
+  "extends": "data/intent_catalogs/semikb_intent_catalog_v4.json",
+  "source_kind": "reviewed_semiconductor_governance_overlay",
+  "description": "T9-4.11 semantic grounding overlay. It distinguishes general knowledge, dynamic manufacturing data, and investigation by full-turn meaning rather than isolated keywords.",
+  "card_overrides": [
+    {
+      "card_id": "data.manufacturing_lookup",
+      "handles": [
+        "查询指定产品、设备或时间范围内的 FDC、SPC、Lot、Wafer、报警或良率数据",
+        "按产品、设备、腔体、Lot、Wafer 或报警维度列举、统计、排名或查看趋势",
+        "实体可以是查询过滤条件，也可以是用户希望返回的分组维度"
+      ],
+      "excludes": [
+        "解释一般概念、流程、原理、规则或常见原因",
+        "要求结合知识与制造数据诊断具体异常根因",
+        "查询当前有效的内部 SOP、Recipe 或配置事实"
+      ],
+      "positive_examples": [
+        "查看 P-ALPHA 最近24小时的良率记录",
+        "统计指定时间范围内各产品的良率排名",
+        "列出昨天触发 SPC 越界的 Lot",
+        "查看本周各设备的 FDC 报警趋势"
+      ],
+      "hard_negative_examples": [
+        "良率下降一般有哪些原因",
+        "半导体检测流程通常包括哪些环节",
+        "SPC 控制规则的原理是什么",
+        "分析 P-ALPHA 最近良率下降的可能根因"
+      ],
+      "required_slots": [],
+      "conditional_required_slots": {
+        "entity_lookup": ["time_range"],
+        "aggregate_ranking": ["time_range"],
+        "event_list": ["time_range"],
+        "trend_analysis": ["time_range"]
+      }
+    },
+    {
+      "card_id": "investigation.anomaly_diagnosis",
+      "handles": [
+        "结合受控知识和制造数据调查指定产品、设备、Lot、Wafer、缺陷、良率或报警异常",
+        "分析具体时间范围内异常信号之间的关联并形成可验证假设"
+      ],
+      "excludes": [
+        "只查询原始数据或聚合排行",
+        "只解释一般知识、流程、原理或常见原因"
+      ],
+      "positive_examples": [
+        "分析 P-ALPHA 最近24小时良率下降和 ETCH-03 报警的可能关联",
+        "诊断指定 Lot 边缘环状缺陷的证据链"
+      ],
+      "hard_negative_examples": [
+        "最近哪些产品良率最低",
+        "良率下降通常有哪些原因",
+        "清腔作业规范包括哪些步骤"
+      ],
+      "required_slots": [],
+      "conditional_required_slots": {
+        "causal_investigation": ["time_range"]
+      }
+    },
+    {
+      "card_id": "knowledge.governed_corpus_lookup",
+      "handles": [
+        "解释受治理语料中的一般概念、流程、原理、组成、规则和常见原因",
+        "查询公开半导体知识或用户上传并发布的受治理知识",
+        "内部证据不足时，只有公开通用知识才允许受控 Web 补充"
+      ],
+      "excludes": [
+        "查询某个时间范围内的实际制造记录、排行或趋势",
+        "调查具体产品、设备或 Lot 的异常根因",
+        "用公开资料替代当前内部 SOP、Recipe 或配置事实"
+      ],
+      "positive_examples": [
+        "半导体检测流程通常包括哪些环节",
+        "良率下降一般有哪些原因",
+        "解释晶圆边缘缺陷的常见机制",
+        "介绍公开论文中的缺陷检测方法"
+      ],
+      "hard_negative_examples": [
+        "最近有哪些产品良率低",
+        "今天哪些 Lot 触发了 SPC 越界",
+        "P-ALPHA 最近为什么良率下降",
+        "当前生效的内部 Recipe 版本是什么"
+      ],
+      "required_slots": [],
+      "conditional_required_slots": {
+        "concept_explanation": []
+      },
+      "task_signatures": [
+        {
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "lookup",
+          "execution_policy": "execute"
+        },
+        {
+          "primary_intent": "knowledge_query",
+          "target_type": "general",
+          "action": "explain",
+          "execution_policy": "execute"
+        }
+      ]
+    }
+  ]
+}

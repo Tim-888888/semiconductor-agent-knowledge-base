@@ -16,6 +16,7 @@ from semikb.contracts.models import (
     RouteTaskDecision,
     SlotOperationKind,
     TaskExecutionDecision,
+    TaskShape,
 )
 
 LATEST_TERMS = ("最新", "当前版本", "现行", "实时", "现在", "today", "latest")
@@ -344,25 +345,24 @@ class RoutePolicy:
         route: AgentRoute,
     ) -> list[str]:
         missing: list[str] = []
-        has_investigation = any(
-            item.primary_intent is PrimaryIntent.INVESTIGATION
-            and item.execution_policy is TaskExecutionDecision.EXECUTE
+        executable = [
+            item
             for item in understanding.task_items
-        )
-        if has_investigation or route is AgentRoute.RAG_AND_TOOL:
-            if not slots.get("product"):
-                missing.append("product")
-            if not slots.get("time_range"):
-                missing.append("time_range")
-            if not (slots.get("tool_id") or slots.get("chamber")):
-                missing.append("tool_or_chamber")
-        elif route is AgentRoute.TOOL_ONLY:
-            if not slots.get("product"):
-                missing.append("product")
-            if not slots.get("time_range"):
-                missing.append("time_range")
-            if not (slots.get("tool_id") or slots.get("chamber")):
-                missing.append("tool_or_chamber")
+            if item.execution_policy is TaskExecutionDecision.EXECUTE
+        ]
+        for task in executable:
+            if task.primary_intent is PrimaryIntent.DATA_QUERY:
+                RoutePolicy._append_data_task_missing(missing, task, slots)
+            elif task.primary_intent is PrimaryIntent.INVESTIGATION:
+                if task.task_shape is TaskShape.UNSPECIFIED:
+                    RoutePolicy._append_legacy_manufacturing_missing(missing, slots)
+                else:
+                    if not slots.get("time_range"):
+                        missing.append("time_range")
+                    if not RoutePolicy._has_affected_object(slots):
+                        missing.append("affected_object")
+        if route in {AgentRoute.TOOL_ONLY, AgentRoute.RAG_AND_TOOL} and not executable:
+            RoutePolicy._append_legacy_manufacturing_missing(missing, slots)
         history_task = any(
             item.target_type in {
                 IntentTarget.PREVIOUS_USER_MESSAGE,
@@ -378,7 +378,48 @@ class RoutePolicy:
         )
         if history_task and not understanding.context_message_ids:
             missing.append("history_reference")
-        return missing[:3]
+        return list(dict.fromkeys(missing))[:3]
+
+    @staticmethod
+    def _append_data_task_missing(
+        missing: list[str],
+        task,
+        slots: dict[str, str],
+    ) -> None:
+        if task.task_shape is TaskShape.UNSPECIFIED:
+            RoutePolicy._append_legacy_manufacturing_missing(missing, slots)
+            return
+        if not slots.get("time_range"):
+            missing.append("time_range")
+        if task.task_shape in {
+            TaskShape.AGGREGATE_RANKING,
+            TaskShape.EVENT_LIST,
+            TaskShape.TREND_ANALYSIS,
+        }:
+            return
+        if task.task_shape is TaskShape.ENTITY_LOOKUP and not RoutePolicy._has_affected_object(
+            slots
+        ):
+            missing.append("affected_object")
+
+    @staticmethod
+    def _append_legacy_manufacturing_missing(
+        missing: list[str],
+        slots: dict[str, str],
+    ) -> None:
+        if not slots.get("product"):
+            missing.append("product")
+        if not slots.get("time_range"):
+            missing.append("time_range")
+        if not (slots.get("tool_id") or slots.get("chamber")):
+            missing.append("tool_or_chamber")
+
+    @staticmethod
+    def _has_affected_object(slots: dict[str, str]) -> bool:
+        return any(
+            slots.get(name)
+            for name in ("product", "tool_id", "chamber", "lot_id", "case_id")
+        )
 
     @staticmethod
     def _scope_error(slots: dict[str, str], actor_scope: ActorScope) -> str | None:

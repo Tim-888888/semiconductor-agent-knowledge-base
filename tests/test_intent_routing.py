@@ -33,14 +33,26 @@ from semikb.demo_factory import demo_actor_scope
 
 
 class CountingRetrieval:
-    def __init__(self, delegate) -> None:
+    def __init__(self, delegate, *, force_empty: bool = False, events=None) -> None:
         self.delegate = delegate
+        self.force_empty = force_empty
+        self.events = events
         self.search_calls = 0
         self.reuse_calls = 0
 
     def search(self, *args, **kwargs):
         self.search_calls += 1
-        return self.delegate.search(*args, **kwargs)
+        if self.events is not None:
+            self.events.append("internal_retrieval")
+        evidence, trace = self.delegate.search(*args, **kwargs)
+        if not self.force_empty:
+            return evidence, trace
+        for candidate in trace.candidates:
+            candidate.selected = False
+        trace.final_evidence_ids = []
+        trace.image_asset_ids = []
+        self.delegate.save_trace(trace)
+        return [], trace
 
     def reuse_trace_evidence(self, *args, **kwargs):
         self.reuse_calls += 1
@@ -54,17 +66,20 @@ class CountingToolbox(ManufacturingToolbox):
     def __init__(self) -> None:
         self.query_calls = 0
 
-    def query_for_case(self, query, constraints):
+    def query_for_plan(self, query, constraints, task_items, actor_scope):
         self.query_calls += 1
-        return super().query_for_case(query, constraints)
+        return super().query_for_plan(query, constraints, task_items, actor_scope)
 
 
 class CountingWeb:
-    def __init__(self) -> None:
+    def __init__(self, *, events=None) -> None:
+        self.events = events
         self.search_calls = 0
 
     async def search(self, query):
         self.search_calls += 1
+        if self.events is not None:
+            self.events.append("web_search")
         return []
 
 
@@ -426,6 +441,21 @@ async def test_tool_only_does_not_call_embedding_retrieval(seeded_services) -> N
 
 
 @pytest.mark.asyncio
+async def test_bounded_aggregate_query_needs_only_time_and_uses_tool(seeded_services) -> None:
+    _, service, retrieval, toolbox, web = _service(seeded_services)
+    thread = service.create_thread("yield-aggregate", ActorScope())
+
+    result = await service.send_message(thread.thread_id, "最近24小时有哪些产品良率低？")
+
+    assert result["route_decision"] is AgentRoute.TOOL_ONLY
+    assert result["clarification_required"] is False
+    assert result["tool_facts"]
+    assert retrieval.search_calls == 0
+    assert toolbox.query_calls == 1
+    assert web.search_calls == 0
+
+
+@pytest.mark.asyncio
 async def test_internal_rag_does_not_call_tool_or_web(seeded_services) -> None:
     _, service, retrieval, toolbox, web = _service(seeded_services)
     thread = service.create_thread("sop", ActorScope())
@@ -436,6 +466,71 @@ async def test_internal_rag_does_not_call_tool_or_web(seeded_services) -> None:
     assert retrieval.search_calls == 1
     assert toolbox.query_calls == 0
     assert web.search_calls == 0
+
+
+@pytest.mark.asyncio
+async def test_public_knowledge_searches_web_only_after_internal_evidence_is_empty(
+    seeded_services,
+) -> None:
+    store, _, retrieval, _, _ = seeded_services
+    events = []
+    counting_retrieval = CountingRetrieval(retrieval, force_empty=True, events=events)
+    web = CountingWeb(events=events)
+    service = ConversationService(
+        store,
+        counting_retrieval,
+        Settings(_env_file=None, demo_mode=True),
+        toolbox=CountingToolbox(),
+        web_search=web,
+    )
+    scope = ActorScope()
+    thread = service.create_thread("public-web-fallback", scope)
+
+    result = await service.send_message(
+        thread.thread_id,
+        "先进封装常见的失效分析方法有哪些？",
+        scope,
+    )
+    trace = counting_retrieval.get_trace(result["trace_id"], scope)
+
+    assert result["route_decision"] is AgentRoute.RAG_AND_WEB
+    assert events == ["internal_retrieval", "web_search"]
+    assert trace.evidence_sufficiency["status"] == "insufficient"
+    assert trace.evidence_sufficiency["knowledge_scope"] == "public_general"
+    assert "web_fallback" in trace.routes
+
+
+@pytest.mark.asyncio
+async def test_internal_controlled_query_never_falls_back_to_public_web(
+    seeded_services,
+) -> None:
+    store, _, retrieval, _, _ = seeded_services
+    events = []
+    counting_retrieval = CountingRetrieval(retrieval, force_empty=True, events=events)
+    web = CountingWeb(events=events)
+    service = ConversationService(
+        store,
+        counting_retrieval,
+        Settings(_env_file=None, demo_mode=True),
+        toolbox=CountingToolbox(),
+        web_search=web,
+    )
+    scope = ActorScope()
+    thread = service.create_thread("internal-no-web-fallback", scope)
+
+    result = await service.send_message(
+        thread.thread_id,
+        "当前 ETCH-03 SOP 对首片异常怎么要求？",
+        scope,
+    )
+    trace = counting_retrieval.get_trace(result["trace_id"], scope)
+
+    assert result["route_decision"] is AgentRoute.INTERNAL_RAG
+    assert events == ["internal_retrieval"]
+    assert web.search_calls == 0
+    assert trace.evidence_sufficiency["status"] == "insufficient"
+    assert trace.evidence_sufficiency["knowledge_scope"] == "internal_controlled"
+    assert trace.evidence_sufficiency["web_fallback_allowed"] is False
 
 
 @pytest.mark.asyncio

@@ -1,0 +1,83 @@
+{
+  "schema": "semikb-t9411-hk-runtime-v1",
+  "captured_at": "2026-08-28",
+  "host": "47.76.218.205",
+  "site": "http://semiatlas.cn/",
+  "application_containers": {
+    "api": {"id": "1fb9eea463fca430b0b9eb734fa8762ea14f5c7344765bfed34b41bcc7e0fdb4", "status": "healthy", "restart_count": 0},
+    "worker": {"id": "7cfd6f880bf0cf362888e89dfdf52fcdcf51753c85c38af6ff5f98dd82db00331", "status": "running", "restart_count": 0, "ping": "pong"},
+    "web": {"id": "a9668178e80ec5da6b059982635b490ef7afadcd9623565f6fa262ab1e398daa", "status": "healthy", "restart_count": 0}
+  },
+  "protected_container_ids_unchanged": {
+    "mongodb": "6181bbf422f9a3347e3230ab8a209dba6baeb3260d2af638a162a7342bc38177",
+    "milvus": "79584e28e6e432bc09e474a8602176fc1ca2cde50fc9725dd147c9afba79faa5",
+    "milvus_minio": "10c53443a0990c206baee7ee660f0608b567f7cd968f62dbe6facf4b66de0afa1",
+    "business_minio": "b6be74285da791f3b525432c07bafcbd4616e56b2c3cde929f0e1a49c49a14d55",
+    "etcd": "a1eb32ddafb3a3bfddf5e1fcf3f7528230e5e74ead71cadd69de3b6292ba90fa",
+    "redis": "2365f6cb64f6da846a63f35dba84786b099163391d1a37791c0148265dae12d77"
+  },
+  "runtime_configuration": {
+    "intent_catalog": "semikb-intent-catalog-v5",
+    "intent_catalog_hash": "7e16a79f3d29a773904276536b08095629ff3df014becdb983b6de446cd67f77d",
+    "intent_semantic_grounding_enabled": true,
+    "evidence_sufficiency_enabled": true,
+    "evidence_web_fallback_enabled": true,
+    "evidence_judge_borderline_enabled": true
+  },
+  "knowledge_storage_invariants": {
+    "mongo_document_catalog": 44,
+    "mongo_chunk_catalog": 154,
+    "mongo_image_assets": 15,
+    "mongo_table_assets": 19,
+    "milvus_active_collection": "semikb_chunks_v4",
+    "milvus_strong_row_count": 149,
+    "minio_raw_objects": 56,
+    "minio_derived_objects": 91,
+    "redis_ping": true,
+    "celery_queue_depth": 0,
+    "note": "acceptance appended threads, checkpoints, message requests and traces only"
+  },
+  "acceptance_cases": {
+    "general_knowledge": {
+      "question": "半导体检测流程一般包含什么呢？",
+      "task": "knowledge_query/concept_explanation",
+      "clarification_required": false,
+      "route": "rag_and_web",
+      "evidence_sufficiency": "insufficient",
+      "web_fallback_attempted": true,
+      "web_provider_outcome": "succeeded",
+      "usable_external_evidence_count": 0
+    },
+    "unbounded_yield_ranking": {
+      "question": "最近有哪些产品良率低？",
+      "route": "clarify",
+      "missing_fields": ["time_range"],
+      "product_or_tool_requested": false
+    },
+    "bounded_yield_ranking": {
+      "question": "最近24小时有哪些产品良率低？",
+      "route": "tool_only",
+      "clarification_required": false,
+      "tool_result_count": 1
+    },
+    "internal_sop": {
+      "question": "ETCH-03 Chamber B 清腔后首片异常，当前 SOP 怎么要求？",
+      "route": "internal_rag",
+      "evidence_sufficiency": "sufficient",
+      "web_fallback_allowed": false,
+      "external_evidence_count": 0
+    },
+    "sse": {
+      "stages": ["analyzing_request", "routing_request", "retrieving_evidence", "reranking_evidence", "assessing_evidence", "searching_external", "generating_answer", "verifying_answer", "persisting_result"],
+      "answer_delta_count": 4,
+      "completed_events": 1,
+      "errors": 0
+    }
+  },
+  "runtime_health": {
+    "http_health": "ok",
+    "published_ports": [22, 80],
+    "app_log_error_scan": 0,
+    "shenzhen_ecs_touched": false
+  }
+}

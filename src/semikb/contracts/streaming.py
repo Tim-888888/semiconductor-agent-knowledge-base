@@ -43,6 +43,7 @@ class AgentStreamStage(StrEnum):
     ROUTING_REQUEST = "routing_request"
     AWAITING_CLARIFICATION = "awaiting_clarification"
     RETRIEVING_EVIDENCE = "retrieving_evidence"
+    ASSESSING_EVIDENCE = "assessing_evidence"
     SEARCHING_EXTERNAL = "searching_external"
     RERANKING_EVIDENCE = "reranking_evidence"
     GENERATING_ANSWER = "generating_answer"

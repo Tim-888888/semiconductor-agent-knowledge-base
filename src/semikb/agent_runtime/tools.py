@@ -5,7 +5,15 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+from semikb.contracts.models import (
+    ActorScope,
+    GroupingDimension,
+    IntentTarget,
+    IntentTaskItem,
+    TaskShape,
+)
 
 
 class ToolArguments(BaseModel):
@@ -19,6 +27,15 @@ class ToolArguments(BaseModel):
 
 class RecipeHistoryArguments(ToolArguments):
     recipe_id: str | None = None
+
+
+class AggregateArguments(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    time_range: str
+    group_by: list[GroupingDimension]
+    authorized_products: list[str] = Field(default_factory=list)
+    authorized_tools: list[str] = Field(default_factory=list)
 
 
 class ManufacturingToolbox:
@@ -44,6 +61,34 @@ class ManufacturingToolbox:
             "get_recipe_change_history",
             arguments,
             "模拟数据：当前 ETCH-ALPHA V2.3 已批准，最近 24 小时无未批准 Recipe 变更。",
+        )
+
+    def query_manufacturing_aggregate(
+        self,
+        arguments: AggregateArguments,
+        task: IntentTaskItem,
+    ) -> dict[str, Any]:
+        dimensions = "、".join(item.value for item in arguments.group_by) or "授权对象"
+        if task.target_type is IntentTarget.FDC:
+            subject = "FDC 报警"
+        elif task.target_type is IntentTarget.SPC:
+            subject = "SPC 越界"
+        else:
+            subject = "良率"
+        groups = arguments.authorized_products or arguments.authorized_tools
+        scope_text = "、".join(groups[:5]) or "当前授权范围"
+        shape_text = {
+            TaskShape.AGGREGATE_RANKING: "聚合排行",
+            TaskShape.EVENT_LIST: "事件列表",
+            TaskShape.TREND_ANALYSIS: "趋势汇总",
+        }.get(task.task_shape, "聚合查询")
+        return self._fact(
+            "query_manufacturing_aggregate",
+            arguments,
+            (
+                f"模拟数据：{arguments.time_range} 内按 {dimensions} 执行{shape_text}，"
+                f"授权分组为 {scope_text}，查询对象为 {subject}。"
+            ),
         )
 
     @staticmethod
@@ -81,6 +126,42 @@ class ManufacturingToolbox:
                 )
             )
         return results
+
+    def query_for_plan(
+        self,
+        query: str,
+        constraints: dict[str, Any],
+        task_items: list[IntentTaskItem],
+        actor_scope: ActorScope,
+    ) -> list[dict[str, Any]]:
+        """Execute only the structured, read-only task plan within actor scope."""
+
+        aggregate_task = next(
+            (
+                item
+                for item in task_items
+                if item.task_shape
+                in {
+                    TaskShape.AGGREGATE_RANKING,
+                    TaskShape.EVENT_LIST,
+                    TaskShape.TREND_ANALYSIS,
+                }
+            ),
+            None,
+        )
+        if aggregate_task is None:
+            return self.query_for_case(query, constraints)
+        time_range = str(constraints.get("time_range", "")).strip()
+        if not time_range:
+            return []
+        group_by = aggregate_task.group_by or [GroupingDimension.PRODUCT]
+        arguments = AggregateArguments(
+            time_range=time_range,
+            group_by=group_by,
+            authorized_products=list(actor_scope.products),
+            authorized_tools=list(actor_scope.tool_ids),
+        )
+        return [self.query_manufacturing_aggregate(arguments, aggregate_task)]
 
 
 def query_demo_manufacturing_data(

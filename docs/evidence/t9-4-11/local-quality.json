@@ -1,0 +1,33 @@
+{
+  "schema": "semikb-t9411-local-quality-v1",
+  "captured_at": "2026-08-28",
+  "backend": {
+    "command": "uv run pytest",
+    "passed": 462,
+    "warnings": 1,
+    "warning_scope": "existing Starlette TestClient/httpx deprecation",
+    "duration_seconds": 1123.19
+  },
+  "static_checks": {
+    "ruff": "passed",
+    "compileall": "passed",
+    "frontend_lint": "passed",
+    "frontend_build": "passed",
+    "vite_modules": 1583
+  },
+  "intent_review_set": {
+    "dataset": "semikb-intent-v4",
+    "case_count": 132,
+    "sha256": "4ae12eb49a5365cc6d249bc7245f5e9d6e7779a31d74cd3f4ba047896f4ee662",
+    "catalog": "semikb-intent-catalog-v5",
+    "deterministic_exact_baseline": "passed",
+    "history_direct_produced": 0,
+    "dangerous_execution_misses": 0,
+    "provenance": "generated_review_set_not_independent_blind_accuracy"
+  },
+  "legacy_compatibility": {
+    "frozen_sets": ["semikb-intent-v1", "semikb-intent-v2", "semikb-intent-v3"],
+    "content_hashes_changed": false,
+    "route_migration_overlay": "semikb_history_to_chat_v4"
+  }
+}

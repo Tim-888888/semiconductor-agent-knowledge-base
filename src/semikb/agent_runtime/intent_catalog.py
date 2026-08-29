@@ -20,6 +20,7 @@ from semikb.contracts.models import (
     InteractionMode,
     PrimaryIntent,
     TaskExecutionDecision,
+    TaskShape,
 )
 
 VALID_SLOT_NAMES = {
@@ -92,6 +93,7 @@ class IntentDefinitionCard(BaseModel):
     positive_examples: list[str] = Field(min_length=1, max_length=8)
     hard_negative_examples: list[str] = Field(min_length=1, max_length=8)
     required_slots: list[str] = Field(default_factory=list, max_length=9)
+    conditional_required_slots: dict[TaskShape, list[str]] = Field(default_factory=dict)
     allowed_routes: list[AgentRoute] = Field(min_length=1, max_length=9)
     risk_level: IntentRiskLevel
     task_signatures: list[IntentTaskSignature] = Field(min_length=1, max_length=16)
@@ -101,6 +103,18 @@ class IntentDefinitionCard(BaseModel):
         invalid_slots = sorted(set(self.required_slots) - VALID_SLOT_NAMES)
         if invalid_slots:
             raise ValueError(f"unknown required slots: {', '.join(invalid_slots)}")
+        invalid_conditional = sorted(
+            {
+                slot
+                for slots in self.conditional_required_slots.values()
+                for slot in slots
+            }
+            - VALID_SLOT_NAMES
+        )
+        if invalid_conditional:
+            raise ValueError(
+                f"unknown conditional required slots: {', '.join(invalid_conditional)}"
+            )
         if self.card_id in self.confused_with:
             raise ValueError("an intent card cannot be confused with itself")
         if len(self.confused_with) != len(set(self.confused_with)):
@@ -123,6 +137,10 @@ class IntentDefinitionCard(BaseModel):
             "positive_examples": self.positive_examples,
             "hard_negative_examples": self.hard_negative_examples,
             "required_slots": self.required_slots,
+            "conditional_required_slots": {
+                shape.value: slots
+                for shape, slots in self.conditional_required_slots.items()
+            },
             "allowed_routes": [item.value for item in self.allowed_routes],
             "risk_level": self.risk_level.value,
             "task_signatures": [
@@ -178,6 +196,9 @@ class IntentCatalog(BaseModel):
     @property
     def catalog_hash(self) -> str:
         payload = self.model_dump(mode="json")
+        for card in payload["cards"]:
+            if not card.get("conditional_required_slots"):
+                card.pop("conditional_required_slots", None)
         serialized = json.dumps(
             payload,
             ensure_ascii=False,
@@ -221,7 +242,26 @@ class IntentCatalog(BaseModel):
 
     @classmethod
     def load(cls, path: Path) -> IntentCatalog:
-        return cls.model_validate_json(path.read_text(encoding="utf-8"))
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if "extends" not in payload:
+            return cls.model_validate(payload)
+        base_path = resolve_governance_path(str(payload["extends"]))
+        base = json.loads(base_path.read_text(encoding="utf-8"))
+        cards = {item["card_id"]: item for item in base["cards"]}
+        for override in payload.get("card_overrides", []):
+            card_id = str(override.get("card_id", ""))
+            if card_id not in cards:
+                raise ValueError(f"catalog overlay references unknown card: {card_id}")
+            cards[card_id] = {**cards[card_id], **override}
+        merged = {
+            **base,
+            "catalog_version": payload["catalog_version"],
+            "source_kind": payload.get("source_kind", base.get("source_kind")),
+            "description": payload.get("description", base.get("description")),
+            "capacity_gates": payload.get("capacity_gates", base.get("capacity_gates")),
+            "cards": list(cards.values()),
+        }
+        return cls.model_validate(merged)
 
 
 class IntentExample(BaseModel):
