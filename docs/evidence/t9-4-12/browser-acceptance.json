@@ -1,0 +1,49 @@
+{
+  "schema": "semikb-t9412-browser-acceptance-v1",
+  "captured_at": "2026-08-30",
+  "site": "http://semiatlas.cn/",
+  "desktop_public_web": {
+    "question": "半导体的制造流程分别是怎样的",
+    "route_label": "知识 + Web",
+    "natural_answer_visible": true,
+    "structured_card_count": 0,
+    "external_source_link_count": 5,
+    "first_source_opened_in_browser": true,
+    "refresh_restored_source_links": true
+  },
+  "desktop_trace": {
+    "answer_usability_gate_visible": true,
+    "evidence_sufficiency_visible": true,
+    "web_fallback_visible": true,
+    "selected_chunks": 5,
+    "answer_eligible_chunks": 0,
+    "final_evidence_count": 0,
+    "low_value_chunks_retained_for_audit": true,
+    "web_audit_visible": true,
+    "web_normalized_results": 5
+  },
+  "desktop_internal_sop": {
+    "route_label": "内部知识检索",
+    "structured_card_visible": true,
+    "web_source_link_count": 0,
+    "internal_evidence_visible": true
+  },
+  "mobile_public_web": {
+    "viewport": "390x844",
+    "inner_width": 390,
+    "inner_height": 844,
+    "document_scroll_width": 390,
+    "body_scroll_width": 390,
+    "horizontal_overflow": false,
+    "route_label": "知识 + Web",
+    "external_source_link_count": 5,
+    "structured_card_count": 0,
+    "composer_visible": true
+  },
+  "console": {
+    "desktop_errors": 0,
+    "desktop_warnings": 0,
+    "mobile_errors": 0,
+    "mobile_warnings": 0
+  }
+}

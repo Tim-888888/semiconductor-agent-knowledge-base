@@ -4,7 +4,11 @@ import json
 
 import pytest
 
-from semikb.agent_runtime.streaming_answer import StreamingAnswerAssembler, format_answer
+from semikb.agent_runtime.streaming_answer import (
+    StreamingAnswerAssembler,
+    format_answer,
+    format_natural_knowledge_answer,
+)
 from semikb.contracts.models import EvidenceLedgerEntry
 
 
@@ -145,3 +149,44 @@ def test_streaming_answer_keeps_explicitly_qualified_preview_count() -> None:
 
     assert answer.facts[0].text == "当前预览观测到 200 行，且证据标记为截断样本。"
     assert "bounded_preview_total_claim_removed" not in assembler.warnings
+
+
+def test_natural_knowledge_stream_accepts_external_claims_without_report_template() -> None:
+    deltas: list[str] = []
+    ledger = [
+        EvidenceLedgerEntry(
+            evidence_id="chunk:partial",
+            source_type="internal_controlled",
+            content="知识库只覆盖一个局部环节。",
+        ),
+        EvidenceLedgerEntry(
+            evidence_id="external:web-1",
+            source_type="external",
+            content="公开资料覆盖完整流程。",
+            external_url="https://example.org/process",
+        ),
+    ]
+    assembler = StreamingAnswerAssembler(
+        ledger,
+        deltas.append,
+        formatter=format_natural_knowledge_answer,
+        enforce_internal_authority=False,
+    )
+
+    assembler.feed(
+        json.dumps(
+            {
+                "type": "fact",
+                "text": "半导体制造通常由相互衔接的前道、测试和封装环节组成。",
+                "citation_ids": ["external:web-1"],
+            },
+            ensure_ascii=False,
+        )
+    )
+    assembler.feed(json.dumps({"type": "confidence", "value": "medium"}))
+    answer = assembler.finish()
+
+    assert [claim.citation_ids for claim in answer.facts] == [["external:web-1"]]
+    assert "外部单独结论" not in "".join(deltas)
+    assert "基于当前有效" not in "".join(deltas)
+    assert "".join(deltas) == format_natural_knowledge_answer(answer)

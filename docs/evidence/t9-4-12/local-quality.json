@@ -1,0 +1,29 @@
+{
+  "schema": "semikb-t9412-local-quality-v1",
+  "captured_at": "2026-08-30",
+  "backend": {
+    "targeted_command": "uv run pytest tests/test_semantic_grounding.py tests/test_web_search_resilience.py tests/test_streaming_answer.py tests/test_message_presentation.py tests/test_production_retrieval.py tests/test_intent_routing.py",
+    "targeted_passed": 103,
+    "full_command": "uv run pytest",
+    "full_passed": 470,
+    "warnings": 1,
+    "warning_scope": "existing Starlette TestClient/httpx deprecation",
+    "duration_seconds": 304.49
+  },
+  "static_checks": {
+    "ruff": "passed",
+    "compileall": "passed",
+    "frontend_lint": "passed",
+    "frontend_build": "passed"
+  },
+  "public_answerability_calibration": {
+    "dataset": "t9412-public-answerability-calibration-v1",
+    "purpose": "calibration",
+    "case_count": 5,
+    "sha256": "ca9dc45900248be3193a647f14beee73967dd0ac93a82fc84725aa03b8ce8ab5",
+    "reported_bad_case_included": false,
+    "scope_cases": ["public_general", "internal_controlled"],
+    "result": "passed",
+    "claim_boundary": "calibration defaults, not independent blind production accuracy"
+  }
+}

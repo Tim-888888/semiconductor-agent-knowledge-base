@@ -18,7 +18,7 @@ export function EmptyState({ icon, title, detail }: {
 
 export function StatusPill({ value }: { value: string }) {
   const normalized = value.toLowerCase();
-  const tone = ["completed", "published", "selected", "active"].includes(normalized)
+  const tone = ["completed", "published", "selected", "answer_eligible", "active"].includes(normalized)
     ? "good"
     : ["failed", "refused", "regressed", "excluded", "insufficient_information", "compensation_required"].includes(normalized)
       ? "bad"
@@ -88,6 +88,8 @@ function labelForStatus(value: string): string {
     restored: "已恢复",
     compensation_required: "需要补偿",
     selected: "入选",
+    answer_eligible: "答案采用",
+    selected_not_answer: "仅保留在 Trace",
     excluded: "排除",
     active: "活动",
     waiting_for_clarification: "等待补充",

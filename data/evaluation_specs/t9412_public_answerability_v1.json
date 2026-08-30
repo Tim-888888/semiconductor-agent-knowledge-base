@@ -1,0 +1,86 @@
+{
+  "schema_version": "semikb-public-answerability-v1",
+  "dataset_version": "t9412-public-answerability-calibration-v1",
+  "dataset_purpose": "calibration",
+  "sealed_at": "2026-08-30T00:00:00Z",
+  "leakage_status": "cleared",
+  "notes": "Questions and chunk texts are generic calibration fixtures and exclude the reported manufacturing-flow bad case.",
+  "cases": [
+    {
+      "case_id": "public_high_score_covered",
+      "knowledge_scope": "public_general",
+      "query": "光刻工艺的基本作用是什么",
+      "chunks": [
+        {
+          "chunk_id": "CAL-PUB-001",
+          "text": "光刻工艺利用掩模和光刻胶把电路图形转移到晶圆表面。",
+          "rerank_score": 0.82,
+          "expected_answer_eligible": true
+        }
+      ],
+      "expected_web_fallback": false
+    },
+    {
+      "case_id": "public_low_score_overlap",
+      "knowledge_scope": "public_general",
+      "query": "先进封装通常包含哪些关键环节",
+      "chunks": [
+        {
+          "chunk_id": "CAL-PUB-002",
+          "text": "先进封装论文的引言提到了封装技术的发展背景。",
+          "rerank_score": 0.44,
+          "expected_answer_eligible": false
+        }
+      ],
+      "expected_web_fallback": true
+    },
+    {
+      "case_id": "public_high_score_off_topic",
+      "knowledge_scope": "public_general",
+      "query": "离子注入如何改变材料电学性质",
+      "chunks": [
+        {
+          "chunk_id": "CAL-PUB-003",
+          "text": "晶圆图缺陷分类可以使用卷积神经网络。",
+          "rerank_score": 0.78,
+          "expected_answer_eligible": false
+        }
+      ],
+      "expected_web_fallback": true
+    },
+    {
+      "case_id": "public_relative_floor",
+      "knowledge_scope": "public_general",
+      "query": "晶圆清洗的目的和常见步骤是什么",
+      "chunks": [
+        {
+          "chunk_id": "CAL-PUB-004A",
+          "text": "晶圆清洗用于去除颗粒、有机物和金属污染，常见步骤包括湿法清洗与干燥。",
+          "rerank_score": 0.86,
+          "expected_answer_eligible": true
+        },
+        {
+          "chunk_id": "CAL-PUB-004B",
+          "text": "晶圆清洗设备的市场规模在过去几年发生变化。",
+          "rerank_score": 0.61,
+          "expected_answer_eligible": false
+        }
+      ],
+      "expected_web_fallback": false
+    },
+    {
+      "case_id": "controlled_scope_compatibility",
+      "knowledge_scope": "internal_controlled",
+      "query": "当前清腔后首片检查 SOP 怎么要求",
+      "chunks": [
+        {
+          "chunk_id": "CAL-INT-001",
+          "text": "受控 SOP 要求清腔后完成首片检查并记录结果。",
+          "rerank_score": 0.41,
+          "expected_answer_eligible": true
+        }
+      ],
+      "expected_web_fallback": false
+    }
+  ]
+}

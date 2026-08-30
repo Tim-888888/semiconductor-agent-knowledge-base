@@ -21,11 +21,12 @@ type Props = {
 
 export function TracePanel({ traces, trace, onSelect, onOpenImage }: Props) {
   const [routeFilter, setRouteFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "selected" | "excluded">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "selected" | "answer" | "excluded">("all");
   const routes = useMemo(() => [...new Set(trace?.candidates.flatMap((item) => item.routes) ?? [])], [trace]);
   const candidates = useMemo(() => (trace?.candidates ?? []).filter((candidate) => {
     const routeMatches = routeFilter === "all" || candidate.routes.includes(routeFilter);
-    const statusMatches = statusFilter === "all" || (statusFilter === "selected" ? candidate.selected : !candidate.selected);
+    const statusMatches = statusFilter === "all"
+      || (statusFilter === "answer" ? candidate.answer_eligible : statusFilter === "selected" ? candidate.selected : !candidate.selected);
     return routeMatches && statusMatches;
   }), [routeFilter, statusFilter, trace]);
 
@@ -70,7 +71,7 @@ export function TracePanel({ traces, trace, onSelect, onOpenImage }: Props) {
       <div className="trace-toolbar">
         <label><span>召回通道</span><select value={routeFilter} onChange={(event) => setRouteFilter(event.target.value)}><option value="all">全部</option>{routes.map((routeName) => <option key={routeName} value={routeName}>{routeName}</option>)}</select></label>
         <div className="segmented" aria-label="候选状态筛选">
-          {(["all", "selected", "excluded"] as const).map((value) => <button type="button" key={value} className={statusFilter === value ? "active" : ""} onClick={() => setStatusFilter(value)}>{value === "all" ? "全部" : value === "selected" ? "入选" : "排除"}</button>)}
+          {(["all", "selected", "answer", "excluded"] as const).map((value) => <button type="button" key={value} className={statusFilter === value ? "active" : ""} onClick={() => setStatusFilter(value)}>{value === "all" ? "全部" : value === "selected" ? "召回入选" : value === "answer" ? "答案采用" : "召回排除"}</button>)}
         </div>
       </div>
 
@@ -84,7 +85,12 @@ export function TracePanel({ traces, trace, onSelect, onOpenImage }: Props) {
           <td>{formatMetric(candidate.hyde_score)}</td>
           <td>{formatMetric(candidate.rrf_score, 4)}</td>
           <td><strong>{formatMetric(candidate.rerank_score)}</strong></td>
-          <td><StatusPill value={candidate.selected ? "selected" : "excluded"} /><span>{candidate.context_selection_reason ?? candidate.exclusion_reason ?? "-"}</span>{candidate.protected_evidence && <small className="protected"><LockKeyhole size={12} />受保护证据</small>}</td>
+          <td>
+            <StatusPill value={candidate.answer_eligible ? "answer_eligible" : candidate.selected ? "selected_not_answer" : "excluded"} />
+            <span>{candidate.answer_eligibility_reasons?.join(" / ") || candidate.context_selection_reason || candidate.exclusion_reason || "-"}</span>
+            {candidate.selected && <small>问题词覆盖 {formatMetric(candidate.answer_term_coverage, 2)}</small>}
+            {candidate.protected_evidence && <small className="protected"><LockKeyhole size={12} />受保护证据</small>}
+          </td>
         </tr>)}</tbody>
       </table></div>
 
@@ -105,6 +111,10 @@ export function TracePanel({ traces, trace, onSelect, onOpenImage }: Props) {
             <span>{attempt.failure_kind ?? "ok"}{attempt.status_code ? ` · HTTP ${attempt.status_code}` : ""}</span>
             <span>{formatMetric(attempt.latency_ms, 2)} ms</span>
           </div>)}</div>
+        </section>}
+        {Object.keys(trace.web_search_audit ?? {}).length > 0 && <section className="detail-band">
+          <h3><FileSearch size={17} />Web 回退</h3>
+          <dl>{Object.entries(trace.web_search_audit).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{Array.isArray(value) ? value.join(" / ") : String(value)}</dd></div>)}</dl>
         </section>}
       </div>
 

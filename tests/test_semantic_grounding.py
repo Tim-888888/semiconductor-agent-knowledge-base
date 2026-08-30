@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -278,3 +279,180 @@ async def test_high_coverage_internal_result_is_sufficient_without_web() -> None
 
     assert result.status is EvidenceSufficiencyStatus.SUFFICIENT
     assert result.web_fallback_allowed is False
+    assert result.answer_eligible_ids == [chunk.chunk_id]
+    assert trace.candidates[0].answer_eligible is True
+
+
+@pytest.mark.asyncio
+async def test_public_low_score_candidate_stays_in_trace_but_cannot_ground_answer() -> None:
+    settings = Settings(_env_file=None, demo_mode=True)
+    service = EvidenceSufficiencyService(settings, ForbiddenLLM())
+    understanding = ConversationUnderstanding(
+        classifier_source="deterministic_fallback",
+        interaction_mode="task",
+        primary_intent=PrimaryIntent.KNOWLEDGE_QUERY,
+        semantic_frame={
+            "knowledge_scope": "public_general",
+            "expected_output": "explanation",
+        },
+        suggested_route="internal_rag",
+        confidence=0.9,
+    )
+    chunk = _chunk("晶圆制造流程包括多个工艺步骤。", "LOW-1")
+    candidate = RetrievalCandidate(
+        chunk_id=chunk.chunk_id,
+        document_id=chunk.document_id,
+        revision=chunk.revision,
+        title="弱相关公开知识",
+        page_or_section=chunk.page_or_section,
+        routes=["dense", "sparse"],
+        dense_score=0.52,
+        sparse_score=100,
+        rrf_score=0.03,
+        rerank_score=0.46,
+        selected=True,
+    )
+    trace = RetrievalTrace(
+        actor_user_id="demo_engineer",
+        original_query="晶圆制造流程是什么",
+        candidates=[candidate],
+        final_evidence_ids=[chunk.chunk_id],
+    )
+
+    result = await service.assess(
+        query="晶圆制造流程是什么",
+        understanding=understanding,
+        evidence=[chunk],
+        trace=trace,
+        initial_route=AgentRoute.INTERNAL_RAG,
+    )
+
+    assert result.status is EvidenceSufficiencyStatus.INSUFFICIENT
+    assert result.answer_eligible_ids == []
+    assert result.answer_rejected_ids == [chunk.chunk_id]
+    assert result.web_fallback_allowed is True
+    assert candidate.selected is True
+    assert candidate.answer_eligible is False
+    assert "below_public_answer_score" in candidate.answer_eligibility_reasons
+
+
+@pytest.mark.asyncio
+async def test_internal_controlled_evidence_keeps_existing_authority_semantics() -> None:
+    settings = Settings(_env_file=None, demo_mode=True)
+    service = EvidenceSufficiencyService(settings, ForbiddenLLM())
+    understanding = ConversationUnderstanding(
+        classifier_source="deterministic_fallback",
+        interaction_mode="task",
+        primary_intent=PrimaryIntent.KNOWLEDGE_QUERY,
+        task_items=[
+            {
+                "task_id": "task_1",
+                "primary_intent": "knowledge_query",
+                "target_type": "sop",
+                "action": "lookup",
+            }
+        ],
+        semantic_frame={"knowledge_scope": "internal_controlled"},
+        suggested_route="internal_rag",
+        confidence=0.9,
+    )
+    chunk = _chunk("受控 SOP 要求先暂停 lot 再复核报警。", "SOP-LOW")
+    candidate = RetrievalCandidate(
+        chunk_id=chunk.chunk_id,
+        document_id=chunk.document_id,
+        revision=chunk.revision,
+        title="受控 SOP",
+        page_or_section=chunk.page_or_section,
+        routes=["sparse"],
+        dense_score=0,
+        sparse_score=1,
+        rrf_score=0.01,
+        rerank_score=0.41,
+        selected=True,
+    )
+    trace = RetrievalTrace(
+        actor_user_id="demo_engineer",
+        original_query="当前 SOP 怎么要求",
+        candidates=[candidate],
+        final_evidence_ids=[chunk.chunk_id],
+    )
+
+    result = await service.assess(
+        query="当前 SOP 怎么要求",
+        understanding=understanding,
+        evidence=[chunk],
+        trace=trace,
+        initial_route=AgentRoute.INTERNAL_RAG,
+    )
+
+    assert result.status is EvidenceSufficiencyStatus.SUFFICIENT
+    assert result.answer_eligible_ids == [chunk.chunk_id]
+    assert result.web_fallback_allowed is False
+    assert candidate.answer_eligible is True
+
+
+@pytest.mark.asyncio
+async def test_frozen_public_answerability_calibration_set() -> None:
+    dataset = json.loads(
+        Path("data/evaluation_specs/t9412_public_answerability_v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    settings = Settings(_env_file=None, demo_mode=True)
+    service = EvidenceSufficiencyService(settings, ForbiddenLLM())
+
+    for case in dataset["cases"]:
+        understanding = ConversationUnderstanding(
+            classifier_source="deterministic_fallback",
+            interaction_mode="task",
+            primary_intent=PrimaryIntent.KNOWLEDGE_QUERY,
+            semantic_frame={
+                "knowledge_scope": case["knowledge_scope"],
+                "expected_output": "explanation",
+            },
+            suggested_route="internal_rag",
+            confidence=0.9,
+        )
+        chunks = [
+            _chunk(item["text"], item["chunk_id"]) for item in case["chunks"]
+        ]
+        candidates = [
+            RetrievalCandidate(
+                chunk_id=chunk.chunk_id,
+                document_id=chunk.document_id,
+                revision=chunk.revision,
+                title="calibration",
+                page_or_section=chunk.page_or_section,
+                routes=["dense", "sparse"],
+                dense_score=0.7,
+                sparse_score=1,
+                rrf_score=0.03,
+                rerank_score=float(item["rerank_score"]),
+                selected=True,
+            )
+            for chunk, item in zip(chunks, case["chunks"], strict=True)
+        ]
+        trace = RetrievalTrace(
+            actor_user_id="calibration",
+            original_query=case["query"],
+            candidates=candidates,
+            final_evidence_ids=[item.chunk_id for item in chunks],
+        )
+
+        result = await service.assess(
+            query=case["query"],
+            understanding=understanding,
+            evidence=chunks,
+            trace=trace,
+            initial_route=AgentRoute.INTERNAL_RAG,
+        )
+
+        expected_ids = [
+            item["chunk_id"]
+            for item in case["chunks"]
+            if item["expected_answer_eligible"]
+        ]
+        assert result.answer_eligible_ids == expected_ids, case["case_id"]
+        assert result.web_fallback_allowed is case["expected_web_fallback"], case[
+            "case_id"
+        ]

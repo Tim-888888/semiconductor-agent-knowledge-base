@@ -1,0 +1,70 @@
+{
+  "schema": "semikb-t9412-hk-runtime-v1",
+  "captured_at": "2026-08-30",
+  "host": "47.76.218.205",
+  "site": "http://semiatlas.cn/",
+  "application_containers": {
+    "api": {"id": "a0e65a926af64e8fc5b786d8d23fcfacdd05f3ce33323ad305cc03b17fc1af0d", "status": "healthy", "restart_count": 0},
+    "worker": {"id": "d7271d55a6a0d5e36cb38036f4f79c890114c5d21ed95c9cc3922179b79e8edd4", "status": "running", "restart_count": 0, "ping": "pong"},
+    "web": {"id": "f9588c95e3be5269b60b43c327317edc5fb6eee852ff31243abf08ea7510d05a", "status": "healthy", "restart_count": 0}
+  },
+  "protected_container_ids_unchanged": {
+    "mongodb": "6181bbf422f9a3347e3230ab8a209dba6baeb3260d2af638a162a7342bc38177",
+    "milvus": "79584e28e6e432bc09e474a8602176fc1ca2cde50fc9725dd147c9afba79faa5",
+    "milvus_minio": "10c53443a0990c206baee7ee660f0608b567f7cd968f62dbe6facf4b66de0afa1",
+    "business_minio": "b6be74285da791f3b525432c07bafcbd4616e56b2c3cde929f0e1a49c49a14d55",
+    "etcd": "a1eb32ddafb3a3bfddf5e1fcf3f7528230e5e74ead71cadd69de3b6292ba90fa",
+    "redis": "2365f6cb64f6da846a63f35dba84786b099163391d1a37791c0148265dae12d77"
+  },
+  "runtime_resources": {
+    "memory_total_mb": 7456,
+    "memory_used_mb": 1709,
+    "memory_available_mb": 5747,
+    "disk_total_gb": 79,
+    "disk_used_gb": 21,
+    "disk_use_percent": 28
+  },
+  "knowledge_storage_invariants": {
+    "mongo_document_catalog": 44,
+    "mongo_chunk_catalog": 154,
+    "mongo_image_assets": 15,
+    "mongo_table_assets": 19,
+    "milvus_active_collection": "semikb_chunks_v4",
+    "milvus_strong_row_count": 149,
+    "minio_raw_objects": 56,
+    "minio_derived_objects": 91,
+    "redis_ping": true,
+    "celery_queue_depth": 0,
+    "note": "acceptance appended conversation and retrieval audit records only"
+  },
+  "public_web_case": {
+    "question": "半导体的制造流程分别是怎样的",
+    "route": "rag_and_web",
+    "answer_mode": "natural",
+    "retrieval_candidates": 26,
+    "selected_chunks": 5,
+    "answer_eligible_chunks": 0,
+    "final_internal_evidence": 0,
+    "web_provider_outcome": "succeeded",
+    "web_normalized_results": 5,
+    "external_citations": 5,
+    "structured_investigation_card": false
+  },
+  "internal_sop_case": {
+    "question": "ETCH-03 Chamber B 清腔后首片异常，当前 SOP 怎么要求？",
+    "route": "internal_rag",
+    "answer_mode": "structured_card",
+    "selected_chunks": 8,
+    "answer_eligible_chunks": 8,
+    "external_citations": 0,
+    "web_fallback_attempted": false
+  },
+  "runtime_health": {
+    "root_http_status": 200,
+    "www_http_status": 200,
+    "published_ports": [22, 80],
+    "https_port_443_listening": false,
+    "app_log_error_scan_last_30_minutes": 0,
+    "shenzhen_ecs_touched": false
+  }
+}

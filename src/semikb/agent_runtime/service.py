@@ -26,6 +26,7 @@ from semikb.contracts.models import (
     AffectSignals,
     AgentAnswer,
     AgentRoute,
+    AnswerMode,
     ChatMessage,
     ClarificationTransitionAudit,
     IntentTaskItem,
@@ -541,6 +542,7 @@ class ConversationService:
                     task_results=list(result.get("task_results", [])),
                     image_asset_ids=[],
                     evidence_ledger=[],
+                    answer_mode=result.get("answer_mode"),
                 ),
             )
             model = SendMessageResponse(
@@ -578,6 +580,7 @@ class ConversationService:
                 task_results=list(result.get("task_results", [])),
                 image_asset_ids=list(result.get("image_evidence", [])),
                 evidence_ledger=list(result.get("evidence_ledger", [])),
+                answer_mode=result.get("answer_mode"),
             ),
         )
         model = SendMessageResponse(
@@ -594,6 +597,7 @@ class ConversationService:
             evidence_ledger=list(result.get("evidence_ledger", [])),
             model_metadata=dict(result.get("model_metadata", {})),
             verification_warnings=list(result.get("verification_warnings", [])),
+            answer_mode=result.get("answer_mode"),
             **self._response_route_metadata(result),
         )
         return model, assistant, {
@@ -686,6 +690,11 @@ class ConversationService:
                     message.presentation.mode is MessageRenderMode.STRUCTURED_CARD
                     and not message.presentation.evidence_ledger
                 )
+                or (
+                    message.presentation.answer_mode is AnswerMode.NATURAL_KNOWLEDGE
+                    and message.presentation.trace_id
+                    and not message.presentation.evidence_ledger
+                )
             )
         }
         if not presentation_request_ids:
@@ -709,6 +718,10 @@ class ConversationService:
             needs_presentation = message.presentation is None or (
                 message.presentation.mode is MessageRenderMode.STRUCTURED_CARD
                 and not message.presentation.evidence_ledger
+            ) or (
+                message.presentation.answer_mode is AnswerMode.NATURAL_KNOWLEDGE
+                and message.presentation.trace_id
+                and not message.presentation.evidence_ledger
             )
             if message.role != "assistant" or not needs_presentation:
                 continue
@@ -729,6 +742,7 @@ class ConversationService:
                     str(item) for item in payload.get("image_asset_ids", [])
                 ],
                 evidence_ledger=list(payload.get("evidence_ledger", [])),
+                answer_mode=payload.get("answer_mode"),
             )
         return hydrated
 

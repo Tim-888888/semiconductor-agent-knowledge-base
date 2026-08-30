@@ -116,16 +116,27 @@ export function Workbench({
             </div>
             <p>{message.content}</p>
             {(message.citations ?? []).length > 0 && <div className="citation-row">
-              {message.citations.map((citation, index) => <button
-                key={citation.evidence_id ?? citation.chunk_id ?? index}
-                className="citation"
-                type="button"
-                onClick={() => onOpenTrace(message.presentation?.trace_id)}
-              >
-                <FileText size={13} />
-                {citation.document_id ?? citation.source_type ?? "证据"} {citation.revision ?? ""}
-                {citation.page_or_section ? ` · ${citation.page_or_section}` : ""}
-              </button>)}
+              {message.citations.map((citation, index) => citation.external_url
+                ? <a
+                    key={citation.evidence_id ?? index}
+                    className="citation"
+                    href={citation.external_url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                  >
+                    <FileText size={13} />
+                    {citation.source_title || citation.source_domain || "外部资料"}
+                  </a>
+                : <button
+                    key={citation.evidence_id ?? citation.chunk_id ?? index}
+                    className="citation"
+                    type="button"
+                    onClick={() => onOpenTrace(message.presentation?.trace_id)}
+                  >
+                    <FileText size={13} />
+                    {citation.document_id ?? citation.source_type ?? "证据"} {citation.revision ?? ""}
+                    {citation.page_or_section ? ` · ${citation.page_or_section}` : ""}
+                  </button>)}
             </div>}
             {message.role === "assistant" && (message.presentation?.task_results ?? []).length > 0 && <TaskResults results={message.presentation!.task_results} />}
             {message.role === "assistant"
@@ -330,7 +341,7 @@ function EvidenceDetail({ evidence }: { evidence: EvidenceLedgerEntry }) {
 }
 
 function sourceLabel(value: string): string {
-  return ({ internal_chunk: "受控文档", tool: "只读工具", external: "外部资料" } as Record<string, string>)[value] ?? value;
+  return ({ internal_controlled: "已入库知识", simulated_live_data: "模拟制造数据", external: "外部资料" } as Record<string, string>)[value] ?? value;
 }
 
 function routeLabel(value: string): string {
@@ -341,7 +352,7 @@ function routeLabel(value: string): string {
     internal_rag: "内部知识检索",
     tool_only: "只读制造数据",
     rag_and_tool: "知识 + 制造数据",
-    rag_and_web: "知识 + 受控 Web",
+    rag_and_web: "知识 + Web",
     clarify: "澄清",
     refuse: "拒绝"
   } as Record<string, string>)[value] ?? value;

@@ -41,6 +41,7 @@ from semikb.contracts.evaluation_governance import (
 from semikb.contracts.models import (
     ActorScope,
     AffectedRecordCounts,
+    AnswerMode,
     ChatMessage,
     Chunk,
     ChunkType,
@@ -140,6 +141,7 @@ __all__ = [
     "CorpusStandardizationStatus",
     "CorpusUploadedFile",
     "AffectedRecordCounts",
+    "AnswerMode",
     "ChatMessage",
     "Chunk",
     "ChunkType",

@@ -607,6 +607,9 @@ class RetrievalCandidate(BaseModel):
     selected: bool = False
     exclusion_reason: str | None = None
     protected_evidence: bool = False
+    answer_eligible: bool = False
+    answer_eligibility_reasons: list[str] = Field(default_factory=list)
+    answer_term_coverage: float = Field(default=0.0, ge=0, le=1)
 
 
 class RetrievalTrace(BaseModel):
@@ -624,6 +627,7 @@ class RetrievalTrace(BaseModel):
     final_evidence_ids: list[str] = Field(default_factory=list)
     image_asset_ids: list[str] = Field(default_factory=list)
     external_evidence: list[dict[str, Any]] = Field(default_factory=list)
+    web_search_audit: dict[str, Any] = Field(default_factory=dict)
     evidence_sufficiency: dict[str, Any] = Field(default_factory=dict)
     component_versions: dict[str, str] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
@@ -665,6 +669,13 @@ class EvidenceLedgerEntry(BaseModel):
     context_selection_reason: str | None = None
     image_ids: list[str] = Field(default_factory=list)
     external_url: str = ""
+    source_title: str = ""
+    source_domain: str = ""
+
+
+class AnswerMode(StrEnum):
+    STRUCTURED_INVESTIGATION = "structured_investigation"
+    NATURAL_KNOWLEDGE = "natural_knowledge"
 
 
 class MessageRenderMode(StrEnum):
@@ -676,6 +687,7 @@ class MessagePresentation(BaseModel):
     """Persisted UI projection selected by server-owned route policy."""
 
     mode: MessageRenderMode = MessageRenderMode.BUBBLE
+    answer_mode: AnswerMode | None = None
     route_decision: str | None = None
     status: str | None = None
     answer: AgentAnswer | None = None
@@ -821,6 +833,10 @@ class EvidenceSufficiencyAssessment(BaseModel):
     provider: str | None = None
     model: str | None = None
     warning_codes: list[str] = Field(default_factory=list)
+    answer_eligible_ids: list[str] = Field(default_factory=list)
+    answer_rejected_ids: list[str] = Field(default_factory=list)
+    answer_gate_profile: str = "semikb-answer-gate-v1"
+    answer_score_threshold: float | None = Field(default=None, ge=0, le=1)
 
 
 class TaskShape(StrEnum):
@@ -1152,6 +1168,7 @@ class SendMessageResponse(BaseModel):
     task_decisions: list[RouteTaskDecision] = Field(default_factory=list, max_length=3)
     task_results: list[TaskExecutionResult] = Field(default_factory=list, max_length=3)
     retrieval_skipped_reason: str | None = None
+    answer_mode: AnswerMode | None = None
 
 
 class MemoryRecord(BaseModel):

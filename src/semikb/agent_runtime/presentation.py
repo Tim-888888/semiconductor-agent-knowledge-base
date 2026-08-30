@@ -7,6 +7,7 @@ from typing import Any
 from semikb.contracts.models import (
     AgentAnswer,
     AgentRoute,
+    AnswerMode,
     EvidenceLedgerEntry,
     MessagePresentation,
     MessageRenderMode,
@@ -34,6 +35,7 @@ def build_message_presentation(
     task_results: list[TaskExecutionResult | dict[str, Any]] | None = None,
     image_asset_ids: list[str] | None = None,
     evidence_ledger: list[EvidenceLedgerEntry | dict[str, Any]] | None = None,
+    answer_mode: AnswerMode | str | None = None,
 ) -> MessagePresentation:
     """Choose presentation deterministically; the model never controls this decision."""
 
@@ -53,13 +55,15 @@ def build_message_presentation(
         if answer
         else None
     )
+    normalized_answer_mode = AnswerMode(answer_mode) if answer_mode is not None else None
     structured = parsed_answer is not None and (
         normalized_route in STRUCTURED_CARD_ROUTES
         or normalized_route is None
-    )
+    ) and normalized_answer_mode is not AnswerMode.NATURAL_KNOWLEDGE
+    retain_evidence = structured or normalized_answer_mode is AnswerMode.NATURAL_KNOWLEDGE
     parsed_evidence: list[EvidenceLedgerEntry] = []
     seen_evidence_ids: set[str] = set()
-    if structured:
+    if retain_evidence:
         for item in evidence_ledger or []:
             entry = EvidenceLedgerEntry.model_validate(item)
             if entry.evidence_id in seen_evidence_ids:
@@ -72,12 +76,17 @@ def build_message_presentation(
             if structured
             else MessageRenderMode.BUBBLE
         ),
+        answer_mode=normalized_answer_mode,
         route_decision=route_value,
         status=status,
         answer=parsed_answer if structured else None,
-        trace_id=trace_id if structured else None,
-        verification_warnings=list(verification_warnings or []) if structured else [],
+        trace_id=trace_id if retain_evidence else None,
+        verification_warnings=(
+            list(verification_warnings or []) if retain_evidence else []
+        ),
         task_results=[TaskExecutionResult.model_validate(item) for item in task_results or []],
-        image_asset_ids=list(dict.fromkeys(image_asset_ids or [])) if structured else [],
+        image_asset_ids=(
+            list(dict.fromkeys(image_asset_ids or [])) if retain_evidence else []
+        ),
         evidence_ledger=parsed_evidence,
     )

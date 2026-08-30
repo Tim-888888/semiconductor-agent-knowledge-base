@@ -30,7 +30,11 @@ from semikb.agent_runtime.evidence_sufficiency import EvidenceSufficiencyService
 from semikb.agent_runtime.llm_gateway import OpenAICompatibleLLMGateway
 from semikb.agent_runtime.memory import MemoryService
 from semikb.agent_runtime.routing import RoutePolicy
-from semikb.agent_runtime.streaming_answer import StreamingAnswerAssembler, format_answer
+from semikb.agent_runtime.streaming_answer import (
+    StreamingAnswerAssembler,
+    format_answer,
+    format_natural_knowledge_answer,
+)
 from semikb.agent_runtime.task_execution import (
     TaskExecutionCoordinator,
     route_generation_contract,
@@ -38,13 +42,14 @@ from semikb.agent_runtime.task_execution import (
 )
 from semikb.agent_runtime.tools import ManufacturingToolbox
 from semikb.agent_runtime.understanding import CHAMBER_PATTERN, ConversationUnderstandingService
-from semikb.agent_runtime.web_search import AliyunWebSearchGateway
+from semikb.agent_runtime.web_search import AliyunWebSearchGateway, WebSearchUnavailable
 from semikb.config import Settings
 from semikb.contracts.models import (
     ActorScope,
     AgentAnswer,
     AgentRoute,
     AnswerClaim,
+    AnswerMode,
     AuditEvent,
     CancelScope,
     Chunk,
@@ -117,6 +122,7 @@ class CaseState(TypedDict, total=False):
     status: str
     model_metadata: dict[str, Any]
     verification_warnings: list[str]
+    answer_mode: str
 
 
 CLARIFICATION_PROMPTS = {
@@ -1258,6 +1264,7 @@ class ConversationGraph:
             else None
         )
         if not self.settings.evidence_sufficiency_enabled or route is AgentRoute.TOOL_ONLY:
+            eligible_ids = [item.chunk_id for item in evidence]
             assessment = EvidenceSufficiencyAssessment(
                 status=(
                     EvidenceSufficiencyStatus.SUFFICIENT
@@ -1267,6 +1274,7 @@ class ConversationGraph:
                 reason_codes=["evidence_sufficiency_gate_disabled"],
                 selected_count=len(evidence),
                 judge_source="disabled",
+                answer_eligible_ids=eligible_ids,
             )
         else:
             self._emit_stream(
@@ -1281,8 +1289,30 @@ class ConversationGraph:
                 trace=trace,
                 initial_route=initial_route,
             )
+        eligible_ids = set(assessment.answer_eligible_ids)
+        answer_evidence = [item for item in evidence if item.chunk_id in eligible_ids]
+        rejected_ids = set(assessment.answer_rejected_ids)
+        answer_mode = (
+            AnswerMode.NATURAL_KNOWLEDGE
+            if assessment.knowledge_scope.value == "public_general"
+            else AnswerMode.STRUCTURED_INVESTIGATION
+        )
         if trace is not None:
+            trace.final_evidence_ids = [item.chunk_id for item in answer_evidence]
+            trace.image_asset_ids = list(
+                dict.fromkeys(
+                    image_id for item in answer_evidence for image_id in item.image_ids
+                )
+            )
+            if rejected_ids:
+                trace.cutoff_reason = (
+                    "answer_usability_gate"
+                    if not answer_evidence
+                    else f"{trace.cutoff_reason}+answer_usability_gate"
+                )
             trace.evidence_sufficiency = assessment.model_dump(mode="json")
+            if "answer_usability_gate" not in trace.routes:
+                trace.routes.append("answer_usability_gate")
             if "evidence_sufficiency" not in trace.routes:
                 trace.routes.append("evidence_sufficiency")
             self.retrieval.save_trace(trace)
@@ -1290,6 +1320,9 @@ class ConversationGraph:
         metadata["evidence_sufficiency"] = assessment.model_dump(mode="json")
         return {
             "evidence_sufficiency": assessment.model_dump(mode="json"),
+            "reranked_evidence": [item.model_dump(mode="json") for item in answer_evidence],
+            "image_evidence": trace.image_asset_ids if trace else state.get("image_evidence", []),
+            "answer_mode": answer_mode.value,
             "model_metadata": metadata,
         }
 
@@ -1304,15 +1337,23 @@ class ConversationGraph:
         self._emit_stream(
             "stage",
             stage="searching_external",
-            message="内部证据不足，正在查询受控外部来源",
+            message="知识库证据不足，正在查询外部公开资料",
         )
         try:
             external = await self.web_search.search(state["retrieval_query"])
-        except Exception:
+        except WebSearchUnavailable:
             external = [
                 {
                     "source_type": "external_unavailable",
                     "content": "web_provider_unavailable",
+                    "url": "",
+                }
+            ]
+        if not external:
+            external = [
+                {
+                    "source_type": "external_unavailable",
+                    "content": "web_search_returned_no_usable_results",
                     "url": "",
                 }
             ]
@@ -1326,6 +1367,7 @@ class ConversationGraph:
         )
         if trace is not None:
             trace.external_evidence = external
+            trace.web_search_audit = dict(getattr(self.web_search, "last_audit", {}))
             trace.provider_attempts.extend(getattr(self.web_search, "last_attempts", ()))
             if "web_fallback" not in trace.routes:
                 trace.routes.append("web_fallback")
@@ -1409,6 +1451,8 @@ class ConversationGraph:
                     source_type="external",
                     content=str(item.get("content", ""))[:1200],
                     external_url=str(item.get("url", "")),
+                    source_title=str(item.get("title", "")),
+                    source_domain=str(item.get("source_domain", "")),
                 )
             )
         self._emit_stream(
@@ -1428,13 +1472,33 @@ class ConversationGraph:
             message="正在依据证据生成回答",
         )
         ledger = [EvidenceLedgerEntry.model_validate(item) for item in state.get("evidence_ledger", [])]
+        answer_mode = AnswerMode(
+            str(state.get("answer_mode") or AnswerMode.STRUCTURED_INVESTIGATION.value)
+        )
+        natural_knowledge = answer_mode is AnswerMode.NATURAL_KNOWLEDGE
         if state.get("combined_direct_text"):
             self._emit_stream("answer_delta", delta="\n\n")
         if not ledger:
             answer = AgentAnswer(
-                unknowns=["当前权限、版本和有效期范围内没有足以支持结论的证据。"],
-                next_actions=["补充受影响对象、时间范围或可核验的文档与制造数据。"],
+                unknowns=[
+                    "本次知识库检索与外部搜索都没有返回可核验的资料。"
+                    if natural_knowledge
+                    else "当前权限、版本和有效期范围内没有足以支持结论的证据。"
+                ],
+                next_actions=[
+                    "换一种更具体的问法后重试外部搜索。"
+                    if natural_knowledge
+                    else "补充受影响对象、时间范围或可核验的文档与制造数据。"
+                ],
                 confidence="low",
+            )
+            self._emit_stream(
+                "answer_delta",
+                delta=(
+                    format_natural_knowledge_answer(answer)
+                    if natural_knowledge
+                    else format_answer(answer)
+                ),
             )
             return {"answer": answer.model_dump(mode="json"), "model_metadata": state.get("model_metadata", {})}
 
@@ -1451,7 +1515,14 @@ class ConversationGraph:
                     model=provider_details["model"],
                 )
 
-            assembler = StreamingAnswerAssembler(ledger, emit_verified_delta)
+            assembler = StreamingAnswerAssembler(
+                ledger,
+                emit_verified_delta,
+                formatter=(
+                    format_natural_knowledge_answer if natural_knowledge else format_answer
+                ),
+                enforce_internal_authority=not natural_knowledge,
+            )
 
             def consume_model_delta(delta: str, provider: str, model: str) -> None:
                 provider_details["provider"] = provider
@@ -1464,10 +1535,17 @@ class ConversationGraph:
                         {
                             "role": "system",
                             "content": (
-                                "You are a semiconductor investigation assistant. Use only the supplied evidence ledger. "
+                                "You are a semiconductor knowledge assistant. Use only the supplied evidence ledger. "
                                 f"Route contract: {route_generation_contract(state.get('route_decision'))} "
-                                "Internal controlled evidence outranks external evidence. Simulated live data must remain "
-                                "labeled simulated. Do not declare a root cause; hypotheses must be testable. Stream compact "
+                                + (
+                                    "Answer the public knowledge question directly and naturally. Build coherent explanatory "
+                                    "paragraphs as ordered fact units. Do not use an investigation-report template, do not invent "
+                                    "missing process steps, and use both answer-grade ingested evidence and Web evidence when useful. "
+                                    if natural_knowledge
+                                    else "Internal controlled evidence outranks external evidence. Simulated live data must remain "
+                                    "labeled simulated. Do not declare a root cause; hypotheses must be testable. "
+                                )
+                                + "Stream compact "
                                 "JSON objects, one object per line, with no array, prose, or markdown fence. Emit zero or more "
                                 "objects in this exact type order: fact, hypothesis, unknown, next_action, then exactly one "
                                 "confidence object. Claim objects use {type,text,citation_ids}; unknown and next_action use "
@@ -1514,7 +1592,14 @@ class ConversationGraph:
                 raise
         if answer is None:
             answer = self._deterministic_answer(ledger)
-            self._emit_stream("answer_delta", delta=format_answer(answer))
+            self._emit_stream(
+                "answer_delta",
+                delta=(
+                    format_natural_knowledge_answer(answer)
+                    if natural_knowledge
+                    else format_answer(answer)
+                ),
+            )
         return {"answer": answer.model_dump(mode="json"), "model_metadata": metadata}
 
     @staticmethod
@@ -1677,6 +1762,8 @@ class ConversationGraph:
                 "page_or_section": item.page_or_section,
                 "image_ids": item.image_ids,
                 "external_url": item.external_url,
+                "source_title": item.source_title,
+                "source_domain": item.source_domain,
             }
             for item in ledger
             if item.evidence_id
@@ -1686,7 +1773,10 @@ class ConversationGraph:
                 for citation in claim.citation_ids
             }
         ]
-        formatted = ConversationGraph._format_answer(verified)
+        answer_mode = AnswerMode(
+            str(state.get("answer_mode") or AnswerMode.STRUCTURED_INVESTIGATION.value)
+        )
+        formatted = ConversationGraph._format_answer(verified, answer_mode=answer_mode)
         if state.get("combined_direct_text"):
             formatted = f"{state['combined_direct_text']}\n\n{formatted}"
         return {
@@ -1698,7 +1788,13 @@ class ConversationGraph:
         }
 
     @staticmethod
-    def _format_answer(answer: AgentAnswer) -> str:
+    def _format_answer(
+        answer: AgentAnswer,
+        *,
+        answer_mode: AnswerMode = AnswerMode.STRUCTURED_INVESTIGATION,
+    ) -> str:
+        if answer_mode is AnswerMode.NATURAL_KNOWLEDGE:
+            return format_natural_knowledge_answer(answer)
         return format_answer(answer)
 
     @staticmethod

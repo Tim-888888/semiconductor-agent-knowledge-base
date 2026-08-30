@@ -15,6 +15,9 @@ export type Citation = {
   revision?: string | null;
   page_or_section?: string;
   image_ids?: string[];
+  external_url?: string;
+  source_title?: string;
+  source_domain?: string;
 };
 
 export type Message = {
@@ -84,6 +87,7 @@ export type AgentRoute =
 
 export type MessagePresentation = {
   mode: "bubble" | "structured_card";
+  answer_mode?: "structured_investigation" | "natural_knowledge" | null;
   route_decision?: AgentRoute | string | null;
   status?: string | null;
   answer?: AgentAnswer | null;
@@ -134,6 +138,8 @@ export type EvidenceLedgerEntry = {
   approval_status?: string | null;
   effective_at?: string | null;
   source_uri?: string;
+  source_title?: string;
+  source_domain?: string;
   page_or_section?: string;
   tool_id?: string | null;
   chamber?: string | null;
@@ -169,6 +175,7 @@ export type AgentResponse = {
   task_decisions?: RouteTaskDecision[];
   task_results?: TaskExecutionResult[];
   retrieval_skipped_reason?: string | null;
+  answer_mode?: "structured_investigation" | "natural_knowledge" | null;
 };
 
 export type AgentStreamStage =
@@ -447,6 +454,9 @@ export type TraceCandidate = {
   selected: boolean;
   exclusion_reason?: string | null;
   protected_evidence: boolean;
+  answer_eligible: boolean;
+  answer_eligibility_reasons: string[];
+  answer_term_coverage: number;
 };
 
 export type ProviderAttemptAudit = {
@@ -477,6 +487,7 @@ export type RetrievalTrace = {
   final_evidence_ids: string[];
   image_asset_ids: string[];
   external_evidence: Record<string, unknown>[];
+  web_search_audit: Record<string, unknown>;
   candidates: TraceCandidate[];
   component_versions: Record<string, string>;
   warnings: string[];

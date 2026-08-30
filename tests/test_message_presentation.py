@@ -7,6 +7,7 @@ from semikb.contracts.models import (
     AgentAnswer,
     AgentRoute,
     AnswerClaim,
+    AnswerMode,
     EvidenceLedgerEntry,
     MessageRenderMode,
 )
@@ -96,6 +97,33 @@ def test_direct_routes_use_bubbles_even_if_an_answer_is_supplied(route: AgentRou
     assert presentation.verification_warnings == []
     assert presentation.image_asset_ids == []
     assert presentation.evidence_ledger == []
+
+
+def test_public_knowledge_uses_bubble_but_keeps_trace_and_sources() -> None:
+    presentation = build_message_presentation(
+        route=AgentRoute.RAG_AND_WEB,
+        answer=_answer(),
+        answer_mode=AnswerMode.NATURAL_KNOWLEDGE,
+        status="completed",
+        trace_id="trace_public",
+        image_asset_ids=["IMG-public"],
+        evidence_ledger=[
+            EvidenceLedgerEntry(
+                evidence_id="external:1",
+                source_type="external",
+                content="公开知识",
+                external_url="https://example.org/source",
+                source_title="公开来源",
+            )
+        ],
+    )
+
+    assert presentation.mode is MessageRenderMode.BUBBLE
+    assert presentation.answer_mode is AnswerMode.NATURAL_KNOWLEDGE
+    assert presentation.answer is None
+    assert presentation.trace_id == "trace_public"
+    assert presentation.image_asset_ids == ["IMG-public"]
+    assert presentation.evidence_ledger[0].source_title == "公开来源"
 
 
 @pytest.mark.asyncio

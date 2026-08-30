@@ -409,9 +409,14 @@ class ProductionRetrievalService:
         for index in range(min_docs, len(selected)):
             previous = selected[index - 1].rerank_score
             current = selected[index].rerank_score
-            if previous > 0 and (previous - current) / previous >= self.settings.retrieval_score_cliff_ratio:
+            score_gap = previous - current
+            relative_drop = score_gap / previous if previous > 0 else 0.0
+            if (
+                score_gap >= self.settings.retrieval_score_cliff_min_gap
+                and relative_drop >= self.settings.retrieval_score_cliff_ratio
+            ):
                 kept = selected[:index]
-                return self._retain_protected(kept, protected), "rerank_score_cliff"
+                return self._retain_protected(kept, protected), "joint_score_cliff"
         if len(eligible) > len(selected):
             return selected, "top_k"
         return selected, "candidate_count_within_limit"

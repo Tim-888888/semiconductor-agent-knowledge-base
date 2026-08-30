@@ -33,6 +33,19 @@ def format_answer(answer: AgentAnswer) -> str:
     return "\n".join(lines)
 
 
+def format_natural_knowledge_answer(answer: AgentAnswer) -> str:
+    """Render evidence-backed public knowledge without an investigation template."""
+
+    paragraphs = [claim.text for claim in answer.facts]
+    if answer.hypotheses:
+        paragraphs.extend(f"需要注意：{claim.text}" for claim in answer.hypotheses)
+    if answer.unknowns:
+        paragraphs.extend(f"目前可核验资料仍未明确：{item}" for item in answer.unknowns)
+    if answer.next_actions:
+        paragraphs.extend(f"如需进一步确认，可以：{item}" for item in answer.next_actions)
+    return "\n\n".join(paragraphs)
+
+
 class StreamingAnswerAssembler:
     """Parse JSON objects from arbitrary network chunks and emit verified text growth."""
 
@@ -48,9 +61,14 @@ class StreamingAnswerAssembler:
         self,
         ledger: list[EvidenceLedgerEntry],
         emit_delta: Callable[[str], None],
+        *,
+        formatter: Callable[[AgentAnswer], str] = format_answer,
+        enforce_internal_authority: bool = True,
     ) -> None:
         self._ledger = ledger
         self._emit_delta = emit_delta
+        self._formatter = formatter
+        self._enforce_internal_authority = enforce_internal_authority
         self._buffer = ""
         self._decoder = json.JSONDecoder()
         self._facts: list[AnswerClaim] = []
@@ -217,7 +235,7 @@ class StreamingAnswerAssembler:
         if fact and not normalized:
             self.warnings.append("fact_removed_without_valid_citation")
             return None
-        if fact and self._has_internal and all(
+        if fact and self._enforce_internal_authority and self._has_internal and all(
             self._source_by_id[citation] == "external" for citation in normalized
         ):
             self.warnings.append("external_only_fact_removed_when_internal_evidence_exists")
@@ -272,8 +290,8 @@ class StreamingAnswerAssembler:
         return str(value or "").strip()[:2000]
 
     def _emit_render_growth(self) -> None:
-        rendered = format_answer(self.answer)
-        if self._confidence is None:
+        rendered = self._formatter(self.answer)
+        if self._formatter is format_answer and self._confidence is None:
             rendered = rendered.rsplit("\n置信度：", maxsplit=1)[0]
         if not rendered.startswith(self._rendered):
             raise ValueError("answer units cannot be rendered incrementally")

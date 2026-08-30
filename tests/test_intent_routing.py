@@ -33,9 +33,17 @@ from semikb.demo_factory import demo_actor_scope
 
 
 class CountingRetrieval:
-    def __init__(self, delegate, *, force_empty: bool = False, events=None) -> None:
+    def __init__(
+        self,
+        delegate,
+        *,
+        force_empty: bool = False,
+        force_rerank_score: float | None = None,
+        events=None,
+    ) -> None:
         self.delegate = delegate
         self.force_empty = force_empty
+        self.force_rerank_score = force_rerank_score
         self.events = events
         self.search_calls = 0
         self.reuse_calls = 0
@@ -45,6 +53,11 @@ class CountingRetrieval:
         if self.events is not None:
             self.events.append("internal_retrieval")
         evidence, trace = self.delegate.search(*args, **kwargs)
+        if self.force_rerank_score is not None:
+            for candidate in trace.candidates:
+                if candidate.selected:
+                    candidate.rerank_score = self.force_rerank_score
+            self.delegate.save_trace(trace)
         if not self.force_empty:
             return evidence, trace
         for candidate in trace.candidates:
@@ -72,15 +85,18 @@ class CountingToolbox(ManufacturingToolbox):
 
 
 class CountingWeb:
-    def __init__(self, *, events=None) -> None:
+    def __init__(self, *, events=None, results=None) -> None:
         self.events = events
+        self.results = list(results or [])
         self.search_calls = 0
+        self.last_attempts = ()
+        self.last_audit = {"final_status": "usable_results"} if self.results else {}
 
     async def search(self, query):
         self.search_calls += 1
         if self.events is not None:
             self.events.append("web_search")
-        return []
+        return self.results
 
 
 class ForbiddenLLM:
@@ -498,6 +514,92 @@ async def test_public_knowledge_searches_web_only_after_internal_evidence_is_emp
     assert trace.evidence_sufficiency["status"] == "insufficient"
     assert trace.evidence_sufficiency["knowledge_scope"] == "public_general"
     assert "web_fallback" in trace.routes
+
+
+@pytest.mark.asyncio
+async def test_public_web_answer_is_natural_and_keeps_clickable_source(seeded_services) -> None:
+    store, _, retrieval, _, _ = seeded_services
+    counting_retrieval = CountingRetrieval(retrieval, force_empty=True)
+    web = CountingWeb(
+        results=[
+            {
+                "source_type": "external",
+                "title": "Semiconductor process overview",
+                "source_domain": "example.org",
+                "content": "晶圆制造通常包含晶圆制备、前道加工、测试、切割与封装。",
+                "url": "https://example.org/semiconductor-process",
+            }
+        ]
+    )
+    service = ConversationService(
+        store,
+        counting_retrieval,
+        Settings(_env_file=None, demo_mode=True),
+        toolbox=CountingToolbox(),
+        web_search=web,
+    )
+    scope = ActorScope()
+    thread = service.create_thread("public-natural-answer", scope)
+
+    result = await service.send_message(
+        thread.thread_id,
+        "先进封装常见的失效分析方法有哪些？",
+        scope,
+    )
+    assistant = result["thread"]["messages"][-1]
+
+    assert result["route_decision"] is AgentRoute.RAG_AND_WEB
+    assert result["answer_mode"] == "natural_knowledge"
+    assert assistant["presentation"]["mode"] == "bubble"
+    assert assistant["presentation"]["trace_id"] == result["trace_id"]
+    assert "基于当前有效且有权限访问的受控证据" not in result["response"]
+    assert result["citations"][0]["external_url"] == "https://example.org/semiconductor-process"
+    assert result["citations"][0]["source_title"] == "Semiconductor process overview"
+
+
+@pytest.mark.asyncio
+async def test_low_value_chunks_remain_in_trace_but_web_alone_grounds_public_answer(
+    seeded_services,
+) -> None:
+    store, _, retrieval, _, _ = seeded_services
+    counting_retrieval = CountingRetrieval(retrieval, force_rerank_score=0.46)
+    web = CountingWeb(
+        results=[
+            {
+                "source_type": "external",
+                "title": "Public packaging reference",
+                "source_domain": "example.org",
+                "content": "先进封装失效分析可结合无损检测、截面分析和材料分析。",
+                "url": "https://example.org/packaging-failure-analysis",
+            }
+        ]
+    )
+    service = ConversationService(
+        store,
+        counting_retrieval,
+        Settings(_env_file=None, demo_mode=True),
+        toolbox=CountingToolbox(),
+        web_search=web,
+    )
+    scope = demo_actor_scope()
+    thread = service.create_thread("public-low-chunk-web", scope)
+
+    result = await service.send_message(
+        thread.thread_id,
+        "先进封装常见的失效分析方法有哪些？",
+        scope,
+    )
+    trace = counting_retrieval.get_trace(result["trace_id"], scope)
+
+    assert trace.candidates
+    assert any(candidate.selected for candidate in trace.candidates)
+    assert not any(candidate.answer_eligible for candidate in trace.candidates)
+    assert trace.final_evidence_ids == []
+    assert trace.cutoff_reason == "answer_usability_gate"
+    assert trace.web_search_audit["final_status"] == "usable_results"
+    assert {item["source_type"] for item in result["evidence_ledger"]} == {"external"}
+    assert result["route_decision"] is AgentRoute.RAG_AND_WEB
+    assert result["answer_mode"] == "natural_knowledge"
 
 
 @pytest.mark.asyncio

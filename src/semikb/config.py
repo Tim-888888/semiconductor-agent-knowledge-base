@@ -64,8 +64,13 @@ class Settings(BaseSettings):
     retrieval_rrf_k: int = Field(default=60, ge=1, le=1000)
     retrieval_min_evidence: int = Field(default=1, ge=1, le=20)
     retrieval_max_evidence: int = Field(default=8, ge=1, le=20)
-    retrieval_score_cliff_ratio: float = Field(default=0.45, ge=0, le=1)
+    retrieval_score_cliff_ratio: float = Field(default=0.20, ge=0, le=1)
+    retrieval_score_cliff_min_gap: float = Field(default=0.08, ge=0, le=1)
     retrieval_rerank_min_score: float = Field(default=0.40, ge=0, le=1)
+    retrieval_public_answer_min_score: float = Field(default=0.50, ge=0, le=1)
+    retrieval_answer_relative_floor: float = Field(default=0.80, ge=0, le=1)
+    retrieval_answer_min_term_coverage: float = Field(default=0.15, ge=0, le=1)
+    retrieval_answer_sufficient_coverage: float = Field(default=0.40, ge=0, le=1)
     rerank_provider: str = "qianwen"
     rerank_api_base_url: str = ""
     rerank_api_key: str = ""
@@ -84,6 +89,8 @@ class Settings(BaseSettings):
     aliyun_web_mcp_api_key: str = ""
     aliyun_web_mcp_tool_name: str = "web_search"
     web_search_timeout_seconds: int = Field(default=20, ge=3, le=120)
+    web_search_max_results: int = Field(default=8, ge=1, le=20)
+    web_search_content_retries: int = Field(default=1, ge=0, le=2)
     web_allowed_domains: str = ""
     agent_max_clarification_rounds: int = Field(default=2, ge=1, le=3)
     agent_clarification_frame_v1_enabled: bool = True

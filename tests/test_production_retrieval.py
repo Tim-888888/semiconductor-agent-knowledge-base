@@ -361,7 +361,7 @@ def test_dynamic_cutoff_stops_at_a_rerank_score_cliff() -> None:
     evidence, trace = service.search("ETCH-03 edge-ring", demo_actor_scope())
 
     assert [item.chunk_id for item in evidence] == ["C1"]
-    assert trace.cutoff_reason == "rerank_score_cliff"
+    assert trace.cutoff_reason == "joint_score_cliff"
 
 
 def test_protected_evidence_replaces_lower_priority_non_protected_candidate() -> None:

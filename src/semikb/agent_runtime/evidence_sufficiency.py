@@ -58,10 +58,16 @@ class EvidenceSufficiencyService:
         initial_route: AgentRoute,
     ) -> EvidenceSufficiencyAssessment:
         scope = self._knowledge_scope(understanding)
+        answer_evidence, rejected_ids = self._answer_eligible_evidence(
+            query=query,
+            evidence=evidence,
+            trace=trace,
+            knowledge_scope=scope,
+        )
         assessment = self._deterministic_assessment(
             query=query,
             understanding=understanding,
-            evidence=evidence,
+            evidence=answer_evidence,
             trace=trace,
             knowledge_scope=scope,
         )
@@ -69,12 +75,12 @@ class EvidenceSufficiencyService:
             self.settings.evidence_judge_borderline_enabled
             and not self.settings.demo_mode
             and assessment.status is EvidenceSufficiencyStatus.PARTIAL
-            and evidence
+            and answer_evidence
         ):
             assessment = await self._judge_borderline(
                 query=query,
                 understanding=understanding,
-                evidence=evidence,
+                evidence=answer_evidence,
                 assessment=assessment,
             )
         explicit_web = initial_route is AgentRoute.RAG_AND_WEB
@@ -90,7 +96,83 @@ class EvidenceSufficiencyService:
                 }
             )
         )
-        return assessment.model_copy(update={"web_fallback_allowed": web_allowed})
+        return assessment.model_copy(
+            update={
+                "web_fallback_allowed": web_allowed,
+                "answer_eligible_ids": [item.chunk_id for item in answer_evidence],
+                "answer_rejected_ids": rejected_ids,
+                "answer_score_threshold": (
+                    self.settings.retrieval_public_answer_min_score
+                    if scope is KnowledgeScope.PUBLIC_GENERAL
+                    else self.settings.retrieval_rerank_min_score
+                ),
+            }
+        )
+
+    def _answer_eligible_evidence(
+        self,
+        *,
+        query: str,
+        evidence: list[Chunk],
+        trace: RetrievalTrace | None,
+        knowledge_scope: KnowledgeScope,
+    ) -> tuple[list[Chunk], list[str]]:
+        """Keep recall candidates auditable while separating answer-grade evidence."""
+
+        if trace is None:
+            return list(evidence), []
+
+        candidates = {item.chunk_id: item for item in trace.candidates}
+        for candidate in trace.candidates:
+            candidate.answer_eligible = False
+            candidate.answer_eligibility_reasons = (
+                [] if candidate.selected else ["not_retrieval_selected"]
+            )
+            candidate.answer_term_coverage = 0.0
+
+        selected_candidates = [item for item in trace.candidates if item.selected]
+        top_score = max((item.rerank_score for item in selected_candidates), default=0.0)
+        eligible: list[Chunk] = []
+        rejected: list[str] = []
+        public_gate = knowledge_scope is KnowledgeScope.PUBLIC_GENERAL
+
+        for chunk in evidence:
+            candidate = candidates.get(chunk.chunk_id)
+            if candidate is None or not candidate.selected:
+                rejected.append(chunk.chunk_id)
+                continue
+
+            coverage = self._term_coverage(query, [chunk])
+            candidate.answer_term_coverage = coverage
+            reasons: list[str] = []
+            if public_gate and not candidate.protected_evidence:
+                if candidate.rerank_score < self.settings.retrieval_public_answer_min_score:
+                    reasons.append("below_public_answer_score")
+                if (
+                    top_score > 0
+                    and candidate.rerank_score / top_score
+                    < self.settings.retrieval_answer_relative_floor
+                ):
+                    reasons.append("below_relative_answer_floor")
+                if coverage < self.settings.retrieval_answer_min_term_coverage:
+                    reasons.append("insufficient_query_term_coverage")
+
+            if reasons:
+                candidate.answer_eligibility_reasons = reasons
+                rejected.append(chunk.chunk_id)
+                continue
+
+            candidate.answer_eligible = True
+            candidate.answer_eligibility_reasons = [
+                "protected_evidence"
+                if candidate.protected_evidence
+                else "public_answer_gate_passed"
+                if public_gate
+                else "controlled_scope_selected"
+            ]
+            eligible.append(chunk)
+
+        return eligible, rejected
 
     def _deterministic_assessment(
         self,
@@ -101,11 +183,20 @@ class EvidenceSufficiencyService:
         trace: RetrievalTrace | None,
         knowledge_scope: KnowledgeScope,
     ) -> EvidenceSufficiencyAssessment:
-        selected = [candidate for candidate in (trace.candidates if trace else []) if candidate.selected]
+        selected = [
+            candidate
+            for candidate in (trace.candidates if trace else [])
+            if candidate.answer_eligible
+        ]
         scores = [candidate.rerank_score for candidate in selected]
         top_score = max(scores, default=None)
+        score_threshold = (
+            self.settings.retrieval_public_answer_min_score
+            if knowledge_scope is KnowledgeScope.PUBLIC_GENERAL
+            else self.settings.retrieval_rerank_min_score
+        )
         high_score_count = sum(
-            score >= self.settings.retrieval_rerank_min_score for score in scores
+            score >= score_threshold for score in scores
         )
         coverage = self._term_coverage(query, evidence)
         selected_count = len(evidence)
@@ -113,14 +204,17 @@ class EvidenceSufficiencyService:
 
         if selected_count == 0:
             status = EvidenceSufficiencyStatus.INSUFFICIENT
-            reasons.append("no_governed_evidence")
+            reasons.append("no_answer_eligible_evidence")
         elif knowledge_scope is KnowledgeScope.INTERNAL_CONTROLLED:
             status = EvidenceSufficiencyStatus.SUFFICIENT
             reasons.append("controlled_evidence_available")
-        elif top_score is not None and top_score < self.settings.retrieval_rerank_min_score:
+        elif top_score is not None and top_score < score_threshold:
             status = EvidenceSufficiencyStatus.INSUFFICIENT
             reasons.append("all_evidence_below_rerank_threshold")
-        elif coverage >= 0.45 and selected_count >= self.settings.retrieval_min_evidence:
+        elif (
+            coverage >= self.settings.retrieval_answer_sufficient_coverage
+            and selected_count >= self.settings.retrieval_min_evidence
+        ):
             status = EvidenceSufficiencyStatus.SUFFICIENT
             reasons.append("query_aspects_covered")
         else:
@@ -244,10 +338,18 @@ class EvidenceSufficiencyService:
         lowered = text.casefold()
         latin = set(re.findall(r"[a-z0-9][a-z0-9._-]+", lowered))
         chinese_runs = re.findall(r"[\u4e00-\u9fff]+", lowered)
+        fillers = ("什么", "怎么", "怎样", "哪些", "如何", "一般", "通常", "请问", "分别", "这个")
+        normalized_runs = []
+        for run in chinese_runs:
+            for filler in fillers:
+                run = run.replace(filler, "")
+            run = re.sub(r"[的是有呢吗吧和与]", "", run)
+            if run:
+                normalized_runs.append(run)
         chinese = {
             run[index : index + 2]
-            for run in chinese_runs
+            for run in normalized_runs
             for index in range(max(0, len(run) - 1))
         }
-        stop = {"什么", "怎么", "一下", "一般", "哪些", "这个", "可以"}
+        stop = {"一下", "可以"}
         return (latin | chinese) - stop
