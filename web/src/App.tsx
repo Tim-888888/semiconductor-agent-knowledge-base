@@ -2,6 +2,7 @@ import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } 
 import {
   Activity,
   ClipboardCheck,
+  Github,
   Image as ImageIcon,
   KeyRound,
   LoaderCircle,
@@ -756,7 +757,7 @@ function App() {
 
   if (accessRequired) return <main className="access-screen">
     <form className="access-panel" onSubmit={submitAccessKey}>
-      <div className="access-heading"><span className="brand-mark">S</span><div><span className="section-label">SEMIKB</span><h1>测试环境访问</h1></div></div>
+      <div className="access-heading"><span className="brand-mark">S</span><div><span className="section-label">SemiAtlas</span><h1>测试环境访问</h1></div></div>
       <label htmlFor="demo-access-key">访问码</label>
       <div className="access-input-row"><KeyRound size={18} /><input id="demo-access-key" type="password" autoComplete="current-password" value={accessKey} onChange={(event) => setAccessKey(event.target.value)} autoFocus /></div>
       {error && <div className="error-banner" role="alert">{error}</div>}
@@ -766,7 +767,7 @@ function App() {
 
   return <div className="app-shell">
     <aside className="sidebar">
-      <div className="brand"><span className="brand-mark">S</span><span>SEMIKB</span></div>
+      <div className="brand"><span className="brand-mark">S</span><span>SemiAtlas</span></div>
       <nav aria-label="主导航">
         <NavButton active={view === "workbench"} icon={<MessageSquareText />} label="工程师工作台" onClick={() => setView("workbench")} />
         <NavButton active={view === "trace"} icon={<SearchCheck />} label="可解释检索" onClick={() => setView("trace")} />
@@ -779,7 +780,19 @@ function App() {
     <main className={`main-area ${view === "workbench" ? "main-area-workbench" : ""}`}>
       <header className="topbar">
         <div><p className="eyebrow">FAB-01 / P-ALPHA / ETCH</p><h1>{viewTitle(view)}</h1></div>
-        <div className="topbar-right"><Activity size={16} /><span>Evidence-first</span></div>
+        <div className="topbar-actions">
+          <a
+            className="icon-button github-link"
+            href="https://github.com/Tim-888888"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="访问 GitHub 主页"
+            title="GitHub 主页"
+          >
+            <Github size={18} />
+          </a>
+          <div className="topbar-right"><Activity size={16} /><span>Evidence-first</span></div>
+        </div>
       </header>
       {error && <div className="error-banner" role="alert">{error}</div>}
       {notice && <div className="notice-banner" role="status">{notice}</div>}
